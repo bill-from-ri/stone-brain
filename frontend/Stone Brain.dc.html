@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/nocturne-b43e4f6f-bd70-4394-97d2-96f52a84ca48/styles.css">
+<script src="_ds/nocturne-b43e4f6f-bd70-4394-97d2-96f52a84ca48/_ds_bundle.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css">
+<style>
+:root{
+  --gold:#B8860B; --gold-lite:#d9ab3e; --gold-pale:#ecd9a3;
+  --gold-dim:rgba(184,134,11,.13); --gold-line:rgba(184,134,11,.30);
+  --bg:#15181c; --surface:#1d2127; --panel:#232831; --panel-2:#2b313b;
+  --ink:#eceae4; --muted:#8e959f; --faint:#5f6773;
+  --line:rgba(232,234,238,.09); --line-2:rgba(232,234,238,.16);
+  --ok:#5c9a6e; --ok-dim:rgba(92,154,110,.14);
+  --bad:#b04a3f; --bad-dim:rgba(176,74,63,.14);
+  --claim-line:1px dotted rgba(217,171,62,.7); --claim-ink:var(--gold-pale);
+  --color-bg:#15181c; --color-surface:#1d2127; --color-text:#eceae4;
+  --color-accent:#B8860B; --color-accent-100:#f7efd9; --color-accent-300:#dcbc63;
+  --color-accent-800:#4a3605; --color-neutral-800:#2b313b; --color-neutral-100:#e8eaee;
+  --color-divider:rgba(232,234,238,.13);
+}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Inter",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--gold-lite);text-decoration:none}
+a:hover{color:var(--gold-pale);text-decoration:underline;text-underline-offset:3px}
+i.ph,i.ph-bold{display:inline-block;line-height:1}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#333a45;border-radius:9px;border:2px solid var(--bg)}
+::-webkit-scrollbar-thumb:hover{background:#454e5c}
+.sbclaim{border-bottom:var(--claim-line);color:var(--claim-ink)}
+</style>
+</helmet>
+
+<div style="width:1440px;height:900px;display:flex;background:var(--bg);color:var(--ink);font-size:13.5px;overflow:hidden;position:relative">
+
+  <nav style="width:214px;flex:none;display:flex;flex-direction:column;background:var(--surface);border-right:1px solid var(--line)">
+    <div style="display:flex;align-items:center;gap:9px;padding:16px 14px 14px">
+      <div style="width:26px;height:26px;flex:none;border-radius:6px;border:1px solid var(--gold-line);display:grid;place-items:center;color:var(--gold-lite);background:var(--gold-dim)"><i class="ph-bold ph-brain" style="font-size:15px"></i></div>
+      <div>
+        <div style="font-size:14px;font-weight:500;letter-spacing:-.01em;line-height:1.1">Stone Brain</div>
+        <div style="font-size:10px;color:var(--faint);letter-spacing:.06em;text-transform:uppercase;margin-top:2px">Nevlos</div>
+      </div>
+    </div>
+
+    <div style="height:1px;margin:2px 14px 10px;background:linear-gradient(to right,transparent,var(--line),transparent)"></div>
+
+    <div style="display:flex;flex-direction:column;gap:2px;padding:0 8px">
+      <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="6">
+        <div onClick="{{ n.go }}" style="{{ n.style }}" style-hover="background:var(--panel)">
+          <i class="{{ n.icon }}" style="font-size:16px;width:16px"></i>
+          <span style="flex:1">{{ n.label }}</span>
+          <span style="{{ n.badgeStyle }}">{{ n.badge }}</span>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="flex:1"></div>
+
+    <div style="padding:10px 14px 8px">
+      <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:7px">Graph health</div>
+      <div style="height:4px;border-radius:4px;background:var(--panel);overflow:hidden;display:flex">
+        <div style="width:53%;background:var(--gold)"></div>
+        <div style="width:9%;background:var(--bad)"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--muted)">
+        <span>18 of 34 verified</span><span style="color:var(--bad)">6 conflicts</span>
+      </div>
+    </div>
+
+    <div onClick="{{ goConnect }}" style="display:flex;align-items:center;gap:9px;padding:11px 14px;border-top:1px solid var(--line);cursor:pointer" style-hover="background:var(--panel)">
+      <div style="width:24px;height:24px;flex:none;border-radius:50%;background:var(--panel-2);display:grid;place-items:center;font-size:10px;color:var(--gold-pale)">EV</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">e.varga@gmail.com</div>
+        <div style="font-size:10px;color:var(--ok);display:flex;align-items:center;gap:4px"><i class="ph-bold ph-google-drive-logo" style="font-size:10px"></i>Drive connected</div>
+      </div>
+      <i class="ph ph-caret-up-down" style="font-size:13px;color:var(--faint)"></i>
+    </div>
+  </nav>
+
+  <main style="flex:1;min-width:0;display:flex;flex-direction:column">
+
+    <header style="height:52px;flex:none;display:flex;align-items:center;gap:14px;padding:0 20px;border-bottom:1px solid var(--line)">
+      <div style="font-size:14px;font-weight:500">{{ screenTitle }}</div>
+      <div style="font-size:11.5px;color:var(--muted)">{{ screenSub }}</div>
+      <div style="flex:1"></div>
+      <label style="display:flex;align-items:center;gap:7px;width:300px;height:32px;padding:0 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--muted)">
+        <i class="ph ph-magnifying-glass" style="font-size:14px"></i>
+        <input class="input" placeholder="Search claims, entities, documents" style="border:0;background:transparent;min-height:0;height:30px;padding:0;font-size:12.5px">
+      </label>
+      <button class="btn btn-secondary" style="height:32px;font-size:12.5px"><i class="ph ph-arrows-clockwise" style="font-size:14px"></i>Sync Drive</button>
+      <button class="btn btn-primary" style="height:32px;font-size:12.5px"><i class="ph-bold ph-shield-check" style="font-size:14px"></i>Run check</button>
+    </header>
+
+    <div style="flex:1;min-height:0;overflow:auto">
+
+      <!-- ══ HOME ══ -->
+      <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+      <div style="padding:26px 28px 34px;display:flex;flex-direction:column;gap:22px">
+        <div>
+          <div style="font-size:26px;font-weight:500;letter-spacing:-.02em">Nevlos, at a glance</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:5px;max-width:620px;text-wrap:pretty">Six contradictions surfaced since your last check, all in the Third Age material. The Teremid succession is the knot worth untangling first.</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+          <div style="padding:14px 15px;background:var(--surface);border:1px solid var(--line);border-radius:8px">
+            <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Documents</div>
+            <div style="font-size:28px;font-weight:500;margin-top:8px;letter-spacing:-.02em">34</div>
+            <div style="font-size:11px;color:var(--ok);margin-top:4px;display:flex;align-items:center;gap:5px"><i class="ph-bold ph-check-circle" style="font-size:12px"></i>18 verified</div>
+          </div>
+          <div style="padding:14px 15px;background:var(--surface);border:1px solid var(--line);border-radius:8px">
+            <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Claims in graph</div>
+            <div style="font-size:28px;font-weight:500;margin-top:8px;letter-spacing:-.02em">1,247</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">+38 this week</div>
+          </div>
+          <div style="padding:14px 15px;background:var(--surface);border:1px solid var(--bad);border-radius:8px">
+            <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Open conflicts</div>
+            <div style="font-size:28px;font-weight:500;margin-top:8px;letter-spacing:-.02em;color:#e08c86">6</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">2 flagged high impact</div>
+          </div>
+          <div style="padding:14px 15px;background:var(--surface);border:1px solid var(--line);border-radius:8px">
+            <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Last full check</div>
+            <div style="font-size:28px;font-weight:500;margin-top:8px;letter-spacing:-.02em">2d</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">5 Aug, 22:14</div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1.35fr 1fr;gap:20px;align-items:start">
+          <div>
+            <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:11px">
+              <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Pick up where you left off</div>
+              <a href="#" style="font-size:11px;margin-left:auto">All documents</a>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div onClick="{{ goAssistant }}" style="display:flex;gap:13px;padding:14px 15px;background:var(--surface);border:1px solid var(--line);border-radius:8px;cursor:pointer" style-hover="border-color:var(--gold-line)">
+                <i class="ph ph-file-text" style="font-size:17px;color:var(--gold-lite);margin-top:1px"></i>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:14.5px;font-weight:500">The Teremid Empire</div>
+                  <div style="font-size:12px;color:var(--muted);margin-top:4px;text-wrap:pretty">Draft in progress — the assistant rewrote the succession section from your notes and is waiting on your read.</div>
+                  <div style="display:flex;gap:7px;margin-top:9px;align-items:center">
+                    <span class="tag tag-outline">Draft pending</span>
+                    <span style="font-size:11px;color:var(--faint)">History · edited 12 min ago</span>
+                  </div>
+                </div>
+              </div>
+              <div onClick="{{ goClaims }}" style="display:flex;gap:13px;padding:14px 15px;background:var(--surface);border:1px solid var(--line);border-radius:8px;cursor:pointer" style-hover="border-color:var(--gold-line)">
+                <i class="ph ph-list-checks" style="font-size:17px;color:var(--gold-lite);margin-top:1px"></i>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:14.5px;font-weight:500">Tarácina — City Notes</div>
+                  <div style="font-size:12px;color:var(--muted);margin-top:4px;text-wrap:pretty">24 claims extracted, 22 ready to commit. Two disagree with the graph.</div>
+                  <div style="display:flex;gap:7px;margin-top:9px;align-items:center">
+                    <span class="tag" style="background:var(--bad-dim);color:#e08c86">2 conflicts</span>
+                    <span style="font-size:11px;color:var(--faint)">Geography · extracted today</span>
+                  </div>
+                </div>
+              </div>
+              <div onClick="{{ goGraph }}" style="display:flex;gap:13px;padding:14px 15px;background:var(--surface);border:1px solid var(--line);border-radius:8px;cursor:pointer" style-hover="border-color:var(--gold-line)">
+                <i class="ph ph-graph" style="font-size:17px;color:var(--gold-lite);margin-top:1px"></i>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:14.5px;font-weight:500">Erso Lin</div>
+                  <div style="font-size:12px;color:var(--muted);margin-top:4px;text-wrap:pretty">41 relationships, four of them undated. Reigns before 812 AD are still thin.</div>
+                  <div style="display:flex;gap:7px;margin-top:9px;align-items:center">
+                    <span class="tag tag-neutral">Character</span>
+                    <span style="font-size:11px;color:var(--faint)">Cited by 7 documents</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:11px">Recent activity</div>
+            <div style="background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:4px 15px">
+              <div style="display:flex;gap:11px;padding:12px 0;border-bottom:1px solid var(--line)">
+                <i class="ph ph-check-circle" style="font-size:15px;color:var(--ok);margin-top:1px"></i>
+                <div style="flex:1"><div style="font-size:12.5px">Verified <strong style="font-weight:500">The Ashfall Reach</strong></div><div style="font-size:11px;color:var(--faint);margin-top:3px">31 claims, no contradictions · 2h ago</div></div>
+              </div>
+              <div style="display:flex;gap:11px;padding:12px 0;border-bottom:1px solid var(--line)">
+                <i class="ph ph-warning-diamond" style="font-size:15px;color:var(--bad);margin-top:1px"></i>
+                <div style="flex:1"><div style="font-size:12.5px">Flagged: capital of the Teremid Empire</div><div style="font-size:11px;color:var(--faint);margin-top:3px">Tarácina vs. Vel Oshan · 4h ago</div></div>
+              </div>
+              <div style="display:flex;gap:11px;padding:12px 0;border-bottom:1px solid var(--line)">
+                <i class="ph ph-pen-nib" style="font-size:15px;color:var(--gold-lite);margin-top:1px"></i>
+                <div style="flex:1"><div style="font-size:12.5px">Drafted <strong style="font-weight:500">House Verrin — Origins</strong></div><div style="font-size:11px;color:var(--faint);margin-top:3px">From 9 notes, grounded in 34 claims · yesterday</div></div>
+              </div>
+              <div style="display:flex;gap:11px;padding:12px 0;border-bottom:1px solid var(--line)">
+                <i class="ph ph-git-merge" style="font-size:15px;color:var(--gold-lite);margin-top:1px"></i>
+                <div style="flex:1"><div style="font-size:12.5px">Merged <em>Central Empire</em> into <em>Teremid Empire</em></div><div style="font-size:11px;color:var(--faint);margin-top:3px">Alias kept on 11 claims · yesterday</div></div>
+              </div>
+              <div style="display:flex;gap:11px;padding:12px 0">
+                <i class="ph ph-google-drive-logo" style="font-size:15px;color:var(--muted);margin-top:1px"></i>
+                <div style="flex:1"><div style="font-size:12.5px">Synced 3 new files from <em>Nevlos / Drafts</em></div><div style="font-size:11px;color:var(--faint);margin-top:3px">2 days ago</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ══ LIBRARY ══ -->
+      <sc-if value="{{ isLibrary }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;height:100%;min-height:0">
+        <div style="width:212px;flex:none;border-right:1px solid var(--line);padding:16px 12px;overflow:auto">
+          <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:0 4px 9px">My Drive</div>
+          <div style="display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:6px;font-size:12.5px"><i class="ph-bold ph-caret-down" style="font-size:10px;color:var(--faint)"></i><i class="ph ph-folder-open" style="font-size:14px;color:var(--gold-lite)"></i>Nevlos</div>
+          <div style="padding-left:14px;display:flex;flex-direction:column;gap:1px">
+            <div style="display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:6px;font-size:12.5px;background:var(--gold-dim);color:var(--gold-pale)"><i class="ph ph-folder" style="font-size:14px"></i><span style="flex:1">History</span><span style="font-size:10.5px;color:var(--muted)">9</span></div>
+            <div style="display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:6px;font-size:12.5px;color:var(--ink)" style-hover="background:var(--panel)"><i class="ph ph-folder" style="font-size:14px;color:var(--faint)"></i><span style="flex:1">Geography</span><span style="font-size:10.5px;color:var(--muted)">7</span></div>
+            <div style="display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:6px;font-size:12.5px" style-hover="background:var(--panel)"><i class="ph ph-folder" style="font-size:14px;color:var(--faint)"></i><span style="flex:1">Characters</span><span style="font-size:10.5px;color:var(--muted)">11</span></div>
+            <div style="display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:6px;font-size:12.5px" style-hover="background:var(--panel)"><i class="ph ph-folder" style="font-size:14px;color:var(--faint)"></i><span style="flex:1">Politics</span><span style="font-size:10.5px;color:var(--muted)">4</span></div>
+            <div style="display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:6px;font-size:12.5px" style-hover="background:var(--panel)"><i class="ph ph-folder" style="font-size:14px;color:var(--faint)"></i><span style="flex:1">Drafts</span><span style="font-size:10.5px;color:var(--muted)">3</span></div>
+          </div>
+          <div style="height:1px;margin:12px 4px;background:linear-gradient(to right,transparent,var(--line),transparent)"></div>
+          <div style="display:flex;flex-direction:column;gap:1px">
+            <div style="display:flex;align-items:center;gap:7px;padding:6px 8px;font-size:12.5px;color:var(--muted)"><i class="ph ph-check-circle" style="font-size:14px;color:var(--ok)"></i>Verified only</div>
+            <div style="display:flex;align-items:center;gap:7px;padding:6px 8px;font-size:12.5px;color:var(--muted)"><i class="ph ph-warning-diamond" style="font-size:14px;color:var(--bad)"></i>In violation</div>
+            <div style="display:flex;align-items:center;gap:7px;padding:6px 8px;font-size:12.5px;color:var(--muted)"><i class="ph ph-clock-counter-clockwise" style="font-size:14px;color:var(--faint)"></i>Never checked</div>
+          </div>
+        </div>
+
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+          <div style="display:flex;align-items:center;gap:12px;padding:14px 22px;border-bottom:1px solid var(--line)">
+            <div style="font-size:12.5px;color:var(--muted)">My Drive <span style="color:var(--faint)">/</span> Nevlos <span style="color:var(--faint)">/</span> <span style="color:var(--ink)">History</span></div>
+            <div style="flex:1"></div>
+            <div class="seg" style="font-size:12px">
+              <label class="seg-opt" style="padding:5px 11px"><input type="radio" name="libf" checked>All 9</label>
+              <label class="seg-opt" style="padding:5px 11px"><input type="radio" name="libf">Verified 5</label>
+              <label class="seg-opt" style="padding:5px 11px"><input type="radio" name="libf">Unverified 2</label>
+              <label class="seg-opt" style="padding:5px 11px"><input type="radio" name="libf">Conflicts 2</label>
+            </div>
+            <button class="btn btn-primary" style="height:30px;font-size:12px"><i class="ph-bold ph-shield-check" style="font-size:13px"></i>Check folder</button>
+          </div>
+
+          <div style="flex:1;min-height:0;overflow:auto;padding:6px 22px 22px">
+            <table class="table" style="font-size:13px">
+              <thead><tr><th style="width:44%">Name</th><th>Claims</th><th>Status</th><th>Last checked</th><th style="text-align:right">Conflicts</th></tr></thead>
+              <tbody>
+                <tr><td><div style="display:flex;align-items:center;gap:9px"><i class="ph ph-file-doc" style="font-size:16px;color:var(--faint)"></i>Nevlos — Master Timeline<i class="ph-bold ph-check-circle" style="font-size:13px;color:var(--ok)"></i></div></td><td style="color:var(--muted)">184</td><td><span class="tag" style="background:var(--ok-dim);color:#9ed3ac">Verified</span></td><td style="color:var(--muted)">5 Aug</td><td style="text-align:right;color:var(--faint)">—</td></tr>
+                <tr><td><div style="display:flex;align-items:center;gap:9px"><i class="ph ph-file-doc" style="font-size:16px;color:var(--faint)"></i>The Teremid Empire<i class="ph-bold ph-warning-diamond" style="font-size:13px;color:var(--bad)"></i></div></td><td style="color:var(--muted)">96</td><td><span class="tag" style="background:var(--bad-dim);color:#e08c86">In violation</span></td><td style="color:var(--muted)">5 Aug</td><td style="text-align:right;color:#e08c86">3</td></tr>
+                <tr><td><div style="display:flex;align-items:center;gap:9px"><i class="ph ph-file-doc" style="font-size:16px;color:var(--faint)"></i>The Third Age — Succession<i class="ph-bold ph-warning-diamond" style="font-size:13px;color:var(--bad)"></i></div></td><td style="color:var(--muted)">61</td><td><span class="tag" style="background:var(--bad-dim);color:#e08c86">In violation</span></td><td style="color:var(--muted)">5 Aug</td><td style="text-align:right;color:#e08c86">2</td></tr>
+                <tr><td><div style="display:flex;align-items:center;gap:9px"><i class="ph ph-file-doc" style="font-size:16px;color:var(--faint)"></i>Fall of Vel Oshan<i class="ph-bold ph-check-circle" style="font-size:13px;color:var(--ok)"></i></div></td><td style="color:var(--muted)">47</td><td><span class="tag" style="background:var(--ok-dim);color:#9ed3ac">Verified</span></td><td style="color:var(--muted)">4 Aug</td><td style="text-align:right;color:var(--faint)">—</td></tr>
+                <tr><td><div style="display:flex;align-items:center;gap:9px"><i class="ph ph-file-doc" style="font-size:16px;color:var(--faint)"></i>The Ashfall Reach<i class="ph-bold ph-check-circle" style="font-size:13px;color:var(--ok)"></i></div></td><td style="color:var(--muted)">31</td><td><span class="tag" style="background:var(--ok-dim);color:#9ed3ac">Verified</span></td><td style="color:var(--muted)">today</td><td style="text-align:right;color:var(--faint)">—</td></tr>
+                <tr><td><div style="display:flex;align-items:center;gap:9px"><i class="ph ph-file-doc" style="font-size:16px;color:var(--faint)"></i>Wars of the Salt Coast<i class="ph-bold ph-check-circle" style="font-size:13px;color:var(--ok)"></i></div></td><td style="color:var(--muted)">58</td><td><span class="tag" style="background:var(--ok-dim);color:#9ed3ac">Verified</span></td><td style="color:var(--muted)">2 Aug</td><td style="text-align:right;color:var(--faint)">—</td></tr>
+                <tr><td><div style="display:flex;align-items:center;gap:9px"><i class="ph ph-file-doc" style="font-size:16px;color:var(--faint)"></i>Erso Lin — Reign Notes<i class="ph-bold ph-check-circle" style="font-size:13px;color:var(--ok)"></i></div></td><td style="color:var(--muted)">41</td><td><span class="tag" style="background:var(--ok-dim);color:#9ed3ac">Verified</span></td><td style="color:var(--muted)">1 Aug</td><td style="text-align:right;color:var(--faint)">—</td></tr>
+                <tr><td><div style="display:flex;align-items:center;gap:9px"><i class="ph ph-file-doc" style="font-size:16px;color:var(--faint)"></i>The Long Interregnum</div></td><td style="color:var(--faint)">—</td><td><span class="tag tag-neutral">Never checked</span></td><td style="color:var(--faint)">—</td><td style="text-align:right;color:var(--faint)">—</td></tr>
+                <tr><td><div style="display:flex;align-items:center;gap:9px"><i class="ph ph-file-doc" style="font-size:16px;color:var(--faint)"></i>Calendars &amp; Regnal Years</div></td><td style="color:var(--faint)">—</td><td><span class="tag tag-neutral">Never checked</span></td><td style="color:var(--faint)">—</td><td style="text-align:right;color:var(--faint)">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div style="width:290px;flex:none;border-left:1px solid var(--line);padding:18px;overflow:auto">
+          <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Selected</div>
+          <div style="font-size:17px;font-weight:500;margin-top:9px;letter-spacing:-.01em">The Teremid Empire</div>
+          <div style="font-size:11.5px;color:var(--faint);margin-top:4px">Google Doc · 4,120 words · doc_47</div>
+          <div style="display:flex;gap:6px;margin-top:12px">
+            <span class="tag" style="background:var(--bad-dim);color:#e08c86">3 violations</span>
+            <span class="tag tag-neutral">96 claims</span>
+          </div>
+          <div style="height:1px;margin:16px 0;background:linear-gradient(to right,transparent,var(--line),transparent)"></div>
+          <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:9px">Violated relationships</div>
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <div style="padding:10px 11px;background:var(--surface);border:1px solid var(--line);border-left:1px solid var(--bad);border-radius:6px">
+              <div style="font-size:12px;line-height:1.5"><span style="color:var(--gold-pale)">Teremid Empire</span> <span style="color:var(--muted)">capital</span> <span style="color:var(--gold-pale)">Vel Oshan</span></div>
+              <div style="font-size:11px;color:var(--faint);margin-top:5px">¶ 4 — canon says Tarácina from 0 AD</div>
+            </div>
+            <div style="padding:10px 11px;background:var(--surface);border:1px solid var(--line);border-left:1px solid var(--bad);border-radius:6px">
+              <div style="font-size:12px;line-height:1.5"><span style="color:var(--gold-pale)">Erso Lin</span> <span style="color:var(--muted)">ruler</span> <span style="color:var(--gold-pale)">Teremid Empire</span> <span style="color:var(--faint)">· 798</span></div>
+              <div style="font-size:11px;color:var(--faint);margin-top:5px">¶ 11 — canon dates the reign from 812</div>
+            </div>
+            <div style="padding:10px 11px;background:var(--surface);border:1px solid var(--line);border-left:1px solid var(--bad);border-radius:6px">
+              <div style="font-size:12px;line-height:1.5"><span style="color:var(--gold-pale)">House Verrin</span> <span style="color:var(--muted)">vassal of</span> <span style="color:var(--gold-pale)">Teremid Empire</span></div>
+              <div style="font-size:11px;color:var(--faint);margin-top:5px">¶ 19 — canon has Verrin sworn to Ashfall</div>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-block" style="margin-top:16px;height:32px;font-size:12.5px" onClick="{{ goConflicts }}">Resolve in inbox</button>
+          <button class="btn btn-secondary btn-block" style="height:32px;font-size:12.5px" onClick="{{ goClaims }}">View extracted claims</button>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ══ ASSISTANT ══ -->
+      <sc-if value="{{ isAssistant }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;height:100%;min-height:0">
+        <div style="width:44%;flex:none;display:flex;flex-direction:column;border-right:1px solid var(--line)">
+          <div style="display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid var(--line)">
+            <div style="display:flex;gap:2px;padding:2px;background:var(--surface);border:1px solid var(--line);border-radius:8px">
+              <div onClick="{{ setNotes }}" style="{{ tabNotesStyle }}">Notes</div>
+              <div onClick="{{ setChat }}" style="{{ tabChatStyle }}">Chat</div>
+            </div>
+            <div style="flex:1"></div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)"><i class="ph-bold ph-brain" style="font-size:13px;color:var(--gold-lite)"></i>Grounded in 1,247 claims</div>
+          </div>
+
+          <sc-if value="{{ onNotes }}" hint-placeholder-val="{{ true }}">
+          <div style="flex:1;min-height:0;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:14px">
+            <div>
+              <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:7px">Target</div>
+              <div style="display:flex;align-items:center;gap:9px;padding:9px 11px;background:var(--surface);border:1px solid var(--line);border-radius:8px">
+                <i class="ph ph-file-doc" style="font-size:15px;color:var(--gold-lite)"></i>
+                <div style="flex:1"><div style="font-size:13px">The Teremid Empire</div><div style="font-size:10.5px;color:var(--faint)">Nevlos / History · updating §Succession</div></div>
+                <i class="ph ph-caret-down" style="font-size:13px;color:var(--faint)"></i>
+              </div>
+            </div>
+
+            <div style="flex:1;display:flex;flex-direction:column;min-height:220px">
+              <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:7px">
+                <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Your notes</div>
+                <div style="font-size:10.5px;color:var(--faint);margin-left:auto">9 fragments · paste freely</div>
+              </div>
+              <div style="flex:1;padding:13px 14px;background:var(--surface);border:1px solid var(--line);border-radius:8px;font-size:13px;line-height:1.75;color:#d6d3cb;overflow:auto">
+                <div>— Erso Lin takes the throne in 812, not 798. The earlier date came from the Verrin chronicle, which counts regnal years from her father's death.</div>
+                <div style="margin-top:9px">— Tarácina is the capital the whole way through. Vel Oshan is the <em>ceremonial</em> seat: coronations happen there, the treasury never moves.</div>
+                <div style="margin-top:9px">— Want a paragraph on why the confusion persists in-world. Two calendars, salt-coast scribes hostile to the imperial one.</div>
+                <div style="margin-top:9px">— Keep it dry. Chronicle voice, not narrator voice.</div>
+              </div>
+            </div>
+
+            <div>
+              <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:7px">Context pulled in</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <span class="tag tag-outline"><i class="ph ph-file-doc" style="font-size:11px;margin-right:5px"></i>Master Timeline</span>
+                <span class="tag tag-outline"><i class="ph ph-file-doc" style="font-size:11px;margin-right:5px"></i>Erso Lin — Reign Notes</span>
+                <span class="tag tag-outline"><i class="ph ph-graph" style="font-size:11px;margin-right:5px"></i>34 claims</span>
+                <span class="tag tag-neutral"><i class="ph ph-plus" style="font-size:11px;margin-right:5px"></i>Add</span>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="btn btn-primary" style="height:34px"><i class="ph-bold ph-pen-nib" style="font-size:14px"></i>Write the section</button>
+              <button class="btn btn-secondary" style="height:34px;font-size:13px">Expand notes only</button>
+              <div style="flex:1"></div>
+              <label class="radio" style="font-size:11.5px;color:var(--muted)"><input type="checkbox" style="position:absolute;opacity:0"><span class="dot"></span>Check as it writes</label>
+            </div>
+          </div>
+          </sc-if>
+
+          <sc-if value="{{ onChat }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;min-height:0;display:flex;flex-direction:column">
+            <div style="flex:1;min-height:0;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:16px">
+              <div style="align-self:flex-end;max-width:82%;padding:10px 13px;background:var(--panel);border-radius:10px 10px 3px 10px;font-size:13px;line-height:1.6">Who actually held Tarácina between 798 and 812? I keep contradicting myself.</div>
+
+              <div style="display:flex;gap:11px">
+                <div style="width:24px;height:24px;flex:none;border-radius:6px;border:1px solid var(--gold-line);background:var(--gold-dim);display:grid;place-items:center;color:var(--gold-lite)"><i class="ph-bold ph-brain" style="font-size:13px"></i></div>
+                <div style="flex:1;font-size:13px;line-height:1.7;color:#dcd9d1">
+                  <p style="margin:0 0 9px">The graph has the city under an imperial regency for those fourteen years. Three claims carry it: <span class="sbclaim">Teremid Empire — capital — Tarácina, 0 AD</span>, <span class="sbclaim">Marshal Oben Vaas — regent of — Teremid Empire, 798</span>, and <span class="sbclaim">Erso Lin — ruler — Teremid Empire, 812</span>.</p>
+                  <p style="margin:0 0 9px">Nothing contradicts that outright. What creates the muddle in your drafts is the Verrin chronicle: it calls Erso Lin <em>empress</em> from 798 because it counts her regnal years from her father's death, not her accession.</p>
+                  <div style="display:flex;flex-wrap:wrap;gap:6px;margin:11px 0 4px">
+                    <span class="tag tag-neutral"><i class="ph ph-file-doc" style="font-size:11px;margin-right:5px"></i>Master Timeline ¶7</span>
+                    <span class="tag tag-neutral"><i class="ph ph-file-doc" style="font-size:11px;margin-right:5px"></i>Erso Lin — Reign Notes ¶2</span>
+                    <span class="tag tag-neutral"><i class="ph ph-file-doc" style="font-size:11px;margin-right:5px"></i>The Third Age ¶14</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style="margin-left:35px;padding:12px 13px;background:var(--surface);border:1px solid var(--gold-line);border-radius:8px">
+                <div style="display:flex;align-items:center;gap:7px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold-lite)"><i class="ph-bold ph-plus-circle" style="font-size:12px"></i>Claim to add</div>
+                <div style="margin-top:9px;font-size:12.5px;font-family:ui-monospace,Menlo,monospace;line-height:1.6;color:#d6d3cb">(Oben Vaas, <span style="color:var(--faint)">character</span>, Teremid Empire, <span style="color:var(--faint)">state</span>, regent, [doc_12], 798)</div>
+                <div style="display:flex;gap:7px;margin-top:11px">
+                  <button class="btn btn-primary" style="height:28px;font-size:12px">Add to graph</button>
+                  <button class="btn btn-secondary" style="height:28px;font-size:12px">Edit</button>
+                  <button class="btn btn-secondary" style="height:28px;font-size:12px">Dismiss</button>
+                </div>
+              </div>
+
+              <div style="display:flex;gap:11px">
+                <div style="width:24px;height:24px;flex:none;border-radius:6px;border:1px solid var(--gold-line);background:var(--gold-dim);display:grid;place-items:center;color:var(--gold-lite)"><i class="ph-bold ph-brain" style="font-size:13px"></i></div>
+                <div style="flex:1;font-size:13px;line-height:1.7;color:#dcd9d1">
+                  <p style="margin:0">One implication worth deciding: if the regency is real, the Salt Coast treaty of 804 was signed by Vaas, not by Erso Lin. Two documents name her as signatory.</p>
+                  <div style="display:flex;gap:7px;margin-top:10px">
+                    <button class="btn btn-ghost" style="font-size:12px;padding:2px 6px">Show the two documents</button>
+                    <button class="btn btn-ghost" style="font-size:12px;padding:2px 6px">Run a check on 804</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style="padding:12px 18px 16px;border-top:1px solid var(--line)">
+              <div style="padding:10px 12px;background:var(--surface);border:1px solid var(--line);border-radius:8px">
+                <div style="font-size:13px;color:var(--faint)">Ask about Nevlos, or tell it what to change…</div>
+                <div style="display:flex;align-items:center;gap:7px;margin-top:11px">
+                  <span class="tag tag-neutral"><i class="ph ph-paperclip" style="font-size:11px;margin-right:5px"></i>3 docs in context</span>
+                  <span class="tag tag-neutral"><i class="ph ph-shield-check" style="font-size:11px;margin-right:5px"></i>Consistency check on</span>
+                  <div style="flex:1"></div>
+                  <button class="btn btn-primary btn-icon" style="width:30px;height:30px"><i class="ph-bold ph-arrow-up" style="font-size:14px"></i></button>
+                </div>
+              </div>
+            </div>
+          </div>
+          </sc-if>
+        </div>
+
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+          <div style="display:flex;align-items:center;gap:10px;padding:12px 22px;border-bottom:1px solid var(--line)">
+            <i class="ph ph-file-doc" style="font-size:15px;color:var(--gold-lite)"></i>
+            <div style="font-size:13px">The Teremid Empire</div>
+            <span class="tag tag-outline">Draft · unsaved</span>
+            <div style="flex:1"></div>
+            <div class="seg" style="font-size:12px">
+              <label class="seg-opt" style="padding:5px 11px"><input type="radio" name="draftv" checked>Draft</label>
+              <label class="seg-opt" style="padding:5px 11px"><input type="radio" name="draftv">Changes</label>
+            </div>
+            <button class="btn btn-secondary" style="height:30px;font-size:12px"><i class="ph ph-list-checks" style="font-size:13px"></i>Extract claims</button>
+            <button class="btn btn-primary" style="height:30px;font-size:12px"><i class="ph-bold ph-google-drive-logo" style="font-size:13px"></i>Save to Drive</button>
+          </div>
+
+          <div style="flex:1;min-height:0;overflow:auto;padding:30px 0">
+            <div style="max-width:660px;margin:0 auto;padding:0 24px">
+              <div style="font-size:11px;color:var(--faint);letter-spacing:.08em;text-transform:uppercase">§ Succession · rewritten from 9 notes</div>
+              <h2 style="font-size:27px;margin:12px 0 18px;letter-spacing:-.02em">The Teremid Succession</h2>
+              <div style="font-size:15px;line-height:1.85;color:#dedbd3">
+                <p style="margin:0 0 15px">The imperial seat passed to <span class="sbclaim">Erso Lin in 812 AD</span>, fourteen years after her father's death. The intervening period was not an interregnum in the strict sense: the empire kept its officers, its taxes and its garrisons, and the Marshal Oben Vaas governed in her name from <span class="sbclaim">Tarácina</span>, which had been the imperial capital since the founding.</p>
+                <p style="margin:0 0 15px">The confusion in the record is old and has a cause. Coronations were held at <span class="sbclaim">Vel Oshan</span>, a ceremonial seat two hundred miles east, and the salt-coast scribes who kept the Verrin chronicle counted regnal years from a monarch's inheritance rather than from accession. By their reckoning Erso Lin ruled from 798, and the chronicle says so plainly. The imperial calendar disagreed, and the two were never reconciled — a small administrative failure that has misled every later historian who read one and not the other.</p>
+                <p style="margin:0 0 15px">Nothing of the treasury moved in those fourteen years. That single fact is what settles the question of where the capital lay, and it is the reason the regency is legible at all: the accounts continue, unbroken, in the same hand.</p>
+              </div>
+
+              <div style="margin-top:22px;padding:12px 14px;background:var(--surface);border:1px solid var(--line);border-radius:8px">
+                <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted)">
+                  <i class="ph-bold ph-shield-check" style="font-size:13px;color:var(--ok)"></i>
+                  Checked as written — 7 claims asserted, all consistent with the graph
+                  <a href="#" style="margin-left:auto;font-size:11px">Review</a>
+                </div>
+                <div style="height:1px;margin:11px 0;background:linear-gradient(to right,transparent,var(--line) 48px,var(--line) calc(100% - 48px),transparent)"></div>
+                <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted)">
+                  <i class="ph-bold ph-plus-circle" style="font-size:13px;color:var(--gold-lite)"></i>
+                  1 new relationship proposed — Oben Vaas · regent of · Teremid Empire · 798
+                  <a href="#" style="margin-left:auto;font-size:11px">Add</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ══ CLAIMS ══ -->
+      <sc-if value="{{ isClaims }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;height:100%;min-height:0">
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+          <div style="padding:18px 24px 14px;border-bottom:1px solid var(--line)">
+            <div style="display:flex;align-items:baseline;gap:10px">
+              <div style="font-size:19px;font-weight:500;letter-spacing:-.01em">Tarácina — City Notes</div>
+              <div style="font-size:11.5px;color:var(--faint)">doc_47 · Nevlos / Geography</div>
+              <div style="flex:1"></div>
+              <div style="font-size:11.5px;color:var(--muted)">24 claims extracted · 22 selected</div>
+            </div>
+            <div style="display:flex;gap:14px;margin-top:13px;align-items:center">
+              <div style="flex:1;height:4px;border-radius:4px;background:var(--panel);display:flex;overflow:hidden">
+                <div style="width:66%;background:var(--gold)"></div><div style="width:25%;background:var(--panel-2)"></div><div style="width:9%;background:var(--bad)"></div>
+              </div>
+              <div style="display:flex;gap:12px;font-size:11px;color:var(--muted)">
+                <span style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:2px;background:var(--gold)"></span>16 new</span>
+                <span style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:2px;background:var(--panel-2)"></span>6 already in graph</span>
+                <span style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:2px;background:var(--bad)"></span>2 contradict</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="flex:1;min-height:0;overflow:auto;padding:4px 24px 80px">
+            <table class="table" style="font-size:12.5px">
+              <thead><tr><th style="width:26px"></th><th>Entity</th><th>Relationship</th><th>Entity</th><th style="width:64px">Date</th><th style="width:96px">Status</th><th style="width:56px;text-align:right">Conf.</th></tr></thead>
+              <tbody>
+                <tr style="background:var(--gold-dim)"><td><i class="ph-bold ph-warning-diamond" style="font-size:13px;color:var(--bad)"></i></td><td>Teremid Empire <span style="color:var(--faint);font-size:11px">state</span></td><td style="color:var(--gold-pale)">capital</td><td>Vel Oshan <span style="color:var(--faint);font-size:11px">city</span></td><td style="color:var(--muted)">0</td><td><span class="tag" style="background:var(--bad-dim);color:#e08c86">Contradicts</span></td><td style="text-align:right;color:var(--muted)">0.81</td></tr>
+                <tr><td><i class="ph-bold ph-warning-diamond" style="font-size:13px;color:var(--bad)"></i></td><td>Erso Lin <span style="color:var(--faint);font-size:11px">character</span></td><td style="color:var(--gold-pale)">ruler</td><td>Central Empire <span style="color:var(--faint);font-size:11px">state</span></td><td style="color:var(--muted)">798</td><td><span class="tag" style="background:var(--bad-dim);color:#e08c86">Contradicts</span></td><td style="text-align:right;color:var(--muted)">0.74</td></tr>
+                <tr><td><i class="ph-bold ph-check-square" style="font-size:13px;color:var(--gold-lite)"></i></td><td>Tarácina <span style="color:var(--faint);font-size:11px">city</span></td><td style="color:var(--gold-pale)">sits on</td><td>River Anthe <span style="color:var(--faint);font-size:11px">geography</span></td><td style="color:var(--muted)">—</td><td><span class="tag" style="background:var(--gold-dim);color:var(--gold-pale)">New</span></td><td style="text-align:right;color:var(--muted)">0.96</td></tr>
+                <tr><td><i class="ph-bold ph-check-square" style="font-size:13px;color:var(--gold-lite)"></i></td><td>Tarácina <span style="color:var(--faint);font-size:11px">city</span></td><td style="color:var(--gold-pale)">founded by</td><td>House Verrin <span style="color:var(--faint);font-size:11px">house</span></td><td style="color:var(--muted)">-140</td><td><span class="tag" style="background:var(--gold-dim);color:var(--gold-pale)">New</span></td><td style="text-align:right;color:var(--muted)">0.88</td></tr>
+                <tr><td><i class="ph-bold ph-check-square" style="font-size:13px;color:var(--gold-lite)"></i></td><td>Tarácina <span style="color:var(--faint);font-size:11px">city</span></td><td style="color:var(--gold-pale)">capital of</td><td>Teremid Empire <span style="color:var(--faint);font-size:11px">state</span></td><td style="color:var(--muted)">0</td><td><span class="tag tag-neutral">In graph</span></td><td style="text-align:right;color:var(--muted)">0.99</td></tr>
+                <tr><td><i class="ph-bold ph-check-square" style="font-size:13px;color:var(--gold-lite)"></i></td><td>Salt Gate <span style="color:var(--faint);font-size:11px">place</span></td><td style="color:var(--gold-pale)">located in</td><td>Tarácina <span style="color:var(--faint);font-size:11px">city</span></td><td style="color:var(--muted)">—</td><td><span class="tag" style="background:var(--gold-dim);color:var(--gold-pale)">New</span></td><td style="text-align:right;color:var(--muted)">0.93</td></tr>
+                <tr><td><i class="ph-bold ph-check-square" style="font-size:13px;color:var(--gold-lite)"></i></td><td>Oben Vaas <span style="color:var(--faint);font-size:11px">character</span></td><td style="color:var(--gold-pale)">governed from</td><td>Tarácina <span style="color:var(--faint);font-size:11px">city</span></td><td style="color:var(--muted)">798</td><td><span class="tag" style="background:var(--gold-dim);color:var(--gold-pale)">New</span></td><td style="text-align:right;color:var(--muted)">0.79</td></tr>
+                <tr><td><i class="ph-bold ph-check-square" style="font-size:13px;color:var(--gold-lite)"></i></td><td>Imperial Treasury <span style="color:var(--faint);font-size:11px">institution</span></td><td style="color:var(--gold-pale)">housed in</td><td>Tarácina <span style="color:var(--faint);font-size:11px">city</span></td><td style="color:var(--muted)">0</td><td><span class="tag" style="background:var(--gold-dim);color:var(--gold-pale)">New</span></td><td style="text-align:right;color:var(--muted)">0.91</td></tr>
+                <tr><td><i class="ph-bold ph-check-square" style="font-size:13px;color:var(--gold-lite)"></i></td><td>Tarácina <span style="color:var(--faint);font-size:11px">city</span></td><td style="color:var(--gold-pale)">sacked by</td><td>Ashfall Host <span style="color:var(--faint);font-size:11px">faction</span></td><td style="color:var(--muted)">601</td><td><span class="tag tag-neutral">In graph</span></td><td style="text-align:right;color:var(--muted)">0.97</td></tr>
+                <tr><td><i class="ph-bold ph-square" style="font-size:13px;color:var(--faint)"></i></td><td>Tarácina <span style="color:var(--faint);font-size:11px">city</span></td><td style="color:var(--gold-pale)">population</td><td>90,000 <span style="color:var(--faint);font-size:11px">quantity</span></td><td style="color:var(--muted)">812</td><td><span class="tag tag-neutral">Low confidence</span></td><td style="text-align:right;color:var(--muted)">0.42</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div style="position:absolute;bottom:0;left:214px;right:320px;display:flex;align-items:center;gap:12px;padding:12px 24px;background:var(--surface);border-top:1px solid var(--gold-line)">
+            <div style="font-size:12.5px;color:var(--muted)">22 claims selected · 2 conflicts held back</div>
+            <div style="flex:1"></div>
+            <button class="btn btn-secondary" style="height:32px;font-size:12.5px">Discard extraction</button>
+            <button class="btn btn-primary" style="height:32px;font-size:12.5px"><i class="ph-bold ph-graph" style="font-size:14px"></i>Commit to graph</button>
+          </div>
+        </div>
+
+        <div style="width:320px;flex:none;border-left:1px solid var(--line);padding:18px;overflow:auto">
+          <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Claim source</div>
+          <div style="margin-top:10px;font-size:13px;font-family:ui-monospace,Menlo,monospace;line-height:1.65;color:#d6d3cb;padding:11px 12px;background:var(--surface);border:1px solid var(--line);border-radius:8px">(Teremid Empire, <span style="color:var(--faint)">state</span>, Vel Oshan, <span style="color:var(--faint)">city</span>, capital, [doc_47], 0)</div>
+          <div style="margin-top:16px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Extracted from</div>
+          <blockquote style="margin:9px 0 0;padding:11px 13px;border-left:1px solid var(--gold-line);background:var(--surface);border-radius:0 6px 6px 0;font-size:12.5px;line-height:1.7;color:#cfccc4">“…and so the court kept its winters at <mark style="background:var(--gold-dim);color:var(--gold-pale)">Vel Oshan, seat of the empire</mark>, where the crowns were struck and the oaths taken.”</blockquote>
+          <div style="font-size:11px;color:var(--faint);margin-top:7px">¶ 4 · Tarácina — City Notes</div>
+
+          <div style="height:1px;margin:16px 0;background:linear-gradient(to right,transparent,var(--line),transparent)"></div>
+
+          <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Conflicts with</div>
+          <div style="margin-top:9px;padding:11px 12px;background:var(--surface);border:1px solid var(--line);border-left:1px solid var(--bad);border-radius:6px">
+            <div style="font-size:12.5px;font-family:ui-monospace,Menlo,monospace;line-height:1.6;color:#d6d3cb">(Teremid Empire, state, Tarácina, city, capital, [doc_12, doc_31], 0)</div>
+            <div style="font-size:11px;color:var(--faint);margin-top:7px">Canon · 2 sources · unique-value relationship</div>
+          </div>
+          <div style="display:flex;gap:7px;margin-top:12px">
+            <button class="btn btn-primary" style="height:30px;font-size:12px" onClick="{{ goConflicts }}">Resolve</button>
+            <button class="btn btn-secondary" style="height:30px;font-size:12px">Edit claim</button>
+            <button class="btn btn-secondary" style="height:30px;font-size:12px">Drop</button>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ══ CONFLICTS ══ -->
+      <sc-if value="{{ isConflicts }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;height:100%;min-height:0">
+        <div style="width:286px;flex:none;border-right:1px solid var(--line);display:flex;flex-direction:column">
+          <div style="display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid var(--line)">
+            <div style="font-size:12.5px;font-weight:500">Conflict inbox</div>
+            <span class="tag" style="background:var(--bad-dim);color:#e08c86">6</span>
+            <div style="flex:1"></div>
+            <i class="ph ph-funnel" style="font-size:14px;color:var(--faint)"></i>
+          </div>
+          <div style="flex:1;min-height:0;overflow:auto;padding:8px">
+            <sc-for list="{{ conflicts }}" as="c" hint-placeholder-count="6">
+              <div onClick="{{ c.go }}" style="{{ c.style }}">
+                <div style="display:flex;align-items:center;gap:7px">
+                  <span style="{{ c.dotStyle }}"></span>
+                  <div style="font-size:12.5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.title }}</div>
+                </div>
+                <div style="font-size:11px;color:var(--faint);margin-top:5px;padding-left:14px">{{ c.meta }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="padding:11px 16px;border-top:1px solid var(--line);font-size:11px;color:var(--faint)">Resolved this week: 14</div>
+        </div>
+
+        <div style="flex:1;min-width:0;overflow:auto">
+          <div style="max-width:860px;padding:24px 28px 40px">
+            <div style="display:flex;align-items:baseline;gap:10px">
+              <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Conflict {{ conflictNo }} of 6</div>
+              <div style="flex:1"></div>
+              <button class="btn btn-secondary" style="height:28px;font-size:12px" onClick="{{ prevConflict }}"><i class="ph ph-arrow-up" style="font-size:12px"></i>Previous</button>
+              <button class="btn btn-secondary" style="height:28px;font-size:12px" onClick="{{ nextConflict }}">Next<i class="ph ph-arrow-down" style="font-size:12px"></i></button>
+            </div>
+
+            <h3 style="font-size:23px;margin:12px 0 6px;letter-spacing:-.02em">{{ active.heading }}</h3>
+            <div style="font-size:13px;color:var(--muted);max-width:620px;text-wrap:pretty">{{ active.explain }}</div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:22px">
+              <div style="{{ cardAStyle }}">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span class="tag tag-neutral">In the graph</span>
+                  <div style="flex:1"></div>
+                  <span style="font-size:11px;color:var(--faint)">{{ active.a.sources }} sources</span>
+                </div>
+                <div style="margin-top:13px;font-size:13px;font-family:ui-monospace,Menlo,monospace;line-height:1.7;color:#dcd9d1">{{ active.a.tuple }}</div>
+                <blockquote style="margin:13px 0 0;padding:10px 12px;border-left:1px solid var(--line-2);font-size:12.5px;line-height:1.65;color:#c9c6be">{{ active.a.quote }}</blockquote>
+                <div style="font-size:11px;color:var(--faint);margin-top:8px">{{ active.a.cite }}</div>
+                <div style="height:1px;margin:14px 0;background:linear-gradient(to right,transparent,var(--line),transparent)"></div>
+                <label class="radio" style="font-size:12.5px" onClick="{{ pickA }}"><input type="radio" name="canon" checked="{{ aChosen }}"><span class="dot"></span>This one is canon</label>
+              </div>
+
+              <div style="{{ cardBStyle }}">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span class="tag" style="background:var(--bad-dim);color:#e08c86">New from {{ active.b.doc }}</span>
+                  <div style="flex:1"></div>
+                  <span style="font-size:11px;color:var(--faint)">conf. {{ active.b.conf }}</span>
+                </div>
+                <div style="margin-top:13px;font-size:13px;font-family:ui-monospace,Menlo,monospace;line-height:1.7;color:#dcd9d1">{{ active.b.tuple }}</div>
+                <blockquote style="margin:13px 0 0;padding:10px 12px;border-left:1px solid var(--line-2);font-size:12.5px;line-height:1.65;color:#c9c6be">{{ active.b.quote }}</blockquote>
+                <div style="font-size:11px;color:var(--faint);margin-top:8px">{{ active.b.cite }}</div>
+                <div style="height:1px;margin:14px 0;background:linear-gradient(to right,transparent,var(--line),transparent)"></div>
+                <label class="radio" style="font-size:12.5px" onClick="{{ pickB }}"><input type="radio" name="canon" checked="{{ bChosen }}"><span class="dot"></span>This one is canon</label>
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:10px;margin-top:14px">
+              <button class="btn btn-ghost" style="font-size:12.5px">Both true — add a qualifier</button>
+              <span style="color:var(--faint)">·</span>
+              <button class="btn btn-ghost" style="font-size:12.5px">Not a conflict</button>
+              <span style="color:var(--faint)">·</span>
+              <button class="btn btn-ghost" style="font-size:12.5px">Snooze</button>
+            </div>
+
+            <div style="margin-top:26px;padding:16px 17px;background:var(--surface);border:1px solid var(--gold-line);border-radius:8px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <i class="ph-bold ph-warning-diamond" style="font-size:14px;color:var(--gold-lite)"></i>
+                <div style="font-size:13px;font-weight:500">{{ consequenceTitle }}</div>
+                <div style="flex:1"></div>
+                <span style="font-size:11px;color:var(--muted)">{{ active.docCount }} documents affected</span>
+              </div>
+              <div style="font-size:12.5px;color:var(--muted);margin-top:6px;max-width:600px;text-wrap:pretty">Choosing this side puts the following passages out of step with the graph. Stone Brain can open each one, or hand the list to the writing assistant to fix in one pass.</div>
+
+              <div style="margin-top:14px;display:flex;flex-direction:column;gap:1px">
+                <sc-for list="{{ violations }}" as="v" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:11px;padding:10px 11px;border-radius:6px;background:var(--panel)" style-hover="background:var(--panel-2)">
+                    <i class="ph ph-file-doc" style="font-size:15px;color:var(--faint)"></i>
+                    <div style="min-width:0;flex:1">
+                      <div style="font-size:12.5px">{{ v.doc }}</div>
+                      <div style="font-size:11px;color:var(--faint);margin-top:3px">{{ v.where }} — “{{ v.snippet }}”</div>
+                    </div>
+                    <button class="btn btn-secondary" style="height:26px;font-size:11.5px">Open</button>
+                  </div>
+                </sc-for>
+              </div>
+
+              <div style="display:flex;gap:8px;margin-top:15px;align-items:center">
+                <button class="btn btn-primary" style="height:32px;font-size:12.5px"><i class="ph-bold ph-check" style="font-size:14px"></i>Set canon &amp; flag documents</button>
+                <button class="btn btn-secondary" style="height:32px;font-size:12.5px" onClick="{{ goAssistant }}">Send list to assistant</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ══ GRAPH ══ -->
+      <sc-if value="{{ isGraph }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;height:100%;min-height:0">
+        <div style="width:242px;flex:none;border-right:1px solid var(--line);padding:16px 14px;overflow:auto">
+          <label style="display:flex;align-items:center;gap:7px;height:30px;padding:0 9px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--muted)">
+            <i class="ph ph-magnifying-glass" style="font-size:13px"></i>
+            <input class="input" placeholder="Find an entity" style="border:0;background:transparent;min-height:0;height:28px;padding:0;font-size:12.5px">
+          </label>
+          <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:16px 0 8px">Entity types</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <span class="tag" style="background:var(--gold-dim);color:var(--gold-pale)">state 14</span>
+            <span class="tag tag-neutral">city 31</span>
+            <span class="tag tag-neutral">character 88</span>
+            <span class="tag tag-neutral">house 12</span>
+            <span class="tag tag-neutral">faction 9</span>
+            <span class="tag tag-neutral">geography 40</span>
+          </div>
+          <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px">Most connected</div>
+          <div style="display:flex;flex-direction:column;gap:1px">
+            <div style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:6px;background:var(--gold-dim);color:var(--gold-pale);font-size:12.5px"><i class="ph ph-buildings" style="font-size:14px"></i><span style="flex:1">Teremid Empire</span><span style="font-size:10.5px;color:var(--muted)">63</span></div>
+            <div style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:6px;font-size:12.5px" style-hover="background:var(--panel)"><i class="ph ph-user" style="font-size:14px;color:var(--faint)"></i><span style="flex:1">Erso Lin</span><span style="font-size:10.5px;color:var(--muted)">41</span></div>
+            <div style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:6px;font-size:12.5px" style-hover="background:var(--panel)"><i class="ph ph-city" style="font-size:14px;color:var(--faint)"></i><span style="flex:1">Tarácina</span><span style="font-size:10.5px;color:var(--muted)">37</span></div>
+            <div style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:6px;font-size:12.5px" style-hover="background:var(--panel)"><i class="ph ph-crown-simple" style="font-size:14px;color:var(--faint)"></i><span style="flex:1">House Verrin</span><span style="font-size:10.5px;color:var(--muted)">29</span></div>
+            <div style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:6px;font-size:12.5px" style-hover="background:var(--panel)"><i class="ph ph-city" style="font-size:14px;color:var(--faint)"></i><span style="flex:1">Vel Oshan</span><span style="font-size:10.5px;color:var(--muted)">22</span></div>
+            <div style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:6px;font-size:12.5px" style-hover="background:var(--panel)"><i class="ph ph-mountains" style="font-size:14px;color:var(--faint)"></i><span style="flex:1">Ashfall Reach</span><span style="font-size:10.5px;color:var(--muted)">18</span></div>
+          </div>
+        </div>
+
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+          <div style="display:flex;align-items:center;gap:12px;padding:12px 22px;border-bottom:1px solid var(--line)">
+            <div style="font-size:13px">Teremid Empire <span style="color:var(--faint);font-size:11.5px">state · 63 relationships</span></div>
+            <div style="flex:1"></div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:11.5px;color:var(--muted)">
+              <span>Era</span>
+              <span style="color:var(--faint)">-200</span>
+              <div style="width:180px;height:3px;border-radius:3px;background:var(--panel);position:relative">
+                <div style="position:absolute;left:34%;right:12%;top:0;bottom:0;background:var(--gold);border-radius:3px"></div>
+                <div style="position:absolute;left:34%;top:-4px;width:11px;height:11px;margin-left:-5px;border-radius:50%;background:var(--gold-lite)"></div>
+                <div style="position:absolute;left:88%;top:-4px;width:11px;height:11px;margin-left:-5px;border-radius:50%;background:var(--gold-lite)"></div>
+              </div>
+              <span style="color:var(--faint)">900 AD</span>
+            </div>
+            <div class="seg" style="font-size:12px">
+              <label class="seg-opt" style="padding:5px 11px"><input type="radio" name="gv" checked>Map</label>
+              <label class="seg-opt" style="padding:5px 11px"><input type="radio" name="gv">Table</label>
+            </div>
+          </div>
+
+          <div style="flex:1;min-height:0;position:relative;background:radial-gradient(circle at 50% 42%,#1b1f25,var(--bg) 70%)">
+            <svg viewBox="0 0 860 420" style="width:100%;height:100%;display:block">
+              <g stroke="rgba(232,234,238,.14)" fill="none" stroke-width="1">
+                <path d="M430 205 L 235 108"></path><path d="M430 205 L 655 112"></path>
+                <path d="M430 205 L 208 300"></path><path d="M430 205 L 640 300"></path>
+                <path d="M430 205 L 430 358"></path><path d="M430 205 L 700 210"></path>
+                <path d="M235 108 L 208 300" stroke-dasharray="3 4"></path>
+                <path d="M655 112 L 700 210" stroke-dasharray="3 4"></path>
+              </g>
+              <g stroke="#B8860B" fill="none" stroke-width="1.4">
+                <path d="M430 205 L 235 108"></path><path d="M430 205 L 430 358"></path>
+              </g>
+              <path d="M430 205 L 640 300" stroke="#b04a3f" stroke-width="1.4" fill="none"></path>
+
+              <g font-family="Inter, sans-serif" font-size="9.5" fill="#8e959f" text-anchor="middle">
+                <text x="318" y="147">capital</text><text x="552" y="149">ceremonial seat</text>
+                <text x="305" y="264">vassal</text><text x="548" y="262">claimed by</text>
+                <text x="447" y="288">ruler · 812</text><text x="572" y="200">borders</text>
+              </g>
+
+              <g>
+                <circle cx="430" cy="205" r="46" fill="rgba(184,134,11,.12)" stroke="#B8860B" stroke-width="1.4"></circle>
+                <text x="430" y="200" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#ecd9a3">Teremid</text>
+                <text x="430" y="215" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#ecd9a3">Empire</text>
+              </g>
+              <g font-family="Inter, sans-serif" font-size="11" fill="#dcd9d1" text-anchor="middle">
+                <circle cx="235" cy="108" r="33" fill="#232831" stroke="rgba(184,134,11,.45)"></circle><text x="235" y="112">Tarácina</text>
+                <circle cx="655" cy="112" r="33" fill="#232831" stroke="rgba(232,234,238,.18)"></circle><text x="655" y="116">Vel Oshan</text>
+                <circle cx="208" cy="300" r="33" fill="#232831" stroke="rgba(232,234,238,.18)"></circle><text x="208" y="298">House</text><text x="208" y="311">Verrin</text>
+                <circle cx="640" cy="300" r="33" fill="#232831" stroke="rgba(176,74,63,.6)"></circle><text x="640" y="298">Ashfall</text><text x="640" y="311">Host</text>
+                <circle cx="430" cy="358" r="33" fill="#232831" stroke="rgba(184,134,11,.45)"></circle><text x="430" y="356">Erso</text><text x="430" y="369">Lin</text>
+                <circle cx="700" cy="210" r="30" fill="#232831" stroke="rgba(232,234,238,.18)"></circle><text x="700" y="208">Salt</text><text x="700" y="221">Coast</text>
+              </g>
+            </svg>
+            <div style="position:absolute;left:18px;bottom:16px;display:flex;gap:14px;font-size:11px;color:var(--muted);padding:8px 11px;background:rgba(21,24,28,.8);border:1px solid var(--line);border-radius:8px">
+              <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:1.5px;background:var(--gold)"></span>Canon, multi-sourced</span>
+              <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:1.5px;background:var(--line-2)"></span>Single source</span>
+              <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:1.5px;background:var(--bad)"></span>Contested</span>
+            </div>
+          </div>
+
+          <div style="flex:none;height:238px;border-top:1px solid var(--line);overflow:auto;padding:6px 22px 18px">
+            <table class="table" style="font-size:12.5px">
+              <thead><tr><th>Relationship</th><th>Entity</th><th style="width:70px">Date</th><th style="width:130px">Sources</th><th style="width:96px">Status</th></tr></thead>
+              <tbody>
+                <tr><td style="color:var(--gold-pale)">capital</td><td>Tarácina <span style="color:var(--faint);font-size:11px">city</span></td><td style="color:var(--muted)">0</td><td style="color:var(--muted)">doc_12, doc_31</td><td><span class="tag" style="background:var(--ok-dim);color:#9ed3ac">Canon</span></td></tr>
+                <tr><td style="color:var(--gold-pale)">ceremonial seat</td><td>Vel Oshan <span style="color:var(--faint);font-size:11px">city</span></td><td style="color:var(--muted)">142</td><td style="color:var(--muted)">doc_47</td><td><span class="tag tag-neutral">1 source</span></td></tr>
+                <tr><td style="color:var(--gold-pale)">ruler</td><td>Erso Lin <span style="color:var(--faint);font-size:11px">character</span></td><td style="color:var(--muted)">812</td><td style="color:var(--muted)">doc_81, doc_12</td><td><span class="tag" style="background:var(--ok-dim);color:#9ed3ac">Canon</span></td></tr>
+                <tr><td style="color:var(--gold-pale)">regent</td><td>Oben Vaas <span style="color:var(--faint);font-size:11px">character</span></td><td style="color:var(--muted)">798</td><td style="color:var(--muted)">doc_12</td><td><span class="tag" style="background:var(--gold-dim);color:var(--gold-pale)">Proposed</span></td></tr>
+                <tr><td style="color:var(--gold-pale)">vassal</td><td>House Verrin <span style="color:var(--faint);font-size:11px">house</span></td><td style="color:var(--muted)">-140</td><td style="color:var(--muted)">doc_19</td><td><span class="tag" style="background:var(--bad-dim);color:#e08c86">Contested</span></td></tr>
+                <tr><td style="color:var(--gold-pale)">claimed by</td><td>Ashfall Host <span style="color:var(--faint);font-size:11px">faction</span></td><td style="color:var(--muted)">601</td><td style="color:var(--muted)">doc_22, doc_09</td><td><span class="tag" style="background:var(--bad-dim);color:#e08c86">Contested</span></td></tr>
+                <tr><td style="color:var(--gold-pale)">borders</td><td>Salt Coast <span style="color:var(--faint);font-size:11px">geography</span></td><td style="color:var(--muted)">—</td><td style="color:var(--muted)">doc_31</td><td><span class="tag tag-neutral">1 source</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ══ CONNECT ══ -->
+      <sc-if value="{{ isConnect }}" hint-placeholder-val="{{ false }}">
+      <div style="height:100%;display:grid;place-items:center;padding:40px">
+        <div style="width:520px">
+          <div style="display:flex;align-items:center;gap:11px">
+            <div style="width:34px;height:34px;border-radius:8px;border:1px solid var(--gold-line);background:var(--gold-dim);display:grid;place-items:center;color:var(--gold-lite)"><i class="ph-bold ph-brain" style="font-size:19px"></i></div>
+            <div style="font-size:19px;font-weight:500;letter-spacing:-.01em">Stone Brain</div>
+          </div>
+          <h2 style="font-size:29px;margin:22px 0 8px;letter-spacing:-.02em">Point it at your world.</h2>
+          <p style="font-size:13.5px;color:var(--muted);line-height:1.7;margin:0;max-width:440px;text-wrap:pretty">Stone Brain reads the documents in one Drive folder, extracts the claims they make, and tells you when they disagree with each other. Nothing is written back until you ask.</p>
+
+          <div style="margin-top:24px;padding:17px 18px;background:var(--surface);border:1px solid var(--line);border-radius:8px">
+            <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Access requested</div>
+            <div style="display:flex;flex-direction:column;gap:11px;margin-top:12px">
+              <div style="display:flex;gap:10px;align-items:flex-start"><i class="ph-bold ph-eye" style="font-size:14px;color:var(--gold-lite);margin-top:2px"></i><div><div style="font-size:12.5px">Read the documents in the folder you choose</div><div style="font-size:11px;color:var(--faint);margin-top:2px">One folder and its subfolders. Nothing else in your Drive.</div></div></div>
+              <div style="display:flex;gap:10px;align-items:flex-start"><i class="ph-bold ph-pencil-simple" style="font-size:14px;color:var(--gold-lite);margin-top:2px"></i><div><div style="font-size:12.5px">Write drafts back, on your say-so</div><div style="font-size:11px;color:var(--faint);margin-top:2px">Every save is an explicit action. Version history stays intact.</div></div></div>
+              <div style="display:flex;gap:10px;align-items:flex-start"><i class="ph-bold ph-lock-simple" style="font-size:14px;color:var(--gold-lite);margin-top:2px"></i><div><div style="font-size:12.5px">The claim graph lives here, not in Drive</div><div style="font-size:11px;color:var(--faint);margin-top:2px">Revoke access and the graph is yours to export or delete.</div></div></div>
+            </div>
+          </div>
+
+          <button class="btn btn-primary btn-block" style="height:40px;margin-top:18px" onClick="{{ goHome }}"><i class="ph-bold ph-google-drive-logo" style="font-size:16px"></i>Connect Google Drive</button>
+
+          <div style="display:flex;align-items:center;gap:12px;margin-top:20px;padding-top:16px;border-top:1px solid var(--line)">
+            <div style="font-size:11.5px;color:var(--faint);flex:1">Step 1 of 3 · next you'll pick the folder, then we index it once (about four minutes for 34 documents).</div>
+            <div style="display:flex;gap:5px"><span style="width:16px;height:2px;background:var(--gold)"></span><span style="width:16px;height:2px;background:var(--panel-2)"></span><span style="width:16px;height:2px;background:var(--panel-2)"></span></div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+    </div>
+  </main>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:900},&quot;accentGold&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#D9A62A&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;options&quot;:[&quot;#B8860B&quot;,&quot;#C9A227&quot;,&quot;#D9A62A&quot;,&quot;#A5822F&quot;],&quot;section&quot;:&quot;Theme&quot;},&quot;showClaimHighlights&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Theme&quot;}}">
+const NAV = [
+  { key: 'home', label: 'Home', icon: 'ph ph-house' },
+  { key: 'library', label: 'Library', icon: 'ph ph-folders' },
+  { key: 'assistant', label: 'Assistant', icon: 'ph ph-pen-nib' },
+  { key: 'claims', label: 'Claims', icon: 'ph ph-list-checks' },
+  { key: 'conflicts', label: 'Conflicts', icon: 'ph ph-warning-diamond', badge: '6' },
+  { key: 'graph', label: 'Graph', icon: 'ph ph-graph' },
+];
+
+const TITLES = {
+  home: ['Home', 'Nevlos · 34 documents'],
+  library: ['Library', 'Google Drive · Nevlos'],
+  assistant: ['Writing assistant', 'Grounded in the Nevlos claim graph'],
+  claims: ['Extracted claims', 'Tarácina — City Notes'],
+  conflicts: ['Conflicts', '6 open · oldest 4 days'],
+  graph: ['Relationship graph', '1,247 claims · 194 entities'],
+  connect: ['Connect', 'Google Drive'],
+};
+
+const CONFLICTS = [
+  {
+    title: 'Capital of the Teremid Empire',
+    meta: 'Tarácina vs. Vel Oshan · high impact',
+    sev: 'bad',
+    heading: 'Two cities are the imperial capital',
+    explain: 'The relationship "capital" holds one value per state per era. Tarácina — City Notes asserts Vel Oshan from year 0, where the graph already holds Tarácina from two sources.',
+    docCount: 3,
+    a: { tuple: '(Teremid Empire, state, Tarácina, city, capital, [doc_12, doc_31], 0)', sources: 2,
+         quote: '“The Anthe crossing made Tarácina the empire\u2019s capital in the year of the founding, and it has never ceased to be so.”', cite: 'Nevlos — Master Timeline ¶7' },
+    b: { doc: 'City Notes', conf: '0.81', tuple: '(Teremid Empire, state, Vel Oshan, city, capital, [doc_47], 0)',
+         quote: '“…and so the court kept its winters at Vel Oshan, seat of the empire, where the crowns were struck and the oaths taken.”', cite: 'Tarácina — City Notes ¶4' },
+    violations: [
+      { doc: 'The Teremid Empire', where: '¶ 4', snippet: 'the capital at Vel Oshan, where the treasury sat' },
+      { doc: 'Wars of the Salt Coast', where: '¶ 12', snippet: 'the imperial capital fell in a single winter' },
+      { doc: 'Fall of Vel Oshan', where: 'title, ¶ 1', snippet: 'the loss of the capital ended the Third Age' },
+    ],
+  },
+  {
+    title: 'Start of Erso Lin\u2019s reign',
+    meta: '798 vs. 812 AD · high impact',
+    sev: 'bad',
+    heading: 'Erso Lin takes the throne twice',
+    explain: 'The relationship "ruler" carries a start date. The Third Age — Succession dates her accession to 798; the graph holds 812 from two sources, with a regency in between.',
+    docCount: 4,
+    a: { tuple: '(Erso Lin, character, Teremid Empire, state, ruler, [doc_81, doc_12], 812)', sources: 2,
+         quote: '“She was crowned at Vel Oshan in the spring of 812, fourteen years after her father was buried.”', cite: 'Erso Lin — Reign Notes ¶2' },
+    b: { doc: 'The Third Age', conf: '0.74', tuple: '(Erso Lin, character, Central Empire, state, ruler, [doc_63], 798)',
+         quote: '“Empress from 798, by the reckoning of the salt-coast scribes who counted from her inheritance.”', cite: 'The Third Age — Succession ¶14' },
+    violations: [
+      { doc: 'The Third Age — Succession', where: '¶ 14', snippet: 'Empress from 798, by the reckoning of' },
+      { doc: 'The Teremid Empire', where: '¶ 11', snippet: 'in the eighteenth year of her reign, 816' },
+      { doc: 'House Verrin — Origins', where: '¶ 6', snippet: 'sworn to the young empress in 801' },
+      { doc: 'Calendars & Regnal Years', where: '¶ 2', snippet: 'regnal years run from inheritance' },
+    ],
+  },
+  {
+    title: 'House Verrin\u2019s allegiance',
+    meta: 'Teremid vs. Ashfall · 2 documents',
+    sev: 'bad',
+    heading: 'House Verrin is sworn to two powers at once',
+    explain: 'Vassalage is exclusive in your ruleset. Two documents place House Verrin under the Teremid Empire from -140; one places it under the Ashfall Host in the same span.',
+    docCount: 2,
+    a: { tuple: '(House Verrin, house, Ashfall Host, faction, vassal of, [doc_22], -140)', sources: 1,
+         quote: '“Verrin rode under the ash banner long before the empire had a name for itself.”', cite: 'The Ashfall Reach ¶9' },
+    b: { doc: 'The Teremid Empire', conf: '0.69', tuple: '(House Verrin, house, Teremid Empire, state, vassal of, [doc_47], -140)',
+         quote: '“Of the founding houses, Verrin alone had held its oath to the empire unbroken.”', cite: 'The Teremid Empire ¶19' },
+    violations: [
+      { doc: 'The Teremid Empire', where: '¶ 19', snippet: 'Verrin alone had held its oath to the empire' },
+      { doc: 'House Verrin — Origins', where: '¶ 2', snippet: 'the oldest of the imperial houses' },
+    ],
+  },
+  {
+    title: 'Founding date of Tarácina',
+    meta: '-140 vs. -96 · medium',
+    sev: 'mid',
+    heading: 'Tarácina is founded forty-four years apart',
+    explain: 'Two documents give the founding of Tarácina different dates, and both cite House Verrin as the founder.',
+    docCount: 2,
+    a: { tuple: '(Tarácina, city, House Verrin, house, founded by, [doc_31], -140)', sources: 1,
+         quote: '“Verrin laid the first stone at the Anthe crossing in the year 140 before the founding.”', cite: 'Nevlos — Master Timeline ¶3' },
+    b: { doc: 'City Notes', conf: '0.88', tuple: '(Tarácina, city, House Verrin, house, founded by, [doc_47], -96)',
+         quote: '“The city is barely a century older than the empire it came to serve.”', cite: 'Tarácina — City Notes ¶1' },
+    violations: [
+      { doc: 'Nevlos — Master Timeline', where: '¶ 3', snippet: 'in the year 140 before the founding' },
+      { doc: 'Tarácina — City Notes', where: '¶ 1', snippet: 'barely a century older than the empire' },
+    ],
+  },
+  {
+    title: 'Sack of Tarácina',
+    meta: '601 vs. 610 · medium',
+    sev: 'mid',
+    heading: 'The sack of Tarácina moves nine years',
+    explain: 'The Ashfall Host sacks the city in 601 in the graph and in 610 in Wars of the Salt Coast, which also has the treaty depend on it.',
+    docCount: 2,
+    a: { tuple: '(Tarácina, city, Ashfall Host, faction, sacked by, [doc_09, doc_12], 601)', sources: 2,
+         quote: '“The ash banners were in the Salt Gate before the harvest of 601.”', cite: 'Fall of Vel Oshan ¶4' },
+    b: { doc: 'Salt Coast', conf: '0.71', tuple: '(Tarácina, city, Ashfall Host, faction, sacked by, [doc_22], 610)',
+         quote: '“Nine years of siege ended with the sack, and the treaty followed within the year.”', cite: 'Wars of the Salt Coast ¶12' },
+    violations: [
+      { doc: 'Wars of the Salt Coast', where: '¶ 12', snippet: 'Nine years of siege ended with the sack' },
+      { doc: 'The Ashfall Reach', where: '¶ 15', snippet: 'a decade after the city burned' },
+    ],
+  },
+  {
+    title: 'Two names, one empire',
+    meta: 'Central Empire alias · low',
+    sev: 'low',
+    heading: 'Central Empire may be the same entity as Teremid Empire',
+    explain: 'Eleven claims name a "Central Empire" whose relationships overlap the Teremid Empire almost entirely. Merging keeps both names as aliases.',
+    docCount: 1,
+    a: { tuple: '(Teremid Empire, state, —, —, canonical name, [doc_12, doc_31, doc_81], 0)', sources: 3,
+         quote: '“The Teremid Empire, so called for the house that founded it.”', cite: 'Nevlos — Master Timeline ¶1' },
+    b: { doc: 'Reign Notes', conf: '0.64', tuple: '(Central Empire, state, —, —, canonical name, [doc_81], 812)',
+         quote: '“Ruler of the Central Empire, and of the reaches sworn to it.”', cite: 'Erso Lin — Reign Notes ¶1' },
+    violations: [
+      { doc: 'Erso Lin — Reign Notes', where: '¶ 1, ¶ 8', snippet: 'Ruler of the Central Empire' },
+    ],
+  },
+];
+
+const SEV = { bad: '#b04a3f', mid: '#B8860B', low: '#5f6773' };
+
+class Component extends DCLogic {
+  state = { screen: 'home', tab: 'notes', ci: 0, canon: 'a' };
+
+  componentDidMount() { this.applyTheme(); }
+  componentDidUpdate() { this.applyTheme(); }
+
+  applyTheme() {
+    const r = document.documentElement.style;
+    if (this.props.accentGold) {
+      r.setProperty('--gold', this.props.accentGold);
+      r.setProperty('--color-accent', this.props.accentGold);
+      r.setProperty('--gold-dim', `color-mix(in srgb, ${this.props.accentGold} 14%, transparent)`);
+      r.setProperty('--gold-line', `color-mix(in srgb, ${this.props.accentGold} 34%, transparent)`);
+    }
+    const show = this.props.showClaimHighlights !== false;
+    r.setProperty('--claim-line', show ? '1px dotted rgba(217,171,62,.7)' : '1px solid transparent');
+    r.setProperty('--claim-ink', show ? 'var(--gold-pale)' : 'inherit');
+  }
+
+  go(screen) { return () => this.setState({ screen }); }
+
+  renderVals() {
+    const s = this.state.screen;
+    const active = CONFLICTS[this.state.ci];
+    const canonA = this.state.canon === 'a';
+
+    const navItems = NAV.map(n => {
+      const on = n.key === s;
+      return {
+        label: n.label, icon: n.icon, go: this.go(n.key),
+        style: `display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:7px;cursor:pointer;font-size:13px;`
+          + (on ? 'background:var(--gold-dim);color:var(--gold-pale);box-shadow:inset 0 0 0 1px var(--gold-line)' : 'color:#c8ccd3'),
+        badge: n.badge || '',
+        badgeStyle: n.badge
+          ? 'font-size:10.5px;padding:1px 6px;border-radius:5px;background:var(--bad-dim);color:#e08c86'
+          : 'display:none',
+      };
+    });
+
+    const tab = (k, label) => `padding:5px 13px;border-radius:6px;cursor:pointer;font-size:12.5px;`
+      + (this.state.tab === k ? 'background:var(--gold-dim);color:var(--gold-pale);box-shadow:inset 0 0 0 1px var(--gold-line)' : 'color:var(--muted)');
+
+    const cardBase = 'padding:15px 16px;background:var(--surface);border-radius:8px;border:1px solid ';
+
+    return {
+      navItems,
+      screenTitle: (TITLES[s] || TITLES.home)[0],
+      screenSub: (TITLES[s] || TITLES.home)[1],
+      isHome: s === 'home', isLibrary: s === 'library', isAssistant: s === 'assistant',
+      isClaims: s === 'claims', isConflicts: s === 'conflicts', isGraph: s === 'graph',
+      isConnect: s === 'connect',
+      goHome: this.go('home'), goAssistant: this.go('assistant'), goClaims: this.go('claims'),
+      goConflicts: this.go('conflicts'), goGraph: this.go('graph'), goConnect: this.go('connect'),
+
+      onNotes: this.state.tab === 'notes', onChat: this.state.tab === 'chat',
+      setNotes: () => this.setState({ tab: 'notes' }), setChat: () => this.setState({ tab: 'chat' }),
+      tabNotesStyle: tab('notes'), tabChatStyle: tab('chat'),
+
+      conflicts: CONFLICTS.map((c, i) => ({
+        title: c.title, meta: c.meta,
+        go: () => this.setState({ ci: i, canon: 'a' }),
+        style: `padding:10px 11px;border-radius:7px;cursor:pointer;margin-bottom:2px;`
+          + (i === this.state.ci ? 'background:var(--gold-dim);box-shadow:inset 0 0 0 1px var(--gold-line)' : ''),
+        dotStyle: `width:7px;height:7px;flex:none;border-radius:50%;background:${SEV[c.sev]}`,
+      })),
+      active,
+      conflictNo: this.state.ci + 1,
+      violations: active.violations,
+      consequenceTitle: canonA
+        ? 'If the graph side stays canon' : 'If the new claim becomes canon',
+      aChosen: canonA, bChosen: !canonA,
+      pickA: () => this.setState({ canon: 'a' }), pickB: () => this.setState({ canon: 'b' }),
+      cardAStyle: cardBase + (canonA ? 'var(--gold-line);box-shadow:0 0 0 1px var(--gold-line)' : 'var(--line)'),
+      cardBStyle: cardBase + (canonA ? 'var(--line)' : 'var(--gold-line);box-shadow:0 0 0 1px var(--gold-line)'),
+      prevConflict: () => this.setState({ ci: (this.state.ci + CONFLICTS.length - 1) % CONFLICTS.length, canon: 'a' }),
+      nextConflict: () => this.setState({ ci: (this.state.ci + 1) % CONFLICTS.length, canon: 'a' }),
+    };
+  }
+}
+
+</script>
+</body>
+</html>

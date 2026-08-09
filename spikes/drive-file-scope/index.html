@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Spike — does drive.file grant access to a picked folder's descendants?</title>
+<style>
+  body { font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+         background: #15181c; color: #eceae4; margin: 0; padding: 32px; }
+  h1 { font-size: 16px; font-weight: 500; margin: 0 0 4px; }
+  p.sub { color: #8e959f; margin: 0 0 24px; }
+  input { width: 460px; background: #1d2127; color: #eceae4; border: 1px solid #333a45;
+          border-radius: 6px; padding: 7px 9px; font: inherit; font-size: 13px; }
+  label { display: block; margin: 12px 0 4px; color: #8e959f; font-size: 12px; }
+  button { background: transparent; color: #d9ab3e; border: 1px solid rgba(184,134,11,.5);
+           border-radius: 6px; padding: 8px 16px; font: inherit; cursor: pointer; margin-top: 20px; }
+  button:hover { background: rgba(184,134,11,.13); }
+  button:disabled { opacity: .45; cursor: default; }
+  pre { background: #1d2127; border: 1px solid rgba(232,234,238,.09); border-radius: 8px;
+        padding: 16px; margin-top: 24px; white-space: pre-wrap; word-break: break-word;
+        max-height: 60vh; overflow: auto; }
+  .ok { color: #5c9a6e; } .bad { color: #e08c86; } .warn { color: #d9ab3e; }
+</style>
+</head>
+<body>
+
+<h1>drive.file folder-descendant spike</h1>
+<p class="sub">Grants only <code>drive.file</code>, opens the Picker in folder-select mode, then
+tries to enumerate the picked folder's children. This is the decisive Phase&nbsp;1 question.</p>
+
+<label>OAuth Client ID (Web application)</label>
+<input id="clientId" placeholder="xxxxx.apps.googleusercontent.com">
+
+<label>API Key (Picker API)</label>
+<input id="apiKey" placeholder="AIza...">
+
+<button id="run">Run spike</button>
+
+<pre id="out">Waiting.</pre>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://apis.google.com/js/api.js" async defer></script>
+<script>
+const SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const out = document.getElementById('out');
+let log = '';
+function say(msg, cls) {
+  log += cls ? `<span class="${cls}">${msg}</span>\n` : msg + '\n';
+  out.innerHTML = log;
+}
+
+document.getElementById('run').onclick = () => {
+  log = '';
+  const clientId = document.getElementById('clientId').value.trim();
+  const apiKey = document.getElementById('apiKey').value.trim();
+  if (!clientId || !apiKey) return say('Need both a Client ID and an API Key.', 'bad');
+
+  say('Requesting token for scope: ' + SCOPE);
+  google.accounts.oauth2.initTokenClient({
+    client_id: clientId,
+    scope: SCOPE,
+    callback: (resp) => {
+      if (resp.error) return say('Token error: ' + resp.error, 'bad');
+      say('Token granted. Scopes actually issued: ' + (resp.scope || '(not reported)'), 'ok');
+      gapi.load('picker', () => openPicker(resp.access_token, apiKey));
+    },
+  }).requestAccessToken();
+};
+
+function openPicker(token, apiKey) {
+  say('\nOpening Picker in folder-select mode. Choose a folder that CONTAINS at least one Google Doc.');
+  const view = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
+    .setSelectFolderEnabled(true)
+    .setIncludeFolders(true)
+    .setMimeTypes('application/vnd.google-apps.folder');
+
+  new google.picker.PickerBuilder()
+    .setOAuthToken(token)
+    .setDeveloperKey(apiKey)
+    .addView(view)
+    .setCallback((data) => {
+      if (data.action !== google.picker.Action.PICKED) return;
+      probe(token, data.docs[0]);
+    })
+    .build()
+    .setVisible(true);
+}
+
+async function api(token, path) {
+  const r = await fetch('https://www.googleapis.com/drive/v3/' + path, {
+    headers: { Authorization: 'Bearer ' + token },
+  });
+  return { status: r.status, body: await r.json() };
+}
+
+async function probe(token, folder) {
+  say(`\nPicked folder: ${folder.name}  (${folder.id})`);
+  say('─'.repeat(60));
+
+  // 1. Can we read the folder resource itself?
+  say('\n[1] files.get on the folder');
+  const f = await api(token, `files/${folder.id}?fields=id,name,mimeType,isAppAuthorized`);
+  say(`    HTTP ${f.status}  ${JSON.stringify(f.body)}`, f.status === 200 ? 'ok' : 'bad');
+
+  // 2. THE DECISIVE TEST — enumerate children.
+  say('\n[2] files.list of children  (the decisive test)');
+  const q = encodeURIComponent(`'${folder.id}' in parents and trashed = false`);
+  const kids = await api(token,
+    `files?q=${q}&fields=files(id,name,mimeType,isAppAuthorized)&pageSize=50`);
+  say(`    HTTP ${kids.status}`);
+
+  if (kids.status !== 200) {
+    say(`    ${JSON.stringify(kids.body)}`, 'bad');
+    return verdict(false, 'children listing returned an error');
+  }
+
+  const files = kids.body.files || [];
+  say(`    returned ${files.length} child file(s)`);
+  files.forEach(x => say(`      · ${x.name}  [${x.mimeType}]  isAppAuthorized=${x.isAppAuthorized}`));
+
+  if (files.length === 0) {
+    return verdict(false,
+      'folder was granted but its children are invisible — per-file ACL model confirmed');
+  }
+
+  // 3. Can we actually READ a child's content, not just see its metadata?
+  const doc = files.find(x => x.mimeType === 'application/vnd.google-apps.document');
+  if (!doc) {
+    say('\n[3] skipped — no Google Doc in that folder. Re-run on a folder containing one.', 'warn');
+    return verdict(null, 'children listed, but content export was not exercised');
+  }
+
+  say(`\n[3] files.export of child "${doc.name}" to text/markdown`);
+  const r = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${doc.id}/export?mimeType=text/markdown`,
+    { headers: { Authorization: 'Bearer ' + token } });
+  say(`    HTTP ${r.status}`, r.status === 200 ? 'ok' : 'bad');
+  if (r.status !== 200) {
+    say(`    ${await r.text()}`, 'bad');
+    return verdict(false, 'children are listable but their content is not readable');
+  }
+  const text = await r.text();
+  say(`    exported ${text.length} chars. First 120: ${JSON.stringify(text.slice(0, 120))}`);
+
+  // 4. Does the Changes API see this subtree?
+  say('\n[4] changes API reachable under this scope');
+  const tok = await api(token, 'changes/startPageToken');
+  say(`    HTTP ${tok.status}  ${JSON.stringify(tok.body)}`, tok.status === 200 ? 'ok' : 'bad');
+
+  verdict(true, 'folder pick propagated to descendants, content readable');
+}
+
+function verdict(pass, why) {
+  say('\n' + '─'.repeat(60));
+  if (pass === true) {
+    say('PASS — drive.file + Picker folder select is viable.', 'ok');
+    say('  → Unlimited users, no Google verification. Plan A.', 'ok');
+  } else if (pass === false) {
+    say('FAIL — drive.file does NOT reach a picked folder\'s descendants.', 'bad');
+    say('  → Fall back to drive.readonly in Testing mode. Still multi-tenant.', 'warn');
+  } else {
+    say('INCONCLUSIVE.', 'warn');
+  }
+  say('  reason: ' + why);
+}
+</script>
+
+</body>
+</html>
