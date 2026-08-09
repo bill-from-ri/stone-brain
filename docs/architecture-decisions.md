@@ -21,7 +21,7 @@ Consequences that ripple through everything below:
 
 ---
 
-## 2. Google OAuth scope strategy — Open, pending spike (evidence leans to Plan B)
+## 2. Google OAuth scope strategy — Decided: `drive.readonly`, Testing mode (spike failed)
 
 The scope choice is the single biggest external constraint on Phase 1, because Google
 classifies broad Drive access as a **restricted scope** requiring app verification plus a
@@ -54,18 +54,70 @@ Two pieces of indirect evidence point toward per-file-only:
 
 This is inference, not a result, so it is recorded as leaning rather than decided.
 
-### The spike
+### The spike — run 2026-08-09, FAILED
 
-[`spikes/drive-file-scope/`](../spikes/drive-file-scope/) holds a self-contained page that
-answers this empirically in about twenty minutes: it requests only `drive.file`, opens the
-Picker in folder-select mode, then tries to list the picked folder's children, export a
-child's content, and reach the Changes API. Probe 1 succeeding while probe 2 returns zero
-children is the signature of the per-file model.
+[`spikes/drive-file-scope/`](../spikes/drive-file-scope/) requests only `drive.file`, opens
+the Picker in folder-select mode, then probes the picked folder. Result:
 
-It could not be run here — it needs a Google Cloud OAuth client and an interactive consent
-screen, both of which require a human at a browser.
+```
+Token granted. Scopes actually issued: https://www.googleapis.com/auth/drive.file
+Picked folder: Stone Brain  (1IRoJDfxVqRrI_iKDXPsrqft7jx_ipR5o)
 
-### Either outcome preserves multi-tenancy
+[1] files.get on the folder
+    HTTP 404  {"error":{"code":404,"message":"File not found: 1IRoJ...","reason":"notFound"}}
+
+[2] files.list of children  (the decisive test)
+    HTTP 200
+    returned 0 child file(s)
+```
+
+**The outcome was worse than the predicted failure mode.** The hypothesis was "folder granted,
+descendants invisible." What actually happened is that probe 1 **404'd on the folder itself**.
+Drive returns `notFound` rather than `403` for resources an app has not been granted, so that
+the app cannot probe for the existence of files it can't see. Selecting a folder in the Picker
+therefore grants **nothing at all** — not the folder, not its contents.
+
+Probe 2's `HTTP 200` with zero children follows from the same fact: the parent filter matched
+nothing because, from the app's perspective, no such folder exists. Probes 3 and 4 never ran.
+
+This confirms the per-file ACL model conclusively. `drive.file` grants are issued per file, via
+explicit user selection, and a folder is not a grantable unit.
+
+**Caveat considered and dismissed:** a Shared Drive folder would produce identical output,
+because the spike does not pass `supportsAllDrives=true`. Confirmed the test folder was in My
+Drive, so the result stands. Any future re-run against a Workspace account must set that
+parameter first.
+
+### Rejected alternative: app-created folder
+
+`drive.file` covers files the app itself creates, which suggests having Stone Brain create the
+Library folder. This does not work: the grant follows the *file*, not its location, so a
+user-authored document moved into an app-created folder remains inaccessible. Only documents
+Stone Brain itself authored would be readable, which is the opposite of the use case.
+
+### The decision
+
+**`drive.readonly`, publishing status Testing.** Every part of the design in this document
+works unchanged under it: full folder tree, recursive mirroring, the Changes API sync in §4,
+live updates. The costs are a cap of 100 named test users and 7-day refresh token expiry
+forcing weekly re-consent.
+
+Rejected in favour of it: **`drive.file` with multi-select of individual *files***. Picking
+files does grant access, so this would work and would carry unlimited users with no
+re-consent. But the Library would only know about documents the user explicitly added — new
+documents stay invisible until re-picked. That makes Phase 1's "frontend accurately reflects
+structure of user's Drive folder" false and guts §4's sync design. Weekly friction on *login*
+is a smaller cost than permanent friction on the core value proposition; a Library that
+silently misses documents is a worse product than one that asks you to sign in again.
+
+Plan C is retained as the documented escape hatch if we ever need more than 100 users before
+verification is in place.
+
+**Deferred cost:** a public launch on `drive.readonly` requires Google verification plus a
+CASA assessment, which may not be free. That is a Phase 5 problem, and by then we will know
+whether the project warrants it.
+
+### Testing mode preserves multi-tenancy
 
 This is the important part, and it resolves the worry that failure means falling back to a
 single-user app. It does not. **Testing mode is not a shared-account mode.** Every test user
@@ -75,22 +127,21 @@ data model stays fully multi-tenant and per-user isolated. What Testing mode cos
 expiry forcing weekly re-consent. That is a friction ceiling, not a privacy or architecture
 compromise.
 
-- **Spike passes** → Plan A: `drive.file` + Picker. Unlimited users, no verification, no cost.
-- **Spike fails** → Plan B: `drive.readonly` in Testing mode. 100 testers, weekly re-consent,
-  everything else in this document unchanged.
+The scope sits behind a `DriveClient` interface so a future switch — to Plan C, or to a
+verified `drive.readonly` at launch — is a swap rather than a rewrite.
 
-Plan B is strictly better than the obvious alternative of having users multi-select individual
-files through the Picker: that would work under `drive.file`, but documents added to Drive
-later would be invisible until re-picked, which breaks §3's source-of-truth story and §4's
-sync entirely. A weekly re-consent is a smaller cost than a Library that silently misses new
-files.
+### Consequences for Phase 1 build
 
-Verification for a public launch is deferred to Phase 5. Note that while Google's verification
-review is free, the CASA assessment attached to restricted scopes may not be — that needs
-pricing before it is treated as an option, given §8's zero-budget constraint.
-
-In all cases the scope sits behind a `DriveClient` interface so switching is a swap, not a
-rewrite.
+- Onboarding is a plain OAuth consent followed by an **in-app folder browser** we build from
+  `files.list`, not the Google Picker. With `drive.readonly` we can enumerate the user's Drive
+  directly, so the Picker is no longer needed anywhere in the product. It stays a useful
+  dependency to have dropped.
+- Every tester's Google account must be added by hand under *OAuth consent screen → Test
+  users*. Worth a note in the eventual setup docs.
+- The 7-day refresh token expiry must be handled as a **first-class UI state**, not an error.
+  Sync will fail with `invalid_grant` roughly weekly; the Library needs a clear "reconnect
+  Drive" affordance rather than a stack trace. Build this in Phase 1 — it will be hit
+  constantly during testing, and it is much cheaper than retrofitting it later.
 
 ---
 
@@ -237,67 +288,98 @@ requires no contradiction detection — just a foreign key check during sync.
 
 ---
 
-## 8. Runtime topology — Decided: Vercel (Next.js) + Cloud Run (FastAPI) + Neon Postgres
+## 8. Runtime topology — Decided: all-TypeScript on Vercel + Neon, no Python service
 
-Multi-tenancy changed the answer here from the initial single-user sketch. With per-user
-tokens, per-user sync state, and Phase 2 scheduled extraction jobs, the token store, the sync
-worker, and the cron all want to live next to the database — which is Python's side.
+> **Superseded (2026-08-09):** an earlier revision of this section specified Next.js on Vercel
+> plus a FastAPI service on Cloud Run. That split was chosen on the belief that Vercel's
+> serverless limits could not carry Phase 2 extraction. Checking the actual current limits
+> showed otherwise — see below. The Python service is dropped; the reasoning is kept here
+> because it still applies if Phase 2 ever outgrows serverless.
 
-**Proposed split:**
+### What the earlier split got right, and why it no longer applies
 
-- **Next.js on Vercel** — the UI, user sessions (Auth.js), and the Google OAuth callback. It
-  hands the resulting refresh token to the Python service and otherwise never touches
-  Postgres.
-- **FastAPI, one always-on service** — all Drive calls, sync, ontology, claims, LLM
-  extraction, scheduled jobs. **Sole owner of the database.**
-- **Hosted Postgres** — separate from the compute host, so we can move compute without
-  migrating data.
+The Cloud Run design was driven by one correct constraint: **exactly one service must own the
+schema.** Two writers with two ORMs — Drizzle from Next.js and Alembic from FastAPI — means
+two migration systems racing on one database, which is a genuinely painful failure mode.
 
-The important constraint: **exactly one service owns the schema.** Two writers with two ORMs
-means two migration systems (Drizzle and Alembic) racing on one database, which is a
-genuinely painful failure mode. Alembic is the only migration tool. Next.js reaches data only
-through the FastAPI API, authenticating with the Auth.js-issued JWT.
+Dropping the second service dissolves that constraint entirely rather than managing it. There
+is one writer, one ORM, one migration tool.
+
+### The limits that changed the decision
+
+| Limit | Actual value (Vercel Hobby, Aug 2026) | Verdict |
+| --- | --- | --- |
+| Function max duration | **300s** with Fluid Compute, on by default | Ample — one document's extraction fits comfortably |
+| Cron cadence | **Once per day**, and imprecise (a 1am job fires within the 1am hour) | The one real gap |
+| Cron job count | 100 per project on every plan since Jan 2026 | Not a constraint |
+
+The 300-second ceiling was the assumption the Cloud Run split rested on, and it was wrong by a
+wide margin.
+
+### How each phase lands on serverless
+
+- **Phase 1 sync** — short Drive I/O calls; trivially serverless. Near-live updates need no
+  server-side poller: the browser polls `/api/sync` while the Library is open, which is
+  precisely when freshness matters. If we later add Drive push notifications, a serverless
+  endpoint is the *ideal* shape for receiving a webhook.
+- **Phase 2 extraction** — "scheduled runs to file claims while we're away" is a queue drain.
+  Each invocation claims one unextracted document and processes it well inside 300s. This
+  decomposes into short invocations; it never needs a long-running worker.
+- **Phase 4 assistant** — streaming chat over serverless is a standard pattern, and the
+  Anthropic and OpenAI TypeScript SDKs are first-class.
+
+### Closing the cron gap, for free
+
+Hobby's once-per-day cadence is the only genuine shortfall. A **GitHub Actions scheduled
+workflow** (free; cron-job.org is an equivalent alternative) calls a Vercel endpoint on a
+shared secret at whatever interval we want, driving the Phase 2 queue drain and any Drive
+webhook channel renewal. Vercel's own cron stays as a daily fallback.
 
 ### Hosts, locked in
 
 Budget constraint: **$0/month.** Not "cheap" — actually free, and free in a way that does not
 quietly delete data or degrade into unusability. Research on current 2026 free tiers is in
-§10; the conclusion:
+§10.
 
 | Layer | Choice | Why |
 | --- | --- | --- |
-| Frontend | **Vercel Hobby** | Free, Next.js-native, no expiry. Hobby forbids commercial use — fine while this isn't commercial |
-| Backend | **Google Cloud Run** (`us-central1`) | The only genuinely perpetual free compute tier left: 2M requests, 180k vCPU-s, 360k GiB-s per month. Scales to zero |
+| App (UI + API) | **Vercel Hobby** | Free, Next.js-native, no expiry, 300s functions |
 | Database | **Neon free** | 0.5 GB, scale-to-zero, and critically: exceeding limits suspends compute but **does not delete data** |
-| Cron | **Cloud Scheduler** | 3 jobs free per month, native to Cloud Run, covers Phase 2 scheduled extraction |
+| Scheduling | **GitHub Actions cron** | Free, arbitrary cadence, sidesteps Hobby's daily cron limit |
+| ORM / migrations | **Drizzle** | Sole owner of the schema |
 
-Cloud Run also happens to sit in the same Google Cloud project as the Drive OAuth client and
-Picker API key from §2 — one console, one project, one set of credentials.
+**No component of this stack requires a credit card on file.** That is the decisive advantage
+over the Cloud Run design, which since 3 February 2026 requires a billing account even to use
+its free tier — a card on file is not a charge, but it does mean a runaway loop can bill real
+money.
 
-**The one catch, stated plainly:** as of 3 February 2026 Cloud Run requires a billing account
-with a card attached, even to use the free tier. A card on file is not a charge, but it does
-mean a runaway loop could bill real money. Mitigations, to be set up *before* the first
-deploy: a budget alert at $1, `--max-instances` capped low on the service, and Cloud Run
-concurrency left at its default rather than forced to 1. If a card on file is unacceptable,
-the fallback is Render's free tier, accepting 30–60 second cold starts and moving Postgres
-entirely to Neon (Render's own free Postgres is deleted after 30 days).
+**The one catch, stated plainly:** Vercel Hobby prohibits commercial use. Fine while Stone
+Brain isn't commercial; if that changes it is a $20/month Pro upgrade, not a re-architecture.
+
+**What we give up:** Python's ecosystem for the Phase 2 model evaluation, and any genuinely
+unbounded job. Neither appears load-bearing. If Phase 2 proves otherwise, the escape hatch is
+to add a single Python service *behind* the existing API — at which point the schema-ownership
+rule above comes back into force and Drizzle stays the only migration tool, with Python
+reading the schema it is given.
 
 ---
 
 ## 9. Open questions
 
-- **The `drive.file` spike (§2).** The only thing blocking a final scope decision. Everything
-  else in Phase 1 can be built behind the `DriveClient` interface while this is pending.
-- **CASA assessment cost** for restricted scopes, if we ever pursue verification for a public
-  launch. Needs pricing before Phase 5.
-- **Cold start tolerance.** Cloud Run scale-to-zero means the first request after idle pays a
-  container start. For a Python image this is typically a second or two, but it should be
-  measured against the Library's first paint before deciding whether to keep a warm instance.
+- **CASA assessment cost** for restricted scopes, needed for a public launch on
+  `drive.readonly`. Needs pricing before Phase 5. This is now the main thing standing between
+  a working app and an unlimited audience.
+- **Neon cold starts.** Scale-to-zero means the first query after idle pays a resume. Neon
+  claims this is fast, but it should be measured against the Library's first paint.
+- **Whether Phase 2 extraction really fits in 300s** for the longest realistic document. If
+  not, the fix is chunking within the queue drain, not a new service — but it needs measuring
+  once we have real documents and a real prompt.
 
 ### Settled since the last revision
 
-One world per user (§5) · no sharing, plain `user_id` scoping (§5) · vanished source documents
-always surface as conflicts (§7a) · $0/month budget and the host stack (§8).
+OAuth scope resolved by spike — `drive.readonly` in Testing mode (§2) · one world per user
+(§5) · no sharing, plain `user_id` scoping (§5) · vanished source documents always surface as
+conflicts (§7a) · $0/month budget (§8) · all-TypeScript on Vercel, Python service dropped (§8).
 
 ---
 
@@ -305,11 +387,16 @@ always surface as conflicts (§7a) · $0/month budget and the host stack (§8).
 
 The free-hosting landscape contracted sharply over 2024–2026. Findings behind the §8 decision:
 
-**Google Cloud Run — chosen.** 2M requests, 180,000 vCPU-seconds and 360,000 GiB-seconds per
-month, perpetually free, provided the service runs in `us-central1`, `us-east1`, or
-`us-west1`. Scales to zero. The free tier is shared per *billing account* across all projects,
-which matters only if other things get deployed alongside. Requires a billing account with a
-card as of 3 Feb 2026.
+**Vercel Hobby — chosen, for the whole app.** 300-second functions with Fluid Compute, free
+with no card required, no expiry. Cron is limited to daily cadence, worked around with GitHub
+Actions (§8). Prohibits commercial use.
+
+**Google Cloud Run — strong, but no longer needed.** 2M requests, 180,000 vCPU-seconds and
+360,000 GiB-seconds per month, perpetually free in `us-central1`, `us-east1`, or `us-west1`.
+Scales to zero. The free tier is shared per *billing account* across all projects. Requires a
+billing account with a card as of 3 Feb 2026 — the reason it lost to Vercel once Vercel turned
+out to be sufficient on its own. Still the first choice if a Python service ever becomes
+necessary.
 
 **Render — rejected, on three counts.** Free web services spin down after 15 minutes idle and
 take **30–60 seconds** to wake, which is a poor first paint for the Library. Free Postgres is
@@ -325,14 +412,9 @@ workload. Hobby is $5/month.
 **Fly.io — rejected.** Free allowances were removed for new customers; new signups get a short
 trial, then pay-as-you-go. Cheapest always-on app runs roughly $2–5/month.
 
-**Vercel Python Functions — rejected.** One deploy is appealing, but it inherits serverless
-timeouts, has dependency size limits, and provides no long-running worker for Phase 2
-extraction. Hobby cron is also heavily restricted.
-
-**Everything in TypeScript, no Python.** Still the least infrastructure, and worth
-reconsidering if the Python service ever becomes a maintenance burden. Rejected for now
-because Phase 2's model evaluation over long documents and Phase 4's agentic assistant both
-land more comfortably in Python, and because Cloud Run makes the extra service free anyway.
+**Vercel Python Functions — rejected.** If we are staying inside Vercel anyway, and the
+runtime limits are the same either way, a second language buys nothing. Also carries
+dependency size limits.
 
 **A plain VPS (Hetzner, DigitalOcean).** Cheapest per unit of compute at scale, but costs
 money from day one and carries all the ops burden — TLS, deploys, monitoring, backups.

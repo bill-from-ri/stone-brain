@@ -72,3 +72,76 @@ Probe 2 returning zero children while probe 1 succeeds is the signature of the p
 the folder was granted, its contents were not.
 
 Paste the output into §2 of the decisions doc and mark the scope decision **Decided**.
+
+## Troubleshooting
+
+### `Error 400: invalid_request` — "doesn't comply with Google's OAuth 2.0 policy"
+
+This means Google *found* your client (note that the error page knows the app is called "Stone
+Brain") but rejected the request. It is a configuration problem, not a code problem, and
+re-running or hard-reloading will never fix it.
+
+**Do this first.** On the error page, click **"see error details"** — visible only when you're
+signed in as a developer of the project. Google names the exact rule that was violated, which
+beats working through the list below.
+
+Then, in rough order of likelihood:
+
+1. **Wrong OAuth client type.** The client must be **Web application**. If you created a
+   Desktop app, TV, or "Other" client, there is no *Authorized JavaScript origins* field at
+   all and the browser flow fails with exactly this error. Check *Credentials* — the type is
+   listed next to the client name. If it's wrong, delete it and create a new Web application
+   client; you cannot change the type after creation.
+
+2. **Origin mismatch.** The spike page now prints its own origin in a box at the top. It must
+   appear **character for character** under *Authorized JavaScript origins*. The usual
+   offenders:
+   - `http://127.0.0.1:4173` and `http://localhost:4173` are **different origins** to Google.
+     The page warns you if you're on the former.
+   - A trailing slash. `http://localhost:4173/` is not `http://localhost:4173`.
+   - Wrong port, if you started the server on something other than 4173.
+   - Pasting into *Authorized redirect URIs* instead of *Authorized JavaScript origins*. This
+     flow uses origins; the redirect URI field is irrelevant here and can stay empty.
+
+3. **Incomplete consent screen.** Under *OAuth consent screen* (now "Google Auth Platform" in
+   newer console builds), **App name**, **User support email**, and **Developer contact
+   information** must all be filled in and saved. A half-configured consent screen throws
+   policy errors rather than a useful message.
+
+4. **Propagation delay.** Credential edits can take anywhere from five minutes to a few hours
+   to take effect. If you just fixed the origin and nothing changed, wait and retry before
+   assuming the fix was wrong.
+
+### `Access blocked: Stone Brain has not completed the Google verification process`
+
+Different error, different cause: your Google account isn't on the test user list. Add it
+under *OAuth consent screen → Test users*. Being the project owner is not sufficient.
+
+### `There was an error! The API developer key is invalid.`
+
+OAuth succeeded and the Picker itself is rejecting the API key. Causes, in order:
+
+1. **The Google Picker API is not enabled.** Enabling the Drive API does *not* enable it —
+   they are separate products. *APIs & Services → Library* → "Google Picker API" → Enable.
+   This is the usual cause.
+
+2. **The key belongs to a different Cloud project than the OAuth client.** The leading number
+   in your client ID (`123456789012-abc....apps.googleusercontent.com`) **is the project
+   number**. Compare it to the project number shown on the dashboard of the project holding
+   the API key; they must match.
+
+3. **Key restrictions.** On the key in *Credentials*:
+   - *API restrictions* — choose **Don't restrict key**, or include **Google Picker API**.
+   - *Application restrictions* — if set to **Websites**, add `http://localhost:4173/*`
+     including the wildcard. **None** is fine for the spike.
+
+4. **Wrong value pasted.** An API key starts with `AIza` and runs about 39 characters. If
+   yours doesn't, it's probably the OAuth client secret.
+
+Key edits are subject to the same propagation delay as OAuth credential edits.
+
+### The Picker never opens, or flashes and closes
+
+Same first cause as above — the **Google Picker API** is not enabled — or `gapi` failed to
+load. Check the browser console for network errors against `apis.google.com`.
+
