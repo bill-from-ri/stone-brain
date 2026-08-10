@@ -1,0 +1,391 @@
+/* The prototype's inline styles, extracted into classes.
+   Global (not CSS Modules) on purpose: Nocturne's .btn/.tag/.table/.seg are
+   global anyway, so the port stays a mechanical inline-style -> class swap
+   rather than a restructure.
+
+   Deliberate deviation from the prototype: it is a fixed 1440x900 design canvas.
+   The real shell is fluid. Mobile is out of scope for Phase 1. */
+
+/* ------------------------------------------------------------------- layout */
+
+.sb-app {
+  display: flex;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.sb-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sb-screen {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* --------------------------------------------------------- centered card */
+/* Used by the Connect screen and the folder picker (prototype lines 727-754). */
+
+.sb-centered {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: 32px 20px;
+}
+
+.sb-card {
+  width: 100%;
+  max-width: 520px;
+}
+
+.sb-card-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 22px;
+}
+
+.sb-card-mark {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: var(--gold-dim);
+  border: 1px solid var(--gold-line);
+  display: grid;
+  place-items: center;
+  color: var(--gold-lite);
+}
+
+.sb-card h1 {
+  font-size: 25px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0 0 10px;
+}
+
+.sb-card-body {
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0 0 22px;
+}
+
+.sb-panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px 16px 6px;
+  margin-bottom: 20px;
+}
+
+.sb-kicker {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+  margin-bottom: 12px;
+}
+
+.sb-grant {
+  display: flex;
+  gap: 11px;
+  padding-bottom: 14px;
+}
+
+.sb-grant i {
+  color: var(--gold-lite);
+  margin-top: 2px;
+}
+
+.sb-grant-title {
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.sb-grant-note {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.sb-footnote {
+  color: var(--faint);
+  line-height: 1.55;
+  margin-top: 14px;
+  font-size: 12px;
+}
+
+/* -------------------------------------------------------------- utilities */
+
+.sb-muted {
+  color: var(--muted);
+}
+.sb-faint {
+  color: var(--faint);
+}
+
+/* ------------------------------------------------------------- nav rail */
+/* Prototype lines 44-86. */
+
+.sb-rail {
+  width: 214px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+}
+
+.sb-rail-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 16px 14px 14px;
+}
+
+.sb-rail-mark {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: 6px;
+  border: 1px solid var(--gold-line);
+  display: grid;
+  place-items: center;
+  color: var(--gold-lite);
+  background: var(--gold-dim);
+  font-size: 15px;
+}
+
+.sb-rail-name {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+
+.sb-rail-world {
+  font-size: 10px;
+  color: var(--faint);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Nocturne's signature: dividers that fade to transparent at their ends. */
+.sb-divider {
+  height: 1px;
+  margin: 2px 14px 10px;
+  background: linear-gradient(to right, transparent, var(--line), transparent);
+}
+
+.sb-rail-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 8px;
+}
+
+.sb-rail-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 7px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.sb-rail-item i {
+  font-size: 16px;
+  width: 16px;
+}
+
+.sb-rail-item:hover {
+  background: var(--panel);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.sb-rail-item--on {
+  background: var(--gold-dim);
+  color: var(--gold-pale);
+  box-shadow: inset 0 0 0 1px var(--gold-line);
+}
+
+.sb-rail-item--preview {
+  opacity: 0.62;
+}
+.sb-rail-item--preview:hover {
+  opacity: 1;
+}
+
+.sb-rail-spacer {
+  flex: 1;
+}
+
+.sb-rail-stat {
+  padding: 10px 14px 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.sb-rail-account {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 14px;
+  border-top: 1px solid var(--line);
+  color: inherit;
+}
+
+.sb-rail-account:hover {
+  background: var(--panel);
+  text-decoration: none;
+}
+
+.sb-avatar {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--panel-2);
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  color: var(--gold-pale);
+  object-fit: cover;
+}
+
+.sb-rail-email {
+  font-size: 11.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sb-drive-state {
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.sb-drive-state--ok {
+  color: var(--ok);
+}
+.sb-drive-state--bad {
+  color: var(--bad);
+}
+
+/* -------------------------------------------------------------- header */
+/* Prototype lines 90-100. */
+
+.sb-header {
+  height: 52px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.sb-header-title {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.sb-header-sub {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.sb-header-spacer {
+  flex: 1;
+}
+
+.sb-search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 300px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.sb-search input {
+  border: 0;
+  background: transparent;
+  min-height: 0;
+  height: 30px;
+  padding: 0;
+  font-size: 12.5px;
+  color: var(--ink);
+  width: 100%;
+  outline: none;
+}
+
+.sb-header .btn {
+  height: 32px;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.sb-sync-state {
+  font-size: 11.5px;
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------- connection banner */
+
+.sb-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  background: var(--bad-dim);
+  border-bottom: 1px solid rgba(176, 74, 63, 0.35);
+  font-size: 12.5px;
+}
+
+.sb-banner i {
+  color: var(--bad);
+  font-size: 16px;
+}
+
+.sb-banner-text {
+  flex: 1;
+}
+
+/* ------------------------------------------------------- "not yet real" */
+
+.sb-preview-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  background: var(--gold-dim);
+  border-bottom: 1px solid var(--gold-line);
+  color: var(--gold-pale);
+  font-size: 12px;
+}
+
+.sb-not-real {
+  opacity: 0.55;
+  pointer-events: none;
+  user-select: none;
+}

@@ -1,0 +1,107 @@
+/* Stone Brain's gold palette, lifted from the design prototype's inline <style>
+   block (frontend/Stone Brain.dc.html, lines 16-39).
+
+   Nocturne ships a blurple accent; the prototype re-points its --color-* tokens
+   at gold rather than editing the design system. We keep that arrangement: this
+   file is the only place the palette is defined, and nocturne.css stays a
+   verbatim vendored copy. */
+
+:root {
+  --gold: #b8860b;
+  --gold-lite: #d9ab3e;
+  --gold-pale: #ecd9a3;
+  --gold-dim: rgba(184, 134, 11, 0.13);
+  --gold-line: rgba(184, 134, 11, 0.3);
+
+  --bg: #15181c;
+  --surface: #1d2127;
+  --panel: #232831;
+  --panel-2: #2b313b;
+
+  --ink: #eceae4;
+  --muted: #8e959f;
+  --faint: #5f6773;
+
+  --line: rgba(232, 234, 238, 0.09);
+  --line-2: rgba(232, 234, 238, 0.16);
+
+  --ok: #5c9a6e;
+  --ok-dim: rgba(92, 154, 110, 0.14);
+  --bad: #b04a3f;
+  --bad-dim: rgba(176, 74, 63, 0.14);
+  --warn: #b8860b;
+  --warn-dim: rgba(184, 134, 11, 0.14);
+
+  --claim-line: 1px dotted rgba(217, 171, 62, 0.7);
+  --claim-ink: var(--gold-pale);
+
+  /* Re-point Nocturne's own tokens so its .btn/.tag/.table/.seg classes come out
+     gold without touching the vendored file. */
+  --color-bg: #15181c;
+  --color-surface: #1d2127;
+  --color-text: #eceae4;
+  --color-accent: #b8860b;
+  --color-accent-100: #f7efd9;
+  --color-accent-300: #dcbc63;
+  --color-accent-800: #4a3605;
+  --color-neutral-800: #2b313b;
+  --color-neutral-100: #e8eaee;
+  --color-divider: rgba(232, 234, 238, 0.13);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 13.5px;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--gold-lite);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--gold-pale);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+i.ph,
+i.ph-bold {
+  display: inline-block;
+  line-height: 1;
+}
+
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #333a45;
+  border-radius: 9px;
+  border: 2px solid var(--bg);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #454e5c;
+}
+
+/* Nocturne's rule, restated because it is not optional. */
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.sbclaim {
+  border-bottom: var(--claim-line);
+  color: var(--claim-ink);
+}
