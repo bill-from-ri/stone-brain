@@ -38,3 +38,25 @@ export function StubScreen({
     </>
   )
 }
+
+/**
+ * An inline dimmed panel for a section of an otherwise-real screen — the
+ * Library detail pane's claims block, for instance. Same contract as
+ * PreviewStrip: visible, clearly inert, never mistakable for real data.
+ */
+export function NotYetRealPanel({
+  phase,
+  children,
+}: {
+  phase: number
+  children: React.ReactNode
+}) {
+  return (
+    <div className="sb-panel sb-not-real" style={{ padding: '12px 14px', marginBottom: 0 }}>
+      <div className="sb-kicker" style={{ marginBottom: 6 }}>
+        Phase {phase}
+      </div>
+      <div className="sb-grant-note">{children}</div>
+    </div>
+  )
+}

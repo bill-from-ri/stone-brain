@@ -106,6 +106,14 @@ export async function GET(request: NextRequest) {
   //    read access there is no product, so refuse rather than half-connecting.
   const grantedScopes = tokens.scope ?? ''
   if (!grantedScopes.split(' ').includes(DRIVE_READONLY_SCOPE)) {
+    // Scopes are not secrets, and this is the only way to tell "the user
+    // declined Drive" apart from "the scope was never configured on the consent
+    // screen, so Google never asked for it".
+    console.error(
+      `[auth] drive.readonly was not granted.\n` +
+        `       Google returned scope: ${grantedScopes || '(empty)'}\n` +
+        `       If drive.readonly is absent entirely, check Google Auth Platform -> Data Access.`,
+    )
     return fail(request, 'scope')
   }
 

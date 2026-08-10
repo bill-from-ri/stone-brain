@@ -1,4 +1,5 @@
 import { requireUser } from '@/lib/auth/guard'
+import { FolderBrowser } from '@/components/setup/FolderBrowser'
 
 export const dynamic = 'force-dynamic'
 
@@ -6,9 +7,6 @@ export const dynamic = 'force-dynamic'
  * The in-app root-folder picker. Built from files.list rather than the Google
  * Picker — with drive.readonly we can enumerate the user's Drive directly, so
  * the Picker dependency was dropped entirely (decisions §2).
- *
- * The interactive tree lands in M4; this frame establishes the route the gate
- * redirects to.
  */
 export default async function SetupFolderPage() {
   const session = await requireUser()
@@ -29,22 +27,16 @@ export default async function SetupFolderPage() {
           subfolders, and reads nothing outside it.
         </p>
 
-        <div className="sb-panel">
-          <div className="sb-kicker">Signed in as</div>
-          <div className="sb-grant">
-            <i className="ph ph-user-circle" />
-            <div>
-              <div className="sb-grant-title">{session.user.email}</div>
-              <div className="sb-grant-note">Folder picker arrives in the next step of the build.</div>
-            </div>
-          </div>
-        </div>
+        <FolderBrowser />
 
-        <form action="/api/auth/signout" method="post">
-          <button className="btn btn-ghost" type="submit">
-            Sign out
-          </button>
-        </form>
+        <div className="sb-pick-footer">
+          <span className="sb-faint">Signed in as {session.user.email}</span>
+          <form action="/api/auth/signout" method="post">
+            <button className="btn btn-ghost" type="submit">
+              Sign out
+            </button>
+          </form>
+        </div>
       </div>
     </main>
   )

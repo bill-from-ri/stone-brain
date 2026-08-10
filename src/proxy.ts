@@ -39,8 +39,15 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Everything except the auth API (which must be reachable while signed out),
-    // Next internals, and static assets.
-    '/((?!api/auth|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+    /**
+     * Pages only — ALL of /api is excluded, not just /api/auth.
+     *
+     * Redirecting an API request to an HTML page is worse than refusing it: a
+     * client fetch() follows the 307, receives /connect with status 200, and
+     * then res.json() throws somewhere far from the actual cause. Route
+     * handlers call apiRequireUser/apiRequireReady themselves and answer with a
+     * proper 401/409 JSON body, which is what a fetch caller can act on.
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
   ],
 }

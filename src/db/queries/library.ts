@@ -1,7 +1,7 @@
 import 'server-only'
-import { and, asc, count, eq, isNull } from 'drizzle-orm'
+import { and, asc, count, eq, isNotNull, isNull } from 'drizzle-orm'
 import { db } from '@/db'
-import { documents, folders } from '@/db/schema'
+import { documents, folders, syncState } from '@/db/schema'
 
 /**
  * Every query here takes userId as its first parameter and filters on it.
@@ -70,4 +70,125 @@ export async function getFolderDocCounts(userId: string): Promise<Map<string, nu
     if (row.parent) map.set(row.parent, row.n)
   }
   return map
+}
+
+export type DocumentRow = {
+  id: string
+  driveFileId: string
+  name: string
+  webViewLink: string | null
+  modifiedTime: Date | null
+  createdTime: Date | null
+  ownerDisplayName: string | null
+  status: string
+  trashed: boolean
+  removedAt: Date | null
+  driveVersion: number | null
+}
+
+/**
+ * Documents directly inside one folder.
+ *
+ * `includeRemoved` powers the "Removed" toggle. Removed rows are soft-deleted
+ * (decisions §7a) and still carry their uuid, so a document moved out of the
+ * root and back keeps its identity — which is what Phase 2's claims will hang off.
+ */
+export async function getDocuments(
+  userId: string,
+  folderDriveId: string,
+  opts: { includeRemoved?: boolean } = {},
+): Promise<DocumentRow[]> {
+  const where = opts.includeRemoved
+    ? and(eq(documents.userId, userId), eq(documents.parentDriveFolderId, folderDriveId))
+    : and(
+        eq(documents.userId, userId),
+        eq(documents.parentDriveFolderId, folderDriveId),
+        isNull(documents.removedAt),
+      )
+
+  return db
+    .select({
+      id: documents.id,
+      driveFileId: documents.driveFileId,
+      name: documents.name,
+      webViewLink: documents.webViewLink,
+      modifiedTime: documents.modifiedTime,
+      createdTime: documents.createdTime,
+      ownerDisplayName: documents.ownerDisplayName,
+      status: documents.status,
+      trashed: documents.trashed,
+      removedAt: documents.removedAt,
+      driveVersion: documents.driveVersion,
+    })
+    .from(documents)
+    .where(where)
+    .orderBy(asc(documents.name))
+}
+
+export async function getDocument(
+  userId: string,
+  driveFileId: string,
+): Promise<DocumentRow | null> {
+  const rows = await db
+    .select({
+      id: documents.id,
+      driveFileId: documents.driveFileId,
+      name: documents.name,
+      webViewLink: documents.webViewLink,
+      modifiedTime: documents.modifiedTime,
+      createdTime: documents.createdTime,
+      ownerDisplayName: documents.ownerDisplayName,
+      status: documents.status,
+      trashed: documents.trashed,
+      removedAt: documents.removedAt,
+      driveVersion: documents.driveVersion,
+    })
+    .from(documents)
+    .where(and(eq(documents.userId, userId), eq(documents.driveFileId, driveFileId)))
+    .limit(1)
+
+  return rows[0] ?? null
+}
+
+export async function getRemovedCount(userId: string, folderDriveId: string): Promise<number> {
+  const rows = await db
+    .select({ n: count() })
+    .from(documents)
+    .where(
+      and(
+        eq(documents.userId, userId),
+        eq(documents.parentDriveFolderId, folderDriveId),
+        isNotNull(documents.removedAt),
+      ),
+    )
+  return rows[0]?.n ?? 0
+}
+
+export type SyncStatus = {
+  lastSyncCompletedAt: string | null
+  initialCrawlDone: boolean
+  syncSeq: number
+  lastSyncError: string | null
+}
+
+export async function getSyncStatus(userId: string): Promise<SyncStatus | null> {
+  const rows = await db
+    .select({
+      lastSyncCompletedAt: syncState.lastSyncCompletedAt,
+      initialCrawlDone: syncState.initialCrawlDone,
+      syncSeq: syncState.syncSeq,
+      lastSyncError: syncState.lastSyncError,
+    })
+    .from(syncState)
+    .where(eq(syncState.userId, userId))
+    .limit(1)
+
+  const row = rows[0]
+  if (!row) return null
+  return {
+    lastSyncCompletedAt: row.lastSyncCompletedAt?.toISOString() ?? null,
+    initialCrawlDone: row.initialCrawlDone,
+    syncSeq: row.syncSeq,
+    lastSyncError: row.lastSyncError,
+  }
 }
