@@ -21,7 +21,7 @@ Consequences that ripple through everything below:
 
 ---
 
-## 2. Google OAuth scope strategy — Decided: `drive.readonly`, Testing mode (spike failed)
+## 2. Google OAuth scope strategy — Decided: `drive.readonly`, unverified Production
 
 The scope choice is the single biggest external constraint on Phase 1, because Google
 classifies broad Drive access as a **restricted scope** requiring app verification plus a
@@ -30,11 +30,12 @@ third-party CASA security assessment before it can serve more than 100 users.
 Confirmed scope classifications from Google's own docs: `drive.file` is **non-sensitive**;
 `drive`, `drive.readonly`, and `drive.metadata.readonly` are all **restricted**.
 
-| Option | Verification | Ceiling | UX |
-| --- | --- | --- | --- |
-| `drive.file` + Picker | None (non-sensitive) | Unlimited | User picks their root folder once — exactly the flow we want |
-| `drive.readonly`, Testing mode | None | 100 named test users; **refresh tokens expire after 7 days** | Users re-consent weekly |
-| `drive.readonly`, verified | Verification + CASA | Unlimited | Clean, but weeks of process and likely cost |
+| Option | Verification | Ceiling | UX | Outcome |
+| --- | --- | --- | --- | --- |
+| `drive.file` + Picker folder select | None (non-sensitive) | Unlimited | Pick the root folder once | **Disproved by spike** |
+| `drive.file` + Picker multi-select files | None | Unlimited | Re-pick every new document | Rejected — Plan C, held in reserve |
+| `drive.readonly`, unverified Production | None | 100 users | One warning screen at signup | **Chosen** |
+| `drive.readonly`, verified | Verification + CASA | Unlimited | Clean | Deferred to Phase 5 |
 
 ### Research findings (2026-08-09)
 
@@ -52,7 +53,9 @@ Two pieces of indirect evidence point toward per-file-only:
   file {fileId}` is to "open the Google Drive picker and prompt the user to open the file" —
   singular, per file.
 
-This is inference, not a result, so it is recorded as leaning rather than decided.
+This was inference rather than a result, so it was not acted on until the spike below
+confirmed it. Recorded because the prediction was directionally right but understated the
+failure.
 
 ### The spike — run 2026-08-09, FAILED
 
@@ -97,35 +100,82 @@ Stone Brain itself authored would be readable, which is the opposite of the use 
 
 ### The decision
 
-**`drive.readonly`, publishing status Testing.** Every part of the design in this document
-works unchanged under it: full folder tree, recursive mirroring, the Changes API sync in §4,
-live updates. The costs are a cap of 100 named test users and 7-day refresh token expiry
-forcing weekly re-consent.
+**`drive.readonly`, publishing status "In Production", unverified.** Every part of the design
+in this document works unchanged under it: full folder tree, recursive mirroring, the Changes
+API sync in §4, live updates. The cost is a cap of 100 users and an "unverified app" warning
+screen at signup.
 
-Rejected in favour of it: **`drive.file` with multi-select of individual *files***. Picking
-files does grant access, so this would work and would carry unlimited users with no
-re-consent. But the Library would only know about documents the user explicitly added — new
-documents stay invisible until re-picked. That makes Phase 1's "frontend accurately reflects
-structure of user's Drive folder" false and guts §4's sync design. Weekly friction on *login*
-is a smaller cost than permanent friction on the core value proposition; a Library that
-silently misses documents is a worse product than one that asks you to sign in again.
+**`drive.readonly` is not folder-scoped.** It grants read access to the user's *entire* Drive,
+including files shared with them. Restricting Stone Brain to the chosen root folder is an
+application-level policy of ours, not something OAuth enforces — which is exactly why Google
+classifies the scope as restricted. Two consequences:
 
-Plan C is retained as the documented escape hatch if we ever need more than 100 users before
-verification is in place.
+- The connect screen must be honest about what is being granted. Implying folder-level
+  scoping would be a misrepresentation.
+- The root-subtree check belongs in **one place** inside `DriveClient`, not scattered across
+  call sites. A bug in folder filtering is a privacy incident, not a display glitch.
+
+Rejected in favour of it — **Plan C**: `drive.file` with multi-select of individual *files*.
+Picking files does grant access, so this would work, and it would carry unlimited users with
+no verification ever. But the Library would only know about documents the user explicitly
+added — new documents stay invisible until re-picked. That makes Phase 1's "frontend
+accurately reflects structure of user's Drive folder" false and guts §4's sync design. A
+100-user ceiling is a smaller cost than permanent friction on the core value proposition: a
+Library that silently misses documents is a worse product than one with a guest list.
+
+Plan C is retained as the documented escape hatch if we ever need more than 100 users and
+verification is not viable.
 
 **Deferred cost:** a public launch on `drive.readonly` requires Google verification plus a
 CASA assessment, which may not be free. That is a Phase 5 problem, and by then we will know
 whether the project warrants it.
 
-### Testing mode preserves multi-tenancy
+### Publishing status: Production beats Testing, and it isn't close
 
-This is the important part, and it resolves the worry that failure means falling back to a
-single-user app. It does not. **Testing mode is not a shared-account mode.** Every test user
-runs their own OAuth flow against their own Google account and sees only their own Drive; the
-data model stays fully multi-tenant and per-user isolated. What Testing mode costs is a cap of
-100 named test users (each email added by hand in the Cloud console) and 7-day refresh token
-expiry forcing weekly re-consent. That is a friction ceiling, not a privacy or architecture
-compromise.
+The 7-day refresh token expiry attaches to the **Testing** publishing status specifically, not
+to being unverified. Google's audience documentation: *"Authorizations by a test user will
+expire seven days from the time of consent"* — a restriction that does not extend to
+production users, verified or not.
+
+| | Testing | Production, unverified |
+| --- | --- | --- |
+| Refresh token expiry | **7 days** | Normal — only on revocation or ~6 months idle |
+| User cap | 100 test users | 100 users total |
+| Adding users | Each email by hand in the console | Anyone can sign in |
+| Friction | Weekly re-consent, forever | One "unverified app" screen at signup |
+
+The user ceiling is 100 either way, so nothing is lost on audience. Production trades a
+recurring weekly annoyance — one that *also silently kills unattended background work* — for a
+single scary-looking screen users click through via *Advanced → Go to Stone Brain*.
+
+**Practice:** stay in Testing while building, flip to Production before inviting anyone.
+
+**Confidence note:** sources conflicted on whether the expiry follows Testing status or
+unverified status; the authoritative Cloud console documentation resolved it in favour of the
+former. It is a one-click setting with immediately observable behaviour, so confirm directly
+when flipping rather than trusting this table.
+
+### What token expiry actually costs
+
+When a refresh token does expire, the next refresh returns `400 invalid_grant`. No data is
+lost — Postgres is untouched, claims and sync state survive. The Drive connection goes dead
+until the user completes a full OAuth consent round-trip; this is not a silent refresh.
+
+The non-obvious cost is to **Phase 2's unattended extraction**. Scheduled claim-filling
+depends on a live refresh token, so under Testing status it would stop after 7 days of the
+user not visiting — precisely the window in which passive background work was supposed to be
+valuable. This is the strongest argument for Production status, beyond mere convenience.
+
+Regardless of publishing status, `invalid_grant` must be handled as a **first-class UI state**
+rather than an error: tokens can always be revoked by the user, and Google expires them after
+prolonged disuse. The Library needs a clear "reconnect Drive" affordance.
+
+### Multi-tenancy is preserved either way
+
+The spike failing does **not** mean falling back to a single-user app, and neither publishing
+status is a shared-account mode. Every user runs their own OAuth flow against their own Google
+account and sees only their own Drive; the data model stays fully multi-tenant and per-user
+isolated. The 100-user cap is a friction ceiling, not a privacy or architecture compromise.
 
 The scope sits behind a `DriveClient` interface so a future switch — to Plan C, or to a
 verified `drive.readonly` at launch — is a swap rather than a rewrite.
@@ -134,14 +184,12 @@ verified `drive.readonly` at launch — is a swap rather than a rewrite.
 
 - Onboarding is a plain OAuth consent followed by an **in-app folder browser** we build from
   `files.list`, not the Google Picker. With `drive.readonly` we can enumerate the user's Drive
-  directly, so the Picker is no longer needed anywhere in the product. It stays a useful
-  dependency to have dropped.
-- Every tester's Google account must be added by hand under *OAuth consent screen → Test
-  users*. Worth a note in the eventual setup docs.
-- The 7-day refresh token expiry must be handled as a **first-class UI state**, not an error.
-  Sync will fail with `invalid_grant` roughly weekly; the Library needs a clear "reconnect
-  Drive" affordance rather than a stack trace. Build this in Phase 1 — it will be hit
-  constantly during testing, and it is much cheaper than retrofitting it later.
+  directly, so the Picker is not needed anywhere in the product — a useful dependency to have
+  dropped.
+- All root-subtree filtering lives in one place in `DriveClient`, per the scope note above.
+- `invalid_grant` is a designed-for UI state from day one, not an error path.
+- While in Testing status during development, each Google account must be added by hand under
+  *OAuth consent screen → Test users*. This requirement disappears on flipping to Production.
 
 ---
 
@@ -156,6 +204,10 @@ This looked like a conflict. It isn't, once authority is split by *what* is bein
 - **Postgres owns identity and derived state** — our internal document UUID, extraction
   status, which claims came from which document, which revision those claims were extracted
   from, per-user read/verified status. Drive has nowhere to put any of this.
+
+Note that under the §2 decision Stone Brain holds a **read-only** grant, so "never writes" is
+now enforced by Google rather than by our own discipline. See §10 for what that means for the
+assistant.
 
 The `documents` table is therefore **an index and a projection, not a competing copy**. Its
 only writer is the sync process. Because there is exactly one writer, there is no write
@@ -339,7 +391,7 @@ webhook channel renewal. Vercel's own cron stays as a daily fallback.
 
 Budget constraint: **$0/month.** Not "cheap" — actually free, and free in a way that does not
 quietly delete data or degrade into unusability. Research on current 2026 free tiers is in
-§10.
+§12.
 
 | Layer | Choice | Why |
 | --- | --- | --- |
@@ -366,9 +418,10 @@ reading the schema it is given.
 
 ## 9. Open questions
 
-- **CASA assessment cost** for restricted scopes, needed for a public launch on
-  `drive.readonly`. Needs pricing before Phase 5. This is now the main thing standing between
-  a working app and an unlimited audience.
+- **CASA assessment cost** for restricted scopes, needed only to exceed 100 users. Explicitly
+  deprioritised: the stated goal is a small audience and hands-on OAuth experience, not mass
+  adoption, so verification may never be needed at all. Revisit only if the 100-user cap
+  actually binds.
 - **Neon cold starts.** Scale-to-zero means the first query after idle pays a resume. Neon
   claims this is fast, but it should be measured against the Library's first paint.
 - **Whether Phase 2 extraction really fits in 300s** for the longest realistic document. If
@@ -377,13 +430,119 @@ reading the schema it is given.
 
 ### Settled since the last revision
 
-OAuth scope resolved by spike — `drive.readonly` in Testing mode (§2) · one world per user
-(§5) · no sharing, plain `user_id` scoping (§5) · vanished source documents always surface as
-conflicts (§7a) · $0/month budget (§8) · all-TypeScript on Vercel, Python service dropped (§8).
+OAuth scope resolved by spike — `drive.readonly`, unverified Production (§2) · one world per
+user (§5) · no sharing, plain `user_id` scoping (§5) · vanished source documents always
+surface as conflicts (§7a) · $0/month budget (§8) · all-TypeScript on Vercel, Python service
+dropped (§8) · assistant exports Markdown rather than writing to Drive (§10) · CASA
+deprioritised, 100-user cap accepted (§9) · bring-your-own-provider for inference (§11).
 
 ---
 
-## 10. Reference: free-tier research (2026-08-09)
+## 10. Assistant output — Decided: copy as Markdown, no Drive writes
+
+The Claude Design prototype's Assistant pane carries a **"Save to Drive"** button, which
+presumed write access. Dropped, and replaced with **copy/download as Markdown**.
+
+This aligns the product with the §2 read-only grant rather than fighting it. The Phase 4
+description in the implementation plan — "write to Markdown files that can be applied to
+Google Drive" — is satisfied by the user pasting or uploading the result themselves.
+
+**Not a dead end.** Restoring write capability later would not require the full `drive` scope.
+Adding **`drive.file`** alongside `drive.readonly` grants the ability to create new files and
+manage only those the app itself created — read everything, write only our own output. Since
+`drive.file` is non-sensitive, it adds nothing to the verification burden established in §2.
+A deliberate, cheap, reversible decision.
+
+---
+
+## 11. LLM access — Decided: bring-your-own-provider
+
+OpenRouter remains viable and is unaffected by the §8 serverless decision: it is a plain
+OpenAI-compatible HTTP API, so no persistent process is needed and streaming works over
+standard SSE from a Vercel function.
+
+**Confirmed for the Phase 2 bake-off.** One API, swap a model string, compare candidates on
+long documents — exactly the "evaluate different models" task in the implementation plan.
+
+### Why a single shared key was rejected
+
+Three constraints, researched 2026-08-09, that together ruled out running everyone's inference
+through one OpenRouter account:
+
+1. **Data policy.** `:free` endpoints require enabling *"may train on inputs"* and *"may
+   publish prompts"* in OpenRouter privacy settings; without them the API returns `404 No
+   endpoints found matching your data policy`. OpenRouter does not train on inputs itself, but
+   the upstream providers behind free endpoints may. For the owner's own documents this is a
+   personal choice; for **other users' unpublished writing it is a disclosure obligation** and
+   must appear on the connect screen, not in fine print.
+2. **Rate limits are per-account and shared across all tenants.** 20 requests/minute, and 50
+   requests/day at a $0 balance — roughly one full extraction pass over a 34-document corpus
+   per day, before retries. A one-time $10 purchase raises the daily cap to 1,000 permanently,
+   but that conflicts with the §8 zero-budget constraint. With more than a couple of users,
+   50/day is the binding limit on the whole product.
+3. **Context windows vary** across free models, and Phase 2 targets long documents. Which free
+   models can hold a full document is for the bake-off to measure, not to assume.
+
+### The decision: users configure their own provider
+
+Each user supplies their own inference credentials. This dissolves all three constraints above
+rather than trading between them, and it is the only option that stays free *and* scales past
+a single user.
+
+**What it makes simpler:**
+
+- **The shared ceiling disappears.** Rate limits and daily caps become per-user. Phase 2's
+  unattended scheduled extraction becomes viable, which it was not on a shared 50/day bucket.
+- **The data-policy obligation inverts.** Stone Brain stops being the party shipping other
+  people's unpublished writing to training endpoints; the user picks a provider and accepts
+  its terms. We still owe a clear statement of *what* we send, but we no longer make the
+  privacy decision on their behalf.
+- **Our cost is $0 permanently**, with no path where adoption starts costing money — a
+  stronger guarantee than a currently-generous free tier.
+- **It reuses existing machinery.** An encrypted per-user secret store is already required for
+  Google refresh tokens (§1). A provider key is the same problem with the same solution: one
+  secrets module, not two.
+
+**What it costs:**
+
+- **A second onboarding step.** Mitigated by timing — see below.
+- **A second connection-health state.** Alongside Drive's `invalid_grant`: missing key,
+  revoked key (401), out of credit (402), rate limited (429). These are designed UI states,
+  not error paths, and share a "connection status" pattern with §2's reconnect affordance.
+
+### Design consequences of not controlling the model
+
+- **Structured output cannot depend on any one provider's features.** Claim extraction needs
+  JSON-schema prompting plus validation plus retry, written to hold across models rather than
+  tuned to one. Materially different from targeting a single API.
+- **Claims record their origin model.** An `extracted_by_model` column on the claim row:
+  provenance for debugging, and the basis for deciding what to re-extract when a user moves
+  from a weak model to a strong one.
+
+### Configuration shape
+
+Store **base URL + API key + model ID** rather than an OpenRouter key specifically. Accepting
+any OpenAI-compatible endpoint is barely more work than hardcoding one provider and covers
+OpenRouter, most hosted providers, and local runtimes. Providers whose native request shape
+differs would need their own adapter — add only on request.
+
+Keys never reach the browser; all inference proxies through the server, same rule as Google
+tokens in §1.
+
+### Timing: this does not touch Phase 1
+
+**Phase 1 requires no LLM at all** — Library, Drive sync, and folder mirroring are entirely
+LLM-free. So the app must work fully with no provider configured, and the key is requested
+only when the user first attempts claim extraction. Progressive disclosure rather than a
+second barrier at signup.
+
+The Phase 2 bake-off changes purpose accordingly: from "pick the model" to "confirm the
+extraction prompt holds across a range of models, and publish a recommended default." Its
+output is a docs page, not a hardcoded constant.
+
+---
+
+## 12. Reference: free-tier research (2026-08-09)
 
 The free-hosting landscape contracted sharply over 2024–2026. Findings behind the §8 decision:
 
