@@ -6,10 +6,10 @@ This is going to be a pretty substantial project, so I want to make sure we impl
 
 All of our other functionality is based on the ability for our code to interface with Google Drive files. We need to do the following:
 
-- [ ] Build logic for connecting app to Google Drive  
-- [ ] Set up OAuth so users can securely link their accounts  
-- [ ] Ensure that frontend accurately reflects structure of user’s Drive folder  
-- [ ] Ideally we can get live updates to the Library; manually syncing with Drive is friction that I want to avoid
+- [x] Build logic for connecting app to Google Drive  
+- [x] Set up OAuth so users can securely link their accounts  
+- [x] Ensure that frontend accurately reflects structure of user’s Drive folder  
+- [x] Ideally we can get live updates to the Library; manually syncing with Drive is friction that I want to avoid
 
 For now, we won’t track stuff like Claims, Last Verified, Conflicts, etc. We’ll have Status set to Unread for all files. Clicking on a file will open a sidebar with some metadata, including a link to the document itself. 
 

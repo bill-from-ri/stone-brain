@@ -247,8 +247,11 @@ Triggers, added in order:
 
 1. **Phase 1** — manual "Sync Drive" button, plus an automatic call on Library load if the
    last sync is older than some threshold. Ships the feature with no extra infrastructure.
-2. **Later** — a poller calling `changes.list` on an interval per connected user, pushing
-   results to the client over SSE. Near-live with far less machinery than webhooks.
+2. ~~**Later** — a poller calling `changes.list` on an interval per connected user, pushing
+   results to the client over SSE. Near-live with far less machinery than webhooks.~~
+   **Superseded (2026-08-09) by §13:** the poller lives in the *browser*, not the server, and
+   needs no SSE. Freshness only has value while someone is looking at the Library, and a
+   server-side poller spends Drive quota on every connected user whether or not anyone is there.
 3. **Only if needed** — Drive push notifications (`changes.watch`). These require a public
    HTTPS webhook and the channels expire within 24 hours, so they need renewal cron. Real
    ongoing cost for marginal latency gain.
@@ -256,6 +259,27 @@ Triggers, added in order:
 Each step reuses `sync_root` unchanged, so nothing is thrown away by starting manual. Keeping
 the visible "Sync Drive" control permanently is also good product: users trust a button they
 can press when they know they just changed something.
+
+### Two invariants that make "idempotent and resumable" true
+
+These are mechanism rather than policy, so they belong here rather than in §13.
+
+1. **The page token advances only inside the transaction that commits that page's writes.**
+   Crash anywhere and you replay exactly one page, which is safe because every write is an
+   upsert keyed on `(user_id, drive_file_id)` and every removal is idempotent. Bump the token
+   outside that transaction and a crash between the two silently skips a page of changes
+   forever — the failure mode is invisible, permanent, and indistinguishable from "nothing
+   changed."
+2. **`changes.getStartPageToken` is captured *before* the initial crawl begins, never after.**
+   Any change occurring during the crawl is then replayed by the first incremental pass.
+   Capturing it afterwards loses every such change permanently. This is the single most
+   important ordering rule in the whole sync, and it is why `sync_state` carries both
+   `start_page_token` and `pending_start_page_token`.
+
+Note this required dropping Neon's HTTP driver for the WebSocket one: `neon-http` throws on
+`db.transaction()` — it supports only non-interactive batches — so invariant 1 is
+unimplementable on it. `poolQueryViaFetch` keeps simple reads on HTTP, so only transactions pay
+for the socket.
 
 ---
 
@@ -285,11 +309,30 @@ Agreed on a JSON field, with a rule for what escapes it:
 - **JSONB** holds the raw `files.get` response verbatim. Schema-free, survives Google adding
   fields, invaluable for debugging a bad sync.
 - **Real columns** for anything we filter, sort, join, or index on: `user_id`,
-  `drive_file_id`, `parent_id`, `name`, `mime_type`, `modified_time`, `head_revision_id`,
-  `trashed`, `web_view_link`, plus our own `status`, `extracted_revision_id`, `synced_at`.
+  `drive_file_id`, `parent_drive_folder_id`, `name`, `mime_type`, `modified_time`,
+  ~~`head_revision_id`~~ **`drive_version`**, `trashed`, `web_view_link`, plus our own `status`,
+  `extracted_revision_id`, `removed_at`, `synced_at`.
 
 Rule of thumb: **JSONB for fidelity, columns for queries.** Unique index on
-`(user_id, drive_file_id)`.
+`(user_id, drive_file_id)` — which is also what makes restore-on-return free: a file moved out
+of the root and back matches the same row and keeps the same `documents.id`, so Phase 2's
+claims survive the round trip.
+
+### Correction (2026-08-09): `headRevisionId` does not exist on native Google Docs
+
+The promoted-columns list above originally specified `head_revision_id`. Google's Files
+reference is explicit that it is *"only available for files with binary content in Google
+Drive"* — native Workspace documents have no binary content, so the column would have been
+**null on every row in our corpus**.
+
+Replaced with **`files.version`**, a monotonically increasing counter that changes on every
+server-side modification and arrives free in every `files.list` / `changes.list` response.
+Confirmed empirically on the first real crawl: 46 of 46 native Docs returned a version.
+
+`head_revision_id` remains in the schema as a nullable column, to be filled in Phase 2 from
+`revisions.list` at extraction time — a real revision id is worth having *once there is an
+extraction to pin it against*. The §3 staleness argument (`head` vs `extracted` diverging marks
+a document stale) is unchanged in substance; only the field it reads changed.
 
 ---
 
@@ -592,3 +635,141 @@ only if we ever want its bundled auth.
 
 **Summary of the trade-off:** Neon degrades on volume, Supabase degrades on time. This project
 is low-volume and intermittently used, so Neon wins clearly.
+
+---
+
+## 13. Live updates — Decided: visibility-aware browser polling
+
+Phase 1's fourth checkbox was "ideally we can get live updates; manually syncing with Drive is
+friction I want to avoid." This is how that is delivered, and what it costs.
+
+### The decision
+
+The browser polls `POST /api/sync` **every 20 seconds while the Library is mounted *and*
+`document.visibilityState === 'visible'`**, plus once on mount, once on becoming visible again,
+and on demand via a permanent "Sync Drive" button. During the first crawl the cadence drops to
+2 seconds so indexing progress animates. No server-side poller, no SSE, no webhooks in Phase 1.
+
+Practical freshness is therefore **~20 seconds** with the tab open, and immediate on demand.
+
+### Why the browser and not the server
+
+Freshness only has value while someone is looking at the Library. A server-side poller spends
+Drive quota on every connected user whether or not anyone is present, and Vercel Hobby cron
+cannot go finer than daily anyway (§8).
+
+**The Page Visibility gate is what makes the cost bounded**, and it is not a nicety: without it
+a forgotten tab polls forever. With it, a backgrounded tab costs nothing.
+
+### Why not SSE, and why not `changes.watch`
+
+SSE would add a long-lived connection to move ~20s to ~1s, which nobody asked for — and on
+Vercel the function still polls `changes.list` and dies at 300s, forcing reconnects. More
+machinery for the same actual latency.
+
+`changes.watch` gives true push, but needs a public HTTPS webhook and channels that expire
+inside 24 hours, meaning a renewal cron — real ongoing infrastructure. Both remain available
+later, and both reuse `sync_root` unchanged, which was the point of §4's design.
+
+### Quota arithmetic
+
+20s polling with a visible tab is **180 requests/hour/user** — measured at **one
+`changes.list` call per tick** when nothing has changed. 100 users all with tabs open is ~300
+requests/minute against Drive's ~12,000/minute project quota. Not close.
+
+### Concurrency: a lease column, not an advisory lock
+
+Two browser tabs polling at once is the common case, not the edge case.
+
+`pg_advisory_lock` is session-scoped, and holding a Postgres session — or worse, a transaction
+— open across many seconds of external HTTP I/O to Google is exactly what you must not do
+against a scale-to-zero instance with connection limits. Instead `sync_state` carries
+`lock_token` / `lock_acquired_at`, and acquisition is a single `UPDATE … WHERE lock_acquired_at
+IS NULL OR lock_acquired_at < now() - interval '5 minutes'`. It survives process death via the
+timeout, works across tabs, deploys and regions, and is renewed during long crawls so a
+slow-but-healthy run is not stolen. A losing caller receives `{running: true}` and **HTTP 200**,
+not an error.
+
+### The folder-move problem — recorded here because it is the likeliest future regression
+
+`changes.list` reports **one** event when a folder moves, but the scope of its entire subtree
+changes and Drive will never enumerate the descendants for us; from Drive's point of view
+nothing happened to them.
+
+- **Moved out of the root:** cascade the soft-delete from *our own mirrored tree*. This is also
+  why it still works when the folder has moved somewhere we can no longer read — we are reading
+  our copy, not Drive.
+- **Moved into the root:** enqueue a **persisted** subtree crawl (`pending_subtree_crawls`), so
+  an invocation timeout does not lose the work.
+- **Folder changes are always applied before file changes within a page**, so the scope
+  resolver's view is correct before any file in that batch is judged.
+
+The transition table lives in `src/lib/sync/changes.ts` as pure functions, precisely so it can
+be tested without a database or a network.
+
+### Failure modes that are states, not errors
+
+`/api/sync` answers **HTTP 200 for every designed state**. The endpoint's contract is "here is
+the state of the Drive connection", and a broken connection is a valid state.
+
+- **`invalid_grant`** (§2) → returned as `tokenStatus`, polling stops, the reconnect banner
+  appears, and **the Library stays fully browsable** — the projection is still valid, only
+  freshness is broken. Punishing the user with a hidden Library because Google expired a token
+  would be the wrong trade.
+- **`410 Gone` page token** → full re-crawl plus a generation-stamped (`sweep_id`)
+  reconciliation sweep. Anything not visited by the crawl is no longer in the subtree, which is
+  the only way to catch deletions that happened while the token was dead.
+- **Scope undeterminable** (Drive refuses to answer during an ancestry walk) → the item is
+  **deferred, not written and not treated as out-of-scope**, so it retries next run rather than
+  vanishing silently. Failing closed must never mean failing permanently.
+
+### Open question carried forward
+
+Phase 2's unattended extraction needs a trigger that is not a browser tab. §8's answer — a
+GitHub Actions cron hitting a shared-secret endpoint — applies, and it will call the same
+`sync_root`. Nothing in this section changes when that lands.
+
+---
+
+## 14. Authentication — Decided: hand-rolled OAuth, not Auth.js
+
+Server-side authorization-code flow with PKCE and `state`, our own signed HttpOnly session
+cookie, and opaque DB-backed sessions. `google-auth-library` is used for exactly three things:
+the code→token exchange, ID token verification, and refresh.
+
+**Rationale.** §9 names hands-on OAuth experience as an explicit project goal, and §1 requires
+the raw refresh token in our own encrypted column regardless — which is precisely the part an
+auth library would otherwise own. Auth.js would have to be reached past for the one thing that
+actually matters here.
+
+### Identity: track users, but let Google do the authenticating
+
+Google is the sole authenticator: no passwords, no email verification of our own, no recovery
+flow. A `users` row exists for identity *persistence*, which §1 already forces — encrypted
+per-user refresh tokens need an owner, every domain row is `user_id`-scoped, and Google issues
+an ID token at consent rather than a session, so the session is ours either way.
+
+**`google_sub` is the identity key. Never look a user up by email** — emails get changed and
+reassigned, and an email-keyed lookup is an account-takeover primitive. `email`, `name` and
+`picture` are cached for display and refreshed from the ID token on every login.
+
+`users` and `google_accounts` are separate tables: the grant has a different lifecycle than the
+identity (revoke and re-grant without the user changing), and keeping the secret out of the row
+you `select` for display makes accidental serialization to the client structurally harder.
+
+### Details that are easy to get wrong
+
+- **`prompt=consent` unconditionally.** Google returns a refresh token *only* on the consent
+  grant; a silent re-auth of an already-consented app returns an access token with none. The
+  alternative — omit it, detect the absence, retry — is more code guarding a worse invariant.
+- **`redirect_uri` is derived from `APP_URL`, never from a request header.** Host-header
+  injection into an OAuth redirect is a real attack and this is the one place it could enter.
+- **Sessions are opaque tokens stored as `sha256`, not JWTs.** A JWT cannot be revoked, and a
+  sign-out that does not sign out is not acceptable in a multi-tenant app.
+- **Signing out does not disconnect Drive.** They are separate actions with separate routes;
+  disconnecting revokes at Google and nulls our copy but **keeps the projection**, so
+  reconnecting is instant.
+- **The consent screen scope list is a separate console page from the credentials.** A scope
+  absent from *Google Auth Platform → Data Access* is silently dropped from the granted set:
+  sign-in appears to succeed and the app then has no Drive access. The callback checks the
+  returned scope string explicitly and refuses rather than half-connecting.
