@@ -261,6 +261,14 @@ export const documents = pgTable(
      */
     driveVersion: bigint('drive_version', { mode: 'number' }),
 
+    /**
+     * files.size — populated for native Google Docs (confirmed on 46/46 of the
+     * first real corpus). This is Drive's internal storage size, which includes
+     * embedded images, so it is a rough proxy for length rather than a word
+     * count. A true word count needs files.export, which Phase 2 does anyway.
+     */
+    sizeBytes: bigint('size_bytes', { mode: 'number' }),
+
     /** Filled in Phase 2 from revisions.list at extraction time. Null in Phase 1. */
     headRevisionId: text('head_revision_id'),
     extractedRevisionId: text('extracted_revision_id'),

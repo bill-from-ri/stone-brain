@@ -64,7 +64,7 @@ export function SyncControls({
                 ? `Synced ${ago}`
                 : ''}
       </span>
-      <button className="btn" type="button" onClick={() => void syncNow()} disabled={syncing}>
+      <button className="btn btn-secondary" type="button" onClick={() => void syncNow()} disabled={syncing}>
         <i className={`ph ${syncing ? 'ph-circle-notch' : 'ph-arrows-clockwise'}`} />
         &nbsp;Sync Drive
       </button>

@@ -3,8 +3,9 @@ import { AppHeader } from '@/components/shell/AppHeader'
 import { DetailPane } from '@/components/library/DetailPane'
 import { DocumentTable } from '@/components/library/DocumentTable'
 import { FolderTree } from '@/components/library/FolderTree'
-import { SyncPoller } from '@/components/library/SyncPoller'
+import { LibrarySearch } from '@/components/library/LibrarySearch'
 import { SyncControls } from '@/components/library/SyncControls'
+import { SyncPoller } from '@/components/library/SyncPoller'
 import {
   getDocument,
   getDocuments,
@@ -17,30 +18,22 @@ import { requireReady } from '@/lib/auth/guard'
 
 export const dynamic = 'force-dynamic'
 
-/**
- * The three-pane Library.
- *
- * Folder and document selection both live in the URL — the folder as a path
- * segment, the document as ?doc= — which is what lets DetailPane be a server
- * component and lets selection survive the router.refresh() after each sync.
- *
- * Drive IDs are used in URLs rather than our uuids: they are stable across a
- * re-crawl, and they are what you paste into a bug report.
- */
+/** The three-pane Library, ported from the prototype (lines 208-287). */
 export default async function LibraryFolderPage({
   params,
   searchParams,
 }: {
   params: Promise<{ folderId: string }>
-  searchParams: Promise<{ doc?: string; removed?: string }>
+  searchParams: Promise<{ doc?: string; removed?: string; q?: string }>
 }) {
   const session = await requireReady()
   const { folderId } = await params
-  const { doc: selectedDocId, removed } = await searchParams
+  const { doc: selectedDocId, removed, q } = await searchParams
   const showRemoved = removed === '1'
+  const query = (q ?? '').trim()
   const userId = session.user.id
 
-  const [tree, docCounts, documents, removedCount, syncStatus] = await Promise.all([
+  const [tree, docCounts, allDocuments, removedCount, syncStatus] = await Promise.all([
     getFolderTree(userId),
     getFolderDocCounts(userId),
     getDocuments(userId, folderId, { includeRemoved: showRemoved }),
@@ -50,16 +43,23 @@ export default async function LibraryFolderPage({
 
   // A folder id that isn't in our mirror is either a typo or something outside
   // the root. Either way it is not ours to render.
-  if (!tree.some((f) => f.driveFolderId === folderId)) notFound()
+  const activeFolder = tree.find((f) => f.driveFolderId === folderId)
+  if (!activeFolder) notFound()
+
+  const documents = query
+    ? allDocuments.filter((d) => d.name.toLowerCase().includes(query.toLowerCase()))
+    : allDocuments
 
   const selectedDoc = selectedDocId ? await getDocument(userId, selectedDocId) : null
-  const activeFolder = tree.find((f) => f.driveFolderId === folderId)
-  const indexing = !(syncStatus?.initialCrawlDone ?? false)
+
+  // "My Drive / Nevlos / History" — the draft's breadcrumb, from folders.path.
+  const breadcrumb = ['My Drive', ...(activeFolder.path ?? '').split('/').filter(Boolean)]
 
   return (
     <>
       <AppHeader
-        subtitle={activeFolder?.path ?? `Google Drive · ${session.rootFolderName ?? ''}`}
+        subtitle={`Google Drive · ${session.rootFolderName ?? ''}`}
+        search={<LibrarySearch />}
         actions={
           <SyncControls
             lastSyncCompletedAt={syncStatus?.lastSyncCompletedAt ?? null}
@@ -82,10 +82,13 @@ export default async function LibraryFolderPage({
         />
         <DocumentTable
           documents={documents}
+          breadcrumb={breadcrumb}
           selectedDriveFileId={selectedDocId ?? null}
           showRemoved={showRemoved}
           removedCount={removedCount}
-          indexing={indexing}
+          liveCount={allDocuments.filter((d) => !d.removedAt).length}
+          indexing={!(syncStatus?.initialCrawlDone ?? false)}
+          query={query}
         />
         <DetailPane doc={selectedDoc} />
       </div>

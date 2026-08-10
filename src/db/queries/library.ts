@@ -84,6 +84,7 @@ export type DocumentRow = {
   trashed: boolean
   removedAt: Date | null
   driveVersion: number | null
+  sizeBytes: number | null
 }
 
 /**
@@ -119,6 +120,7 @@ export async function getDocuments(
       trashed: documents.trashed,
       removedAt: documents.removedAt,
       driveVersion: documents.driveVersion,
+      sizeBytes: documents.sizeBytes,
     })
     .from(documents)
     .where(where)
@@ -142,6 +144,7 @@ export async function getDocument(
       trashed: documents.trashed,
       removedAt: documents.removedAt,
       driveVersion: documents.driveVersion,
+      sizeBytes: documents.sizeBytes,
     })
     .from(documents)
     .where(and(eq(documents.userId, userId), eq(documents.driveFileId, driveFileId)))

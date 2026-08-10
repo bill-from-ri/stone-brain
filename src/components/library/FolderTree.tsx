@@ -8,11 +8,11 @@ import type { FolderRow } from '@/db/queries/library'
 type TreeNode = FolderRow & { children: TreeNode[]; docCount: number }
 
 /**
- * The Library's left pane (prototype lines 210-226), rendered from our mirrored
- * folder tree rather than from Drive.
+ * The Library's left pane, ported from the prototype (lines 210-226).
  *
- * Assembled in memory from a flat ordered list — the tree is tens to low
- * hundreds of rows, so a recursive CTE would be more machinery for less clarity.
+ * Structure follows the draft exactly: an uppercase "My Drive" kicker, the root
+ * folder as an open caret row, children in an indented container, then a faded
+ * divider and the saved-filter list.
  */
 export function FolderTree({
   folders,
@@ -26,82 +26,78 @@ export function FolderTree({
   const roots = buildTree(folders, docCounts)
 
   return (
-    <aside className="sb-lib-tree">
-      <div className="sb-kicker" style={{ padding: '12px 14px 8px' }}>
-        My Drive
-      </div>
+    <div className="sb-lib-tree">
+      <div className="sb-tree-kicker">My Drive</div>
+
       {roots.map((node) => (
-        <TreeBranch key={node.driveFolderId} node={node} depth={0} activeFolderId={activeFolderId} />
+        <Branch key={node.driveFolderId} node={node} activeFolderId={activeFolderId} />
       ))}
 
-      <div className="sb-divider" style={{ marginTop: 12 }} />
+      <div className="sb-tree-divider" />
 
-      {/* Phase 2/3 filters. Shown so the shell reads as the product it is
-          becoming, but visibly inert — never implying data we don't have. */}
-      <div className="sb-not-real" aria-hidden="true">
-        {[
-          { icon: 'ph-check-circle', label: 'Verified only' },
-          { icon: 'ph-warning-diamond', label: 'In violation' },
-          { icon: 'ph-clock', label: 'Never checked' },
-        ].map((f) => (
-          <div className="sb-tree-row" key={f.label}>
-            <i className={`ph ${f.icon}`} />
-            <span>{f.label}</span>
-            <span className="sb-tag-phase">Phase 2</span>
-          </div>
-        ))}
+      {/* Phase 2/3 filters. Present because the draft has them, but visibly
+          inert — the shell should read as the product it is becoming without
+          ever implying data we don't have. */}
+      <div className="sb-tree-filters">
+        <div className="sb-tree-filter">
+          <i className="ph ph-check-circle" style={{ color: 'var(--ok)' }} />
+          Verified only
+          <span className="sb-tree-phase">Phase 2</span>
+        </div>
+        <div className="sb-tree-filter">
+          <i className="ph ph-warning-diamond" style={{ color: 'var(--bad)' }} />
+          In violation
+          <span className="sb-tree-phase">Phase 3</span>
+        </div>
+        <div className="sb-tree-filter">
+          <i className="ph ph-clock-counter-clockwise" style={{ color: 'var(--faint)' }} />
+          Never checked
+          <span className="sb-tree-phase">Phase 2</span>
+        </div>
       </div>
-    </aside>
+    </div>
   )
 }
 
-function TreeBranch({
-  node,
-  depth,
-  activeFolderId,
-}: {
-  node: TreeNode
-  depth: number
-  activeFolderId: string
-}) {
-  // Ancestors of the active folder start open so a deep selection is visible.
-  const [open, setOpen] = useState(() => depth === 0 || containsActive(node, activeFolderId))
-  const isActive = node.driveFolderId === activeFolderId
+function Branch({ node, activeFolderId }: { node: TreeNode; activeFolderId: string }) {
+  const [open, setOpen] = useState(() => containsActive(node, activeFolderId))
   const hasChildren = node.children.length > 0
+  const isActive = node.driveFolderId === activeFolderId
 
   return (
     <>
-      <div
-        className={`sb-tree-row${isActive ? ' sb-tree-row--on' : ''}`}
-        style={{ paddingLeft: 8 + depth * 14 }}
-      >
-        <button
-          type="button"
-          className="sb-tree-caret"
-          onClick={() => setOpen((v) => !v)}
-          disabled={!hasChildren}
-          aria-label={open ? `Collapse ${node.name}` : `Expand ${node.name}`}
-          aria-expanded={hasChildren ? open : undefined}
-        >
-          {hasChildren && <i className={`ph ${open ? 'ph-caret-down' : 'ph-caret-right'}`} />}
-        </button>
+      <div className={`sb-tree-row${isActive ? ' sb-tree-row--on' : ''}`}>
+        {hasChildren ? (
+          <button
+            type="button"
+            className="sb-tree-caret"
+            onClick={() => setOpen((v) => !v)}
+            aria-label={open ? `Collapse ${node.name}` : `Expand ${node.name}`}
+            aria-expanded={open}
+          >
+            <i className={`ph-bold ${open ? 'ph-caret-down' : 'ph-caret-right'}`} />
+          </button>
+        ) : (
+          <span className="sb-tree-caret" />
+        )}
 
         <Link href={`/library/${node.driveFolderId}` as Route} className="sb-tree-link">
-          <i className={`ph ${open && hasChildren ? 'ph-folder-open' : 'ph-folder'}`} />
+          <i
+            className={`ph ${open && hasChildren ? 'ph-folder-open' : 'ph-folder'}`}
+            style={{ color: isActive || open ? 'var(--gold-lite)' : 'var(--faint)' }}
+          />
           <span className="sb-tree-name">{node.name}</span>
           {node.docCount > 0 && <span className="sb-tree-count">{node.docCount}</span>}
         </Link>
       </div>
 
-      {open &&
-        node.children.map((child) => (
-          <TreeBranch
-            key={child.driveFolderId}
-            node={child}
-            depth={depth + 1}
-            activeFolderId={activeFolderId}
-          />
-        ))}
+      {open && hasChildren && (
+        <div className="sb-tree-children">
+          {node.children.map((child) => (
+            <Branch key={child.driveFolderId} node={child} activeFolderId={activeFolderId} />
+          ))}
+        </div>
+      )}
     </>
   )
 }

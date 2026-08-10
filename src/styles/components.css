@@ -509,62 +509,54 @@
 }
 
 /* ------------------------------------------------------------- library */
-/* Prototype lines 208-287, made fluid: the original is a fixed 1440x900 canvas. */
+/* Transcribed from the prototype's inline styles, frontend/Stone Brain.dc.html
+   lines 208-287. Measurements are the draft's, not approximations.
+
+   One deliberate deviation: the draft is a fixed 1440x900 canvas, so the panes
+   are given min-height:0 and their own scroll here. Nothing else changed. */
 
 .sb-lib {
+  display: flex;
   flex: 1;
   min-height: 0;
-  display: grid;
-  grid-template-columns: 212px minmax(0, 1fr) 290px;
-  min-width: 1100px;
 }
 
-.sb-lib-tree,
-.sb-lib-detail {
-  overflow: auto;
-  min-height: 0;
-}
+/* -- left pane (draft line 210) -- */
 
 .sb-lib-tree {
+  width: 212px;
+  flex: none;
   border-right: 1px solid var(--line);
-  background: var(--surface);
-  padding-bottom: 16px;
-}
-
-.sb-lib-main {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0;
+  padding: 16px 12px;
   overflow: auto;
 }
 
-.sb-lib-detail {
-  border-left: 1px solid var(--line);
-  background: var(--surface);
-  padding: 14px 16px 24px;
+.sb-tree-kicker {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0 4px 9px;
 }
-
-/* folder tree rows */
 
 .sb-tree-row {
   display: flex;
   align-items: center;
-  gap: 2px;
-  height: 29px;
-  margin: 0 6px;
-  padding-right: 8px;
+  gap: 7px;
+  padding: 6px 8px;
   border-radius: 6px;
-  color: var(--muted);
+  font-size: 12.5px;
+  color: var(--ink);
 }
 
 .sb-tree-row:hover {
   background: var(--panel);
 }
 
-.sb-tree-row--on {
+.sb-tree-row--on,
+.sb-tree-row--on:hover {
   background: var(--gold-dim);
-  box-shadow: inset 0 0 0 1px var(--gold-line);
+  color: var(--gold-pale);
 }
 
 .sb-tree-row--on .sb-tree-link {
@@ -572,22 +564,21 @@
 }
 
 .sb-tree-caret {
-  width: 18px;
-  height: 18px;
+  width: 10px;
   flex: none;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: var(--faint);
   border: 0;
   background: transparent;
-  color: var(--faint);
-  cursor: pointer;
   padding: 0;
-  font-size: 11px;
+  cursor: pointer;
 }
 
-.sb-tree-caret:disabled {
-  cursor: default;
-  opacity: 0;
+.sb-tree-caret:hover {
+  color: var(--ink);
 }
 
 .sb-tree-link {
@@ -596,55 +587,135 @@
   gap: 7px;
   flex: 1;
   min-width: 0;
-  height: 100%;
-  color: var(--ink);
+  color: inherit;
   font-size: 12.5px;
 }
 
 .sb-tree-link:hover {
   text-decoration: none;
+  color: inherit;
 }
 
-.sb-tree-link i {
-  color: var(--gold-lite);
+.sb-tree-link > i {
+  font-size: 14px;
   flex: none;
 }
 
 .sb-tree-name {
+  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  flex: 1;
 }
 
 .sb-tree-count {
-  font-size: 11px;
-  color: var(--faint);
+  font-size: 10.5px;
+  color: var(--muted);
   flex: none;
 }
 
-.sb-tag-phase {
-  font-size: 9.5px;
-  text-transform: uppercase;
+/* The draft indents a child *container*, not each row. */
+.sb-tree-children {
+  padding-left: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+/* Nocturne's signature: dividers that fade to transparent at their ends. */
+.sb-tree-divider {
+  height: 1px;
+  margin: 12px 4px;
+  background: linear-gradient(to right, transparent, var(--line), transparent);
+}
+
+.sb-tree-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.sb-tree-filter {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 8px;
+  font-size: 12.5px;
+  color: var(--muted);
+  opacity: 0.75;
+}
+
+.sb-tree-filter > i {
+  font-size: 14px;
+}
+
+.sb-tree-phase {
+  margin-left: auto;
+  font-size: 9px;
   letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--faint);
   border: 1px solid var(--line-2);
   border-radius: 4px;
   padding: 1px 4px;
-  margin-left: auto;
 }
 
-/* toolbar + table */
+/* -- centre pane (draft line 228) -- */
 
-.sb-lib-toolbar {
+.sb-lib-centre {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sb-lib-bar {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 18px;
+  padding: 14px 22px;
   border-bottom: 1px solid var(--line);
 }
 
+.sb-lib-bar-spacer {
+  flex: 1;
+}
+
+.sb-crumbs {
+  font-size: 12.5px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sb-crumb-sep {
+  color: var(--faint);
+  margin: 0 5px;
+}
+
+.sb-crumb-here {
+  color: var(--ink);
+}
+
+.sb-lib-seg {
+  font-size: 12px;
+  flex: none;
+}
+
+.sb-lib-seg .seg-opt {
+  padding: 5px 11px;
+}
+
+.sb-lib-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 6px 22px 22px;
+}
+
 .sb-doc-table {
+  font-size: 13px;
   width: 100%;
 }
 
@@ -663,13 +734,18 @@
 .sb-doc-name {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   min-width: 0;
 }
 
-.sb-doc-name i {
-  color: var(--gold-lite);
+.sb-doc-name > i.ph-file-doc {
+  font-size: 16px;
+  color: var(--faint);
   flex: none;
+}
+
+.sb-cell-faint {
+  color: var(--faint);
 }
 
 .sb-struck {
@@ -682,12 +758,13 @@
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  padding: 48px 20px;
+  padding: 56px 20px;
   text-align: center;
   color: var(--muted);
+  font-size: 12.5px;
 }
 
-.sb-empty i {
+.sb-empty > i {
   font-size: 22px;
   color: var(--faint);
 }
@@ -696,26 +773,49 @@
   margin: 0;
 }
 
-/* detail pane */
+/* -- right pane (draft line 259) -- */
+
+.sb-lib-detail {
+  width: 290px;
+  flex: none;
+  border-left: 1px solid var(--line);
+  padding: 18px;
+  overflow: auto;
+}
+
+.sb-detail-kicker {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
 
 .sb-detail-title {
-  font-size: 16px;
-  font-weight: 600;
-  margin: 4px 0 4px;
+  font-size: 17px;
+  font-weight: 500;
+  margin-top: 9px;
+  letter-spacing: -0.01em;
   line-height: 1.3;
 }
 
 .sb-detail-meta {
   font-size: 11.5px;
-  color: var(--muted);
-  margin-bottom: 14px;
+  color: var(--faint);
+  margin-top: 4px;
 }
 
-.sb-detail-facts {
-  margin: 0 0 16px;
+.sb-detail-tags {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.sb-facts {
+  margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
 }
 
 .sb-fact {
@@ -727,25 +827,64 @@
 
 .sb-fact dt {
   color: var(--faint);
-  width: 92px;
+  width: 88px;
   flex: none;
 }
 
 .sb-fact dd {
   margin: 0;
+  color: var(--ink);
 }
 
-.sb-detail-actions {
+.sb-detail-note {
+  font-size: 11px;
+  color: var(--faint);
+  line-height: 1.55;
+  margin: 12px 0 0;
+}
+
+/* The draft's card slot, stated as empty rather than filled with invented data. */
+.sb-detail-empty-claims {
+  padding: 10px 11px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: var(--faint);
+  line-height: 1.5;
+}
+
+.sb-detail-btn {
+  margin-top: 16px;
+  height: 32px;
+  font-size: 12.5px;
+  gap: 7px;
+}
+
+.sb-detail-blank {
   display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 8px;
-  margin-bottom: 18px;
+  padding-top: 72px;
+  color: var(--faint);
+  font-size: 12px;
+  text-align: center;
+}
+
+.sb-detail-blank > i {
+  font-size: 24px;
+}
+
+.sb-detail-blank p {
+  margin: 0;
 }
 
 .sb-detail-ids {
   margin-top: 18px;
   padding-top: 12px;
   border-top: 1px solid var(--line);
-  font-size: 10.5px;
+  font-size: 10px;
   display: flex;
   flex-direction: column;
   gap: 4px;
