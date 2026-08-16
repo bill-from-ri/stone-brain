@@ -68,15 +68,26 @@ Three properties this buys:
 
 ## Labels the parser accepts
 
-Era and year are required; month and day are optional. Case, punctuation, and word order are all
+A year is required; era, month and day are optional. Case, punctuation, and word order are all
 flexible.
 
 ```
 AD 412                    412 AD             A.D. 412
 BD 50                     50 BD
+412                       month 4, 412       day 12, month 4, 412
 month 4, AD 412           4th month of AD 412        fourth month, 412 AD
 day 12, month 4, AD 412   AD 412-04-12               AD 412-04
+3rd century               third century AD           the 3rd century BD
 ```
+
+**A missing era means AD.** Nevlos is written almost entirely after the Doom, so refusing a bare
+`412` would reject the common case to guard the rare one. The cost is that any number in a date
+field now reads as a year — which is what a date field is for.
+
+**Centuries are a supported granularity**, resolving to the century's earliest year by the same
+rule as any other imprecise date: `3rd century` → AD 201 → ordinal **200.0**. In BD the earliest
+year is the *larger* one, so `3rd century BD` → BD 300 → ordinal **−300.0**. A century cannot
+carry a month or a day; `month 4 of the 3rd century` is not a date and does not parse.
 
 A label that cannot be parsed is **still stored**, with a null ordinal. It is unordered, not
 lost — the same rule ADR §7a applies to vanished source documents. Nothing about a claim depends
@@ -87,12 +98,15 @@ Word order is free — `"AD 412, month 11, day 5"`, `"5th day, 11th month, AD 41
 editing, because a mis-bound number produces an entirely plausible wrong date rather than an
 obvious failure; it is covered by tests in `calendar.test.ts`.
 
-Two things are refused rather than guessed at:
+Three things are refused rather than guessed at:
 
 - **Ranges.** `"AD 400–412"` parses to nothing. A claim spanning a period should use `start_time`
   and `end_time`, which is what they are for.
 - **A day without a month.** `"day 12, AD 412"` is not a locatable date, so it reads as
   unparseable rather than silently dropping to the year.
+- **An era-less label where every number is spoken for.** `"412 month 11 day 5"` has no anchor and
+  three numbers each touching a unit word; with no era to fix the year, guessing would produce a
+  plausible wrong date. With an era present the same label reads fine.
 
 ## Why the ordinal is derived, never written
 

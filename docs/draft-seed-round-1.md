@@ -12,8 +12,12 @@ almost nothing about the 80% built for people and politics. Weigh its evidence a
 
 ---
 
-**Status:** §1–§7 are settled and **already in `registry.ts` and the database** (migrations 0003,
-0004; `npm run db:seed`). §8, the world data itself, is not written yet.
+**Status: written.** §1–§7 are in `registry.ts` and the database (migrations 0003, 0004;
+`npm run db:seed`). §8 is loaded — **29 entities, 28 claims, 28 sourced quotes**, all linked to the
+document row, via `npm run db:seed:world`. The calendar extensions are done too, so
+`3rd century` stored as a label with ordinal **200.0** rather than being hand-converted.
+
+The data lives in `src/lib/ontology/seed-world.ts`; re-running the loader is a no-op.
 
 ## 1. Decisions taken
 
@@ -185,7 +189,7 @@ none of which anything referenced — the first live exercise of the prune-if-un
 
 ## 8. The seed itself
 
-**Not written yet.** Revised for decisions 11–17.
+Written. Counts below match the database.
 
 ### Entities (28)
 
@@ -211,7 +215,8 @@ Great Steppe, Merovia, Agyros
 
 ### Claims
 
-Each carries a `claim_sources` row with its quote and paragraph index. Inferences are marked ⚠.
+Each carries a `claim_sources` row with its quote and paragraph index. Six are readings rather
+than quotes; each records why in an `inferred` field in the seed file, and `--dry` prints them.
 
 | ¶ | Claim |
 | --- | --- |
@@ -219,7 +224,7 @@ Each carries a `claim_sources` row with its quote and paragraph index. Inference
 | 3 | `Dragon's Shroud —located_in→ Elduin` — "centered on"; approximate |
 | 3 | `Elduin landform = island` |
 | 3 | `Syrath species = dragon` |
-| 3 | ⚠ `Syrath vital_status = dead` — inferred from "final moments" |
+| 3 | `Syrath vital_status = dead` — inferred from "final moments" |
 | 3 | `Vaski species = giant` |
 | 5 | `Frost Gulf landform = gulf` — **no climate**, it is water |
 | 5 | `Runara climate = temperate_rainforest` |
@@ -227,8 +232,8 @@ Each carries a `claim_sources` row with its quote and paragraph index. Inference
 | 7 | `Zada Mountains —located_in→ Enua`, `Zada Mountains landform = mountain_range` |
 | 7 | `Orosh Mountains —located_in→ Enua`, `Orosh Mountains landform = mountain_range` |
 | 7 | `Lagetan Basin —located_in→ Enua`, `Lagetan Basin landform = basin` |
-| 7 | ⚠ `Lagetan Basin —produces→ Grain` — "a bread basket"; would add the only commodity |
-| 7 | `Enu Conquests` with `start_time = "AD 201"`, `end_time = "AD 300"` — from "3rd century" |
+| 7 | `Lagetan Basin —produces→ Grain` — "a bread basket"; the seed's only commodity |
+| 7 | `Enu Conquests occurred_on = "3rd century"` — stored verbatim, ordinal 200.0 |
 | 9 | `Ipherian Sea landform = sea` |
 | 9 | `Ipherian Empire —rules→ Ipherian Sea`, ended — "once united by" |
 | 11 | `Ephria landform = continent` |
@@ -236,13 +241,13 @@ Each carries a `claim_sources` row with its quote and paragraph index. Inference
 | 13 | *(Kovnia: no climate yet, and no economy — the state ruling it is undefined)* |
 | 15 | `Akál landform = archipelago` |
 | 15 | `Tavilaga —rules→ Akál`, ended — "were once united by" |
-| 15 | ⚠ `Tavilaga economy = maritime` — from "the mighty seafaring empire" |
+| 15 | `Tavilaga economy = maritime` — from "the mighty seafaring empire" |
 | 17 | `Central Plain landform = plain` |
 | 17 | `Central Empire —rules→ Central Plain` |
 | 19 | `Great Steppe landform = plateau`, `Great Steppe climate = steppe` |
 | all | `description` on each entity |
 
-Roughly **30 claims across 28 entities** — thinner than the first pass, because moving `economy`
+**28 claims across 29 entities** — thinner than the first pass, because moving `economy`
 onto societies removed four claims this document cannot support. That is the decision working
 correctly, not a loss.
 

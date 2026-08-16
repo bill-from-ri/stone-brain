@@ -26,7 +26,7 @@ This phase has two parts: building the ontology and AI-powered Claim generation.
 For claims to be made, we need to have the ontology in place first. This will include an entity matcher helper that we can use to normalize outputs from the LLM in our Claim Generation step.
 
 - [x] Set up PSQL DB  
-- [ ] Seed with starting Entities and Claims (link to documents)  
+- [x] Seed with starting Entities and Claims (link to documents)  
 - [ ] Create basic entity matcher function  
 - [ ] Wire up Claims––both table and graph views––on frontend to visualize everything (users should have the ability to define and edit Claims via the frontend)
 

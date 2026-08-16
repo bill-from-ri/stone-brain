@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   DAYS_PER_YEAR,
   MONTHS_PER_YEAR,
+  centuryStartYear,
   daysBeforeMonth,
   daysInMonth,
   formatWorldDate,
@@ -26,6 +27,15 @@ describe('the year', () => {
 })
 
 describe('ordinals', () => {
+  it('places a century at its earliest year, in both directions', () => {
+    // AD 3rd century covers AD 201–300; BD 3rd century covers BD 300–201, and
+    // its earliest moment is the *larger* BD year.
+    expect(toOrdinal({ era: 'AD', century: 3, year: centuryStartYear('AD', 3) })).toBe(200)
+    expect(toOrdinal({ era: 'BD', century: 3, year: centuryStartYear('BD', 3) })).toBe(-300)
+    expect(centuryStartYear('AD', 1)).toBe(1)
+    expect(centuryStartYear('BD', 1)).toBe(100)
+  })
+
   it('anchors AD 1 at zero and BD 1 immediately before it — there is no year zero', () => {
     expect(toOrdinal({ era: 'AD', year: 1 })).toBe(0)
     expect(toOrdinal({ era: 'BD', year: 1 })).toBe(-1)
@@ -63,6 +73,7 @@ describe('ordinals', () => {
       'month 4, AD 412',
       'BD 1, month 11',
       'AD 412',
+      '3rd century',
     ]
     const sorted = [...labels].sort((a, b) => ordinalFor(a)! - ordinalFor(b)!)
 
@@ -70,6 +81,7 @@ describe('ordinals', () => {
       'BD 50',
       'BD 1, month 11',
       'AD 1',
+      '3rd century',
       'AD 412',
       'month 4, AD 412',
       'AD 412, month 11, day 5',
@@ -97,6 +109,15 @@ describe('parsing', () => {
     ['month 11, day 5, AD 412', { era: 'AD', year: 412, month: 11, day: 5 }],
     ['AD 412-04-12', { era: 'AD', year: 412, month: 4, day: 12 }],
     ['AD 412-04', { era: 'AD', year: 412, month: 4 }],
+    // A bare year means AD: Nevlos is written almost entirely after the Doom,
+    // so refusing this would reject the common case to guard the rare one.
+    ['412', { era: 'AD', year: 412 }],
+    ['month 4, 412', { era: 'AD', year: 412, month: 4 }],
+    ['day 12, month 4, 412', { era: 'AD', year: 412, month: 4, day: 12 }],
+    ['3rd century', { era: 'AD', century: 3, year: 201 }],
+    ['third century AD', { era: 'AD', century: 3, year: 201 }],
+    ['the 3rd century BD', { era: 'BD', century: 3, year: 300 }],
+    ['century 3', { era: 'AD', century: 3, year: 201 }],
   ]
 
   for (const [label, expected] of cases) {
@@ -115,8 +136,9 @@ describe('parsing', () => {
 describe('parsing refuses rather than guessing', () => {
   const rejected = [
     ['', 'empty'],
-    ['412', 'no era'],
     ['the winter after the Sundering', 'prose'],
+    ['month 4 of the 3rd century', 'a month inside a century is not a date'],
+    ['412 month 11 day 5', 'no era, and every number is claimed by a unit word'],
     ['sometime in the fourth month', 'no year or era'],
     ['AD 400 to AD 412', 'a range'],
     ['AD 400–412', 'a range with an en dash'],
