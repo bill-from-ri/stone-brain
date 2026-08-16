@@ -10,7 +10,6 @@ import {
   getDocuments,
   getFolderDocCounts,
   getFolderTree,
-  getRemovedCount,
   getSyncStatus,
 } from '@/db/queries/library'
 import { requireReady } from '@/lib/auth/guard'
@@ -23,19 +22,17 @@ export default async function LibraryFolderPage({
   searchParams,
 }: {
   params: Promise<{ folderId: string }>
-  searchParams: Promise<{ doc?: string; removed?: string }>
+  searchParams: Promise<{ doc?: string }>
 }) {
   const session = await requireReady()
   const { folderId } = await params
-  const { doc: selectedDocId, removed } = await searchParams
-  const showRemoved = removed === '1'
+  const { doc: selectedDocId } = await searchParams
   const userId = session.user.id
 
-  const [tree, docCounts, allDocuments, removedCount, syncStatus] = await Promise.all([
+  const [tree, docCounts, documents, syncStatus] = await Promise.all([
     getFolderTree(userId),
     getFolderDocCounts(userId),
-    getDocuments(userId, folderId, { includeRemoved: showRemoved }),
-    getRemovedCount(userId, folderId),
+    getDocuments(userId, folderId),
     getSyncStatus(userId),
   ])
 
@@ -68,12 +65,9 @@ export default async function LibraryFolderPage({
           activeFolderId={folderId}
         />
         <DocumentTable
-          documents={allDocuments}
+          documents={documents}
           breadcrumb={breadcrumb}
           selectedDriveFileId={selectedDocId ?? null}
-          showRemoved={showRemoved}
-          removedCount={removedCount}
-          liveCount={allDocuments.filter((d) => !d.removedAt).length}
           indexing={!(syncStatus?.initialCrawlDone ?? false)}
         />
         <DetailPane doc={selectedDoc} />

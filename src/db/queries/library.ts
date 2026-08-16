@@ -1,5 +1,5 @@
 import 'server-only'
-import { and, asc, count, eq, ilike, isNotNull, isNull } from 'drizzle-orm'
+import { and, asc, count, eq, ilike, isNull } from 'drizzle-orm'
 import { db } from '@/db'
 import { documents, folders, syncState } from '@/db/schema'
 
@@ -90,23 +90,17 @@ export type DocumentRow = {
 /**
  * Documents directly inside one folder.
  *
- * `includeRemoved` powers the "Removed" toggle. Removed rows are soft-deleted
- * (decisions §7a) and still carry their uuid, so a document moved out of the
- * root and back keeps its identity — which is what Phase 2's claims will hang off.
+ * Soft-deleted rows are never returned. The Library shows what is in your Drive
+ * folder now; a document that left it is not in your library, and the tombstone
+ * exists for the claim graph rather than for this table (decisions §7a).
+ *
+ * The row itself survives, keeping its uuid, so a document moved out of the root
+ * and back keeps the identity Phase 2's claims hang off.
  */
 export async function getDocuments(
   userId: string,
   folderDriveId: string,
-  opts: { includeRemoved?: boolean } = {},
 ): Promise<DocumentRow[]> {
-  const where = opts.includeRemoved
-    ? and(eq(documents.userId, userId), eq(documents.parentDriveFolderId, folderDriveId))
-    : and(
-        eq(documents.userId, userId),
-        eq(documents.parentDriveFolderId, folderDriveId),
-        isNull(documents.removedAt),
-      )
-
   return db
     .select({
       id: documents.id,
@@ -123,10 +117,23 @@ export async function getDocuments(
       sizeBytes: documents.sizeBytes,
     })
     .from(documents)
-    .where(where)
+    .where(
+      and(
+        eq(documents.userId, userId),
+        eq(documents.parentDriveFolderId, folderDriveId),
+        isNull(documents.removedAt),
+      ),
+    )
     .orderBy(asc(documents.name))
 }
 
+/**
+ * One document for the detail pane.
+ *
+ * Also excludes soft-deleted rows, so a stale `?doc=` link to something that has
+ * since left the folder opens nothing rather than a pane describing a document
+ * the table beside it cannot show.
+ */
 export async function getDocument(
   userId: string,
   driveFileId: string,
@@ -147,7 +154,13 @@ export async function getDocument(
       sizeBytes: documents.sizeBytes,
     })
     .from(documents)
-    .where(and(eq(documents.userId, userId), eq(documents.driveFileId, driveFileId)))
+    .where(
+      and(
+        eq(documents.userId, userId),
+        eq(documents.driveFileId, driveFileId),
+        isNull(documents.removedAt),
+      ),
+    )
     .limit(1)
 
   return rows[0] ?? null
@@ -201,20 +214,6 @@ export async function searchDocuments(
     )
     .orderBy(asc(documents.name))
     .limit(limit)
-}
-
-export async function getRemovedCount(userId: string, folderDriveId: string): Promise<number> {
-  const rows = await db
-    .select({ n: count() })
-    .from(documents)
-    .where(
-      and(
-        eq(documents.userId, userId),
-        eq(documents.parentDriveFolderId, folderDriveId),
-        isNotNull(documents.removedAt),
-      ),
-    )
-  return rows[0]?.n ?? 0
 }
 
 export type SyncStatus = {

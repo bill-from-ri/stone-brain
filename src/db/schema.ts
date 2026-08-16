@@ -233,6 +233,13 @@ export const folders = pgTable(
   ],
 )
 
+/**
+ * Note the label mismatch: `'unread'` renders as **"Unverified"** in the UI.
+ * The stored value is deliberately left alone — renaming it is a migration, and
+ * the display name is presentation. Phase 2 should render these from a single
+ * status→label map rather than the current hardcoded tag, which shows
+ * "Unverified" on every row regardless of the column.
+ */
 export type DocumentStatus = 'unread' | 'extracted' | 'verified'
 
 export const documents = pgTable(

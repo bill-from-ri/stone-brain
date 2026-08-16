@@ -7,9 +7,10 @@ import type { DocumentRow } from '@/db/queries/library'
 /**
  * The Library's centre pane, ported from the prototype (lines 228-257).
  *
- * The draft's layout: a breadcrumb bar with a segmented filter on the right,
- * then the table. The "Check folder" button from the draft is deliberately
- * omitted — it belongs to Phase 3.
+ * The draft's layout: a breadcrumb bar, then the table. The draft's "Check
+ * folder" button is deliberately omitted — it belongs to Phase 3 — as is its
+ * All/Removed filter, since soft-deleted documents are no longer shown here at
+ * all (decisions §7a).
  *
  * Claims / Last checked / Conflicts render as em-dashes, matching the draft's
  * own "Never checked" rows. A zero would claim we looked and found none.
@@ -18,17 +19,11 @@ export function DocumentTable({
   documents,
   breadcrumb,
   selectedDriveFileId,
-  showRemoved,
-  removedCount,
-  liveCount,
   indexing,
 }: {
   documents: DocumentRow[]
   breadcrumb: string[]
   selectedDriveFileId: string | null
-  showRemoved: boolean
-  removedCount: number
-  liveCount: number
   indexing: boolean
 }) {
   const router = useRouter()
@@ -54,40 +49,11 @@ export function DocumentTable({
             </span>
           ))}
         </div>
-
-        <div className="sb-lib-bar-spacer" />
-
-        {/*
-          Nocturne styles the active segment with `.seg-opt:has(input:checked)`
-          and visually hides the input itself, so the label-wrapping-a-radio
-          structure from the draft is load-bearing: a <button> with a modifier
-          class gets no highlight at all.
-        */}
-        <div className="seg sb-lib-seg">
-          <label className="seg-opt">
-            <input
-              type="radio"
-              name="libf"
-              checked={!showRemoved}
-              onChange={() => setParam((p) => (p.delete('removed'), p.delete('doc')))}
-            />
-            All {liveCount}
-          </label>
-          <label className="seg-opt">
-            <input
-              type="radio"
-              name="libf"
-              checked={showRemoved}
-              onChange={() => setParam((p) => (p.set('removed', '1'), p.delete('doc')))}
-            />
-            Removed {removedCount}
-          </label>
-        </div>
       </div>
 
       <div className="sb-lib-table-wrap">
         {documents.length === 0 ? (
-          <EmptyState indexing={indexing} removed={showRemoved} />
+          <EmptyState indexing={indexing} />
         ) : (
           <table className="table sb-doc-table">
             <thead>
@@ -109,21 +75,7 @@ export function DocumentTable({
                   <td>
                     <div className="sb-doc-name">
                       <i className="ph ph-file-doc" />
-                      <span className={doc.removedAt ? 'sb-struck' : undefined}>{doc.name}</span>
-                      {doc.removedAt && (
-                        <i
-                          className="ph-bold ph-arrow-square-out"
-                          style={{ color: 'var(--bad)', fontSize: 13 }}
-                          title="No longer in your library folder"
-                        />
-                      )}
-                      {doc.trashed && !doc.removedAt && (
-                        <i
-                          className="ph-bold ph-trash"
-                          style={{ color: 'var(--bad)', fontSize: 13 }}
-                          title="In Drive trash"
-                        />
-                      )}
+                      <span>{doc.name}</span>
                     </div>
                   </td>
                   <td className="sb-cell-faint">—</td>
@@ -144,23 +96,13 @@ export function DocumentTable({
   )
 }
 
-function EmptyState({ indexing, removed }: { indexing: boolean; removed: boolean }) {
+function EmptyState({ indexing }: { indexing: boolean }) {
   if (indexing) {
     return (
       <div className="sb-empty">
         <i className="ph ph-circle-notch" />
         <p>Indexing your folder…</p>
         <p className="sb-faint">Documents appear here as they are found.</p>
-      </div>
-    )
-  }
-  if (removed) {
-    return (
-      <div className="sb-empty">
-        <p>Nothing has been removed from this folder.</p>
-        <p className="sb-faint">
-          Documents moved out of your library folder are kept here rather than deleted.
-        </p>
       </div>
     )
   }

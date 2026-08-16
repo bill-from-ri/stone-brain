@@ -32,16 +32,6 @@ function DetailBody({ doc }: { doc: DocumentRow }) {
 
       <div className="sb-detail-tags">
         <span className="tag tag-neutral">Unverified</span>
-        {doc.removedAt && (
-          <span className="tag" style={{ background: 'var(--bad-dim)', color: '#e08c86' }}>
-            Removed from folder
-          </span>
-        )}
-        {doc.trashed && !doc.removedAt && (
-          <span className="tag" style={{ background: 'var(--bad-dim)', color: '#e08c86' }}>
-            In trash
-          </span>
-        )}
       </div>
 
       <div className="sb-tree-divider" style={{ margin: '16px 0' }} />
@@ -56,13 +46,6 @@ function DetailBody({ doc }: { doc: DocumentRow }) {
         <Fact label="Size" value={doc.sizeBytes !== null ? formatSize(doc.sizeBytes) : '—'} />
         <Fact label="Drive version" value={doc.driveVersion?.toString() ?? '—'} />
       </dl>
-
-      {doc.removedAt && (
-        <p className="sb-detail-note">
-          This document is no longer in your library folder. It is kept rather than deleted — move
-          it back in Drive and it returns automatically.
-        </p>
-      )}
 
       <div className="sb-tree-divider" style={{ margin: '16px 0' }} />
 

@@ -294,8 +294,12 @@ Follow-on decisions:
   Either a `folders` table or a self-referencing `parent_id` on a unified nodes table.
 - Files moved out of the root are treated as deleted from the Library (soft-delete, so their
   claims survive and can be flagged — see §7a).
-- **One world per user, for now.** The prototype's "Nevlos" subtitle stays a static label
-  rather than a switcher. Carry a nullable `workspace_id` on domain rows anyway: it costs
+- **One world per user, for now.** ~~The prototype's "Nevlos" subtitle stays a static label
+  rather than a switcher.~~ **Superseded (2026-08-15):** the subtitle is gone from the shell
+  entirely — nav rail, Home, and Library. The root folder is the user's own project name, not
+  the product's, and repeating it under every heading was noise rather than orientation. It
+  still appears where it is content rather than chrome: the Home screen's folder heading and
+  the Library breadcrumb. Carry a nullable `workspace_id` on domain rows anyway: it costs
   nothing now and is expensive to retrofit if a world switcher ever arrives.
 - **No world sharing.** A world has exactly one member, so the permission model is a plain
   `user_id` check on every query. No membership table, no roles, no invitations.
@@ -380,6 +384,37 @@ Implications:
 
 This conflict type is cheap to implement and does not need to wait for Phase 3, since it
 requires no contradiction detection — just a foreign key check during sync.
+
+### Correction (2026-08-15): the Library does not surface removed documents
+
+Phase 1 shipped an **All / Removed** segmented filter in the Library toolbar, per folder, which
+revealed soft-deleted rows in place. **Removed.** The flag on the claim is now the *only*
+user-facing surface for a vanished document; nothing in the Library shows tombstones.
+
+Three reasons, in order of weight:
+
+1. **It surfaced the wrong object.** A soft-deleted Phase 1 row carries only Drive metadata that
+   Drive itself holds more accurately. What is actually at risk when a document vanishes is the
+   *claims that cite it*, and this section already routes those to Conflicts. A tombstone list
+   in the Library is a second, weaker answer to a question §7a had already answered better.
+2. **The per-folder framing could not express the worst case.** When a *folder* leaves the root,
+   the cascade in §13 marks the folder removed too — so it drops out of `getFolderTree`, its URL
+   404s, and the documents under it became unreachable from the UI entirely. The toggle failed
+   precisely where the most was at stake.
+3. **It was empty almost always**, and cost toolbar space, a URL parameter, and a query on every
+   folder render to say so.
+
+**What did not change:** the soft-delete itself. `removed_at` is still set by all four paths
+(change-feed removal, trash, move-out cascade, reconciliation sweep), rows are still never hard
+-deleted, and restore-on-return via the `(user_id, drive_file_id)` unique index still works
+untouched. The mechanism is load-bearing for the claim graph; only its Library rendering is gone.
+
+Consequently `getDocuments` and `getDocument` both filter `removed_at IS NULL`, so a stale
+`?doc=` link opens nothing rather than describing a document the table beside it cannot show.
+
+If a tombstone view is ever wanted again, it should be **library-wide** — one list across all
+folders, driven off `removed_at IS NOT NULL` — which is immune to reason 2 by construction, and
+belongs next to Conflicts rather than in the Library toolbar.
 
 ---
 
@@ -475,7 +510,8 @@ reading the schema it is given.
 
 OAuth scope resolved by spike — `drive.readonly`, unverified Production (§2) · one world per
 user (§5) · no sharing, plain `user_id` scoping (§5) · vanished source documents always
-surface as conflicts (§7a) · $0/month budget (§8) · all-TypeScript on Vercel, Python service
+surface as conflicts, and *only* as conflicts — the Library shows no tombstones (§7a) ·
+$0/month budget (§8) · all-TypeScript on Vercel, Python service
 dropped (§8) · assistant exports Markdown rather than writing to Drive (§10) · CASA
 deprioritised, 100-user cap accepted (§9) · bring-your-own-provider for inference (§11).
 

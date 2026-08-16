@@ -159,11 +159,6 @@
   padding: 16px 14px 14px;
 }
 
-.sb-rail-name {
-  flex: 1;
-  min-width: 0;
-}
-
 .sb-rail-collapse {
   width: 24px;
   height: 24px;
@@ -187,6 +182,8 @@
    is the mark. Collapsed, the toggle is the only thing left in this row. */
 
 .sb-rail-name {
+  flex: 1;
+  min-width: 0;
   font-size: 14px;
   font-weight: 500;
   letter-spacing: -0.01em;
@@ -853,10 +850,6 @@
   border-bottom: 1px solid var(--line);
 }
 
-.sb-lib-bar-spacer {
-  flex: 1;
-}
-
 .sb-crumbs {
   font-size: 12.5px;
   color: var(--muted);
@@ -872,28 +865,6 @@
 
 .sb-crumb-here {
   color: var(--ink);
-}
-
-.sb-lib-seg {
-  font-size: 12px;
-  flex: none;
-}
-
-.sb-lib-seg .seg-opt {
-  padding: 5px 11px;
-}
-
-/* Nocturne marks the active segment with a square 1px inset ring, which the
-   .seg's own rounded overflow:hidden then shears at the ends. Round the end
-   caps to match — inset by the 1px border the ring sits inside. */
-.sb-lib-seg .seg-opt:first-child {
-  border-radius: calc(var(--radius-md) - 1px) 0 0 calc(var(--radius-md) - 1px);
-}
-.sb-lib-seg .seg-opt:last-child {
-  border-radius: 0 calc(var(--radius-md) - 1px) calc(var(--radius-md) - 1px) 0;
-}
-.sb-lib-seg .seg-opt:only-child {
-  border-radius: calc(var(--radius-md) - 1px);
 }
 
 .sb-lib-table-wrap {
@@ -935,11 +906,6 @@
 
 .sb-cell-faint {
   color: var(--faint);
-}
-
-.sb-struck {
-  text-decoration: line-through;
-  color: var(--muted);
 }
 
 .sb-empty {
