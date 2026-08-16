@@ -22,7 +22,6 @@ export function DocumentTable({
   removedCount,
   liveCount,
   indexing,
-  query,
 }: {
   documents: DocumentRow[]
   breadcrumb: string[]
@@ -31,7 +30,6 @@ export function DocumentTable({
   removedCount: number
   liveCount: number
   indexing: boolean
-  query: string
 }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -89,7 +87,7 @@ export function DocumentTable({
 
       <div className="sb-lib-table-wrap">
         {documents.length === 0 ? (
-          <EmptyState indexing={indexing} filtered={Boolean(query)} removed={showRemoved} />
+          <EmptyState indexing={indexing} removed={showRemoved} />
         ) : (
           <table className="table sb-doc-table">
             <thead>
@@ -146,28 +144,13 @@ export function DocumentTable({
   )
 }
 
-function EmptyState({
-  indexing,
-  filtered,
-  removed,
-}: {
-  indexing: boolean
-  filtered: boolean
-  removed: boolean
-}) {
+function EmptyState({ indexing, removed }: { indexing: boolean; removed: boolean }) {
   if (indexing) {
     return (
       <div className="sb-empty">
         <i className="ph ph-circle-notch" />
         <p>Indexing your folder…</p>
         <p className="sb-faint">Documents appear here as they are found.</p>
-      </div>
-    )
-  }
-  if (filtered) {
-    return (
-      <div className="sb-empty">
-        <p>No documents match that search.</p>
       </div>
     )
   }

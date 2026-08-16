@@ -23,13 +23,12 @@ export default async function LibraryFolderPage({
   searchParams,
 }: {
   params: Promise<{ folderId: string }>
-  searchParams: Promise<{ doc?: string; removed?: string; q?: string }>
+  searchParams: Promise<{ doc?: string; removed?: string }>
 }) {
   const session = await requireReady()
   const { folderId } = await params
-  const { doc: selectedDocId, removed, q } = await searchParams
+  const { doc: selectedDocId, removed } = await searchParams
   const showRemoved = removed === '1'
-  const query = (q ?? '').trim()
   const userId = session.user.id
 
   const [tree, docCounts, allDocuments, removedCount, syncStatus] = await Promise.all([
@@ -44,10 +43,6 @@ export default async function LibraryFolderPage({
   // the root. Either way it is not ours to render.
   const activeFolder = tree.find((f) => f.driveFolderId === folderId)
   if (!activeFolder) notFound()
-
-  const documents = query
-    ? allDocuments.filter((d) => d.name.toLowerCase().includes(query.toLowerCase()))
-    : allDocuments
 
   const selectedDoc = selectedDocId ? await getDocument(userId, selectedDocId) : null
 
@@ -73,14 +68,13 @@ export default async function LibraryFolderPage({
           activeFolderId={folderId}
         />
         <DocumentTable
-          documents={documents}
+          documents={allDocuments}
           breadcrumb={breadcrumb}
           selectedDriveFileId={selectedDocId ?? null}
           showRemoved={showRemoved}
           removedCount={removedCount}
           liveCount={allDocuments.filter((d) => !d.removedAt).length}
           indexing={!(syncStatus?.initialCrawlDone ?? false)}
-          query={query}
         />
         <DetailPane doc={selectedDoc} />
       </div>

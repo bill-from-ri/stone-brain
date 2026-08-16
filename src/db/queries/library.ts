@@ -1,5 +1,5 @@
 import 'server-only'
-import { and, asc, count, eq, isNotNull, isNull } from 'drizzle-orm'
+import { and, asc, count, eq, ilike, isNotNull, isNull } from 'drizzle-orm'
 import { db } from '@/db'
 import { documents, folders, syncState } from '@/db/schema'
 
@@ -151,6 +151,56 @@ export async function getDocument(
     .limit(1)
 
   return rows[0] ?? null
+}
+
+export type SearchHit = {
+  driveFileId: string
+  name: string
+  /** Where to navigate to show it: the folder whose table contains this row. */
+  parentDriveFolderId: string | null
+  /** The folder's stored path, e.g. '/Nevlos/History'. Null for orphans. */
+  folderPath: string | null
+}
+
+/**
+ * Name search across the whole library, for the header's typeahead.
+ *
+ * Removed documents are excluded: the dropdown navigates to a folder view, and
+ * the default view of that folder would not contain the row it just sent you to.
+ */
+export async function searchDocuments(
+  userId: string,
+  query: string,
+  limit = 12,
+): Promise<SearchHit[]> {
+  // The caller's text is a literal, not a pattern. Escaping is what keeps a
+  // stray '%' from turning into "match everything".
+  const escaped = query.replace(/([\\%_])/g, '\\$1')
+
+  return db
+    .select({
+      driveFileId: documents.driveFileId,
+      name: documents.name,
+      parentDriveFolderId: documents.parentDriveFolderId,
+      folderPath: folders.path,
+    })
+    .from(documents)
+    .leftJoin(
+      folders,
+      and(
+        eq(folders.userId, documents.userId),
+        eq(folders.driveFolderId, documents.parentDriveFolderId),
+      ),
+    )
+    .where(
+      and(
+        eq(documents.userId, userId),
+        isNull(documents.removedAt),
+        ilike(documents.name, `%${escaped}%`),
+      ),
+    )
+    .orderBy(asc(documents.name))
+    .limit(limit)
 }
 
 export async function getRemovedCount(userId: string, folderDriveId: string): Promise<number> {

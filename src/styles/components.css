@@ -139,6 +139,17 @@
   flex-direction: column;
   background: var(--surface);
   border-right: 1px solid var(--line);
+  overflow: hidden;
+}
+
+/* data-ready is set after the stored preference is restored, so a rail that
+   loads collapsed simply *is* collapsed instead of animating shut on arrival. */
+.sb-rail[data-ready='true'] {
+  transition: width 190ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.sb-rail[data-collapsed='true'] {
+  width: 58px;
 }
 
 .sb-rail-brand {
@@ -148,24 +159,41 @@
   padding: 16px 14px 14px;
 }
 
-.sb-rail-mark {
-  width: 26px;
-  height: 26px;
+.sb-rail-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.sb-rail-collapse {
+  width: 24px;
+  height: 24px;
   flex: none;
-  border-radius: 6px;
-  border: 1px solid var(--gold-line);
   display: grid;
   place-items: center;
-  color: var(--gold-lite);
-  background: var(--gold-dim);
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
   font-size: 15px;
 }
+
+.sb-rail-collapse:hover {
+  background: var(--panel);
+  color: var(--ink);
+}
+
+/* The prototype's gold brain glyph sat left of the wordmark. Dropped: the name
+   is the mark. Collapsed, the toggle is the only thing left in this row. */
 
 .sb-rail-name {
   font-size: 14px;
   font-weight: 500;
   letter-spacing: -0.01em;
   line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* The prototype's second brand line named the Drive folder. Removed: the folder
@@ -201,6 +229,19 @@
 .sb-rail-item i {
   font-size: 16px;
   width: 16px;
+  flex: none;
+}
+
+.sb-rail-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sb-rail-phase {
+  font-size: 10px;
+  color: var(--faint);
 }
 
 .sb-rail-item:hover {
@@ -244,6 +285,63 @@
 .sb-rail-account:hover {
   background: var(--panel);
   text-decoration: none;
+}
+
+.sb-rail-account-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.sb-rail-account-caret {
+  font-size: 13px;
+  color: var(--faint);
+  flex: none;
+}
+
+/* -- collapsed rail --
+   Everything but the icons is hidden outright rather than faded: a label that is
+   still in the accessibility tree but invisible is a worse answer than one that
+   is genuinely not there, and the title attributes carry the labels instead.
+   The rail keeps its full-width contents behind overflow:hidden while the width
+   animates, so nothing reflows mid-transition. */
+
+.sb-rail[data-collapsed='true'] .sb-rail-brand {
+  justify-content: center;
+  padding: 16px 0 14px;
+}
+
+.sb-rail[data-collapsed='true'] .sb-rail-name,
+.sb-rail[data-collapsed='true'] .sb-rail-label,
+.sb-rail[data-collapsed='true'] .sb-rail-phase,
+.sb-rail[data-collapsed='true'] .sb-rail-stat,
+.sb-rail[data-collapsed='true'] .sb-rail-account-text,
+.sb-rail[data-collapsed='true'] .sb-rail-account-caret {
+  display: none;
+}
+
+.sb-rail[data-collapsed='true'] .sb-rail-nav {
+  padding: 0 11px;
+}
+
+.sb-rail[data-collapsed='true'] .sb-rail-item {
+  justify-content: center;
+  padding: 0;
+  width: 36px;
+}
+
+.sb-rail[data-collapsed='true'] .sb-rail-account {
+  justify-content: center;
+  padding: 11px 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sb-rail[data-ready='true'],
+  .sb-lib-detail {
+    transition: none;
+  }
+  .sb-search-menu {
+    animation: none;
+  }
 }
 
 .sb-avatar {
@@ -303,12 +401,17 @@
 
 /* The prototype pinned a 300px field to the right. It sits on the left now and
    takes every pixel between the title (if any) and the right-hand controls. */
+.sb-search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
 .sb-search {
   display: flex;
   align-items: center;
   gap: 7px;
-  flex: 1;
-  min-width: 0;
+  width: 100%;
   height: 32px;
   padding: 0 10px;
   border: 1px solid var(--line);
@@ -327,6 +430,88 @@
   color: var(--ink);
   width: 100%;
   outline: none;
+}
+
+/* -- typeahead menu -- */
+
+.sb-search-menu {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  max-height: 340px;
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 12px 28px rgb(0 0 0 / 0.38);
+  animation: sb-menu-in 120ms ease;
+}
+
+@keyframes sb-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.sb-search-opt {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.sb-search-opt > i {
+  font-size: 15px;
+  color: var(--faint);
+  flex: none;
+}
+
+.sb-search-opt--on {
+  background: var(--panel);
+}
+
+.sb-search-opt-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.sb-search-opt-name,
+.sb-search-opt-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sb-search-opt-name {
+  font-size: 12.5px;
+  color: var(--ink);
+}
+
+.sb-search-opt-path {
+  font-size: 10.5px;
+  color: var(--faint);
+}
+
+.sb-search-note {
+  padding: 9px 10px;
+  font-size: 12px;
+  color: var(--faint);
 }
 
 .sb-header .btn {
@@ -779,12 +964,51 @@
 
 /* -- right pane (draft line 259) -- */
 
+/* Closed is width:0, not display:none, so it can be animated. The body keeps its
+   full width inside the clip, which is what makes the content slide away rather
+   than squash on the way out. */
 .sb-lib-detail {
   width: 290px;
   flex: none;
   border-left: 1px solid var(--line);
+  overflow: hidden;
+  transition:
+    width 190ms cubic-bezier(0.32, 0.72, 0, 1),
+    border-left-color 190ms ease;
+}
+
+.sb-lib-detail[data-open='false'] {
+  width: 0;
+  border-left-color: transparent;
+}
+
+.sb-lib-detail-body {
+  position: relative;
+  width: 290px;
+  height: 100%;
   padding: 18px;
   overflow: auto;
+}
+
+.sb-detail-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.sb-detail-close:hover {
+  background: var(--panel);
+  color: var(--ink);
 }
 
 .sb-detail-kicker {
@@ -865,24 +1089,8 @@
   gap: 7px;
 }
 
-.sb-detail-blank {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding-top: 72px;
-  color: var(--faint);
-  font-size: 12px;
-  text-align: center;
-}
-
-.sb-detail-blank > i {
-  font-size: 24px;
-}
-
-.sb-detail-blank p {
-  margin: 0;
-}
+/* The prototype's "Select a document" placeholder is gone: the pane closes when
+   nothing is selected, so there is no empty state left to fill. */
 
 .sb-detail-ids {
   margin-top: 18px;

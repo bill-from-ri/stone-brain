@@ -1,5 +1,6 @@
 import type { DocumentRow } from '@/db/queries/library'
 import { flags } from '@/lib/flags'
+import { DetailPaneShell } from './DetailPaneShell'
 
 /**
  * The Library's right pane, ported from the prototype (lines 259-285).
@@ -13,19 +14,14 @@ import { flags } from '@/lib/flags'
  * pane makes no Drive call and no second round trip.
  */
 export function DetailPane({ doc }: { doc: DocumentRow | null }) {
-  if (!doc) {
-    return (
-      <div className="sb-lib-detail">
-        <div className="sb-detail-blank">
-          <i className="ph ph-file-dashed" />
-          <p>Select a document.</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="sb-lib-detail">
+    <DetailPaneShell open={doc !== null}>{doc && <DetailBody doc={doc} />}</DetailPaneShell>
+  )
+}
+
+function DetailBody({ doc }: { doc: DocumentRow }) {
+  return (
+    <>
       <div className="sb-detail-kicker">Selected</div>
       <div className="sb-detail-title">{doc.name}</div>
       <div className="sb-detail-meta">
@@ -99,7 +95,7 @@ export function DetailPane({ doc }: { doc: DocumentRow | null }) {
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }
 

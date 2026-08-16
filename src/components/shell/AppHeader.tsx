@@ -1,4 +1,3 @@
-import { Suspense } from 'react'
 import { DocumentSearch } from './DocumentSearch'
 
 type Props = {
@@ -19,14 +18,7 @@ export function AppHeader({ title, search = true, actions }: Props) {
   return (
     <header className="sb-header">
       {title && <div className="sb-header-title">{title}</div>}
-      {search ? (
-        // useSearchParams needs a boundary even on force-dynamic routes.
-        <Suspense fallback={<div className="sb-search" />}>
-          <DocumentSearch />
-        </Suspense>
-      ) : (
-        <div className="sb-header-spacer" />
-      )}
+      {search ? <DocumentSearch /> : <div className="sb-header-spacer" />}
       {actions}
     </header>
   )

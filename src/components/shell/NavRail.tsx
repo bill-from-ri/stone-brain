@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { NAV } from './nav'
@@ -13,6 +13,8 @@ type Props = {
   documentCount: number
   folderCount: number
 }
+
+const COLLAPSE_KEY = 'sb:rail-collapsed'
 
 function initials(email: string): string {
   const [local = ''] = email.split('@')
@@ -29,16 +31,51 @@ export function NavRail({
 }: Props) {
   const pathname = usePathname()
   const [avatarFailed, setAvatarFailed] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
+
+  /**
+   * The preference is restored after mount, not during render — the server has
+   * no way to know it, and rendering it differently there would be a hydration
+   * mismatch. `ready` gates the width transition so that restore lands as the
+   * rail's initial state rather than as a visible animation on every page load.
+   */
+  const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    try {
+      setCollapsed(window.localStorage.getItem(COLLAPSE_KEY) === '1')
+    } catch {
+      // Private mode, blocked storage: expanded is a fine answer.
+    }
+    setReady(true)
+  }, [])
+
+  const toggle = () => {
+    setCollapsed((was) => {
+      const next = !was
+      try {
+        window.localStorage.setItem(COLLAPSE_KEY, next ? '1' : '0')
+      } catch {
+        // Not worth failing the interaction over.
+      }
+      return next
+    })
+  }
 
   return (
-    <nav className="sb-rail">
+    <nav className="sb-rail" data-collapsed={collapsed} data-ready={ready}>
       <div className="sb-rail-brand">
-        <div className="sb-rail-mark">
-          <i className="ph-bold ph-brain" />
-        </div>
-        <div style={{ minWidth: 0 }}>
-          <div className="sb-rail-name">Stone Brain</div>
-        </div>
+        <div className="sb-rail-name">Stone Brain</div>
+        <button
+          type="button"
+          className="sb-rail-collapse"
+          onClick={toggle}
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <i className="ph ph-sidebar-simple" />
+        </button>
       </div>
 
       <div className="sb-divider" />
@@ -51,6 +88,8 @@ export function NavRail({
           // Phase 2+ screens are reachable so the shell reads as a whole product,
           // but they are design previews with no real data behind them. The phase
           // marker here and the banner on the screen itself both say so.
+          const preview = item.phase > 1 ? `Preview — arrives in Phase ${item.phase}` : undefined
+
           return (
             <Link
               key={item.href}
@@ -58,13 +97,13 @@ export function NavRail({
               className={`sb-rail-item${active ? ' sb-rail-item--on' : ''}${
                 item.phase > 1 ? ' sb-rail-item--preview' : ''
               }`}
-              title={item.phase > 1 ? `Preview — arrives in Phase ${item.phase}` : undefined}
+              // Collapsed, the icon is all there is, so the tooltip has to carry
+              // the label as well.
+              title={collapsed ? [item.label, preview].filter(Boolean).join(' — ') : preview}
             >
               <i className={item.icon} />
-              <span style={{ flex: 1 }}>{item.label}</span>
-              {item.phase > 1 && (
-                <span style={{ fontSize: 10, color: 'var(--faint)' }}>P{item.phase}</span>
-              )}
+              <span className="sb-rail-label">{item.label}</span>
+              {item.phase > 1 && <span className="sb-rail-phase">P{item.phase}</span>}
             </Link>
           )
         })}
@@ -79,7 +118,11 @@ export function NavRail({
         {folderCount === 1 ? 'folder' : 'folders'}
       </div>
 
-      <Link href="/settings" className="sb-rail-account">
+      <Link
+        href="/settings"
+        className="sb-rail-account"
+        title={collapsed ? `${email} — Settings` : undefined}
+      >
         {pictureUrl && !avatarFailed ? (
           /*
            * referrerPolicy is load-bearing, not decoration. lh3.googleusercontent.com
@@ -102,7 +145,7 @@ export function NavRail({
         ) : (
           <div className="sb-avatar">{initials(email)}</div>
         )}
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="sb-rail-account-text">
           <div className="sb-rail-email">{email}</div>
           <div
             className={`sb-drive-state ${
@@ -113,7 +156,7 @@ export function NavRail({
             {driveConnected ? 'Drive connected' : 'Drive disconnected'}
           </div>
         </div>
-        <i className="ph ph-caret-up-down" style={{ fontSize: 13, color: 'var(--faint)' }} />
+        <i className="ph ph-caret-up-down sb-rail-account-caret" />
       </Link>
     </nav>
   )
