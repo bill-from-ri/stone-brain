@@ -1,4 +1,5 @@
 import type { DocumentRow } from '@/db/queries/library'
+import { flags } from '@/lib/flags'
 
 /**
  * The Library's right pane, ported from the prototype (lines 259-285).
@@ -34,7 +35,7 @@ export function DetailPane({ doc }: { doc: DocumentRow | null }) {
       </div>
 
       <div className="sb-detail-tags">
-        <span className="tag tag-neutral">Unread</span>
+        <span className="tag tag-neutral">Unverified</span>
         {doc.removedAt && (
           <span className="tag" style={{ background: 'var(--bad-dim)', color: '#e08c86' }}>
             Removed from folder
@@ -88,14 +89,16 @@ export function DetailPane({ doc }: { doc: DocumentRow | null }) {
         </a>
       )}
 
-      <div className="sb-detail-ids">
-        <div>
-          <span className="sb-faint">Drive id</span> <code>{doc.driveFileId}</code>
+      {flags.showDocumentIds && (
+        <div className="sb-detail-ids">
+          <div>
+            <span className="sb-faint">Drive id</span> <code>{doc.driveFileId}</code>
+          </div>
+          <div>
+            <span className="sb-faint">Stone Brain id</span> <code>{doc.id}</code>
+          </div>
         </div>
-        <div>
-          <span className="sb-faint">Stone Brain id</span> <code>{doc.id}</code>
-        </div>
-      </div>
+      )}
     </div>
   )
 }

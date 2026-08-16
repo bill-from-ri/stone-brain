@@ -3,7 +3,6 @@ import { AppHeader } from '@/components/shell/AppHeader'
 import { DetailPane } from '@/components/library/DetailPane'
 import { DocumentTable } from '@/components/library/DocumentTable'
 import { FolderTree } from '@/components/library/FolderTree'
-import { LibrarySearch } from '@/components/library/LibrarySearch'
 import { SyncControls } from '@/components/library/SyncControls'
 import { SyncPoller } from '@/components/library/SyncPoller'
 import {
@@ -58,14 +57,7 @@ export default async function LibraryFolderPage({
   return (
     <>
       <AppHeader
-        subtitle={`Google Drive · ${session.rootFolderName ?? ''}`}
-        search={<LibrarySearch />}
-        actions={
-          <SyncControls
-            lastSyncCompletedAt={syncStatus?.lastSyncCompletedAt ?? null}
-            initialCrawlDone={syncStatus?.initialCrawlDone ?? false}
-          />
-        }
+        actions={<SyncControls initialCrawlDone={syncStatus?.initialCrawlDone ?? false} />}
       />
 
       <SyncPoller

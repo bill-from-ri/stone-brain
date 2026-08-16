@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { NAV } from './nav'
@@ -7,7 +8,6 @@ import { NAV } from './nav'
 type Props = {
   email: string
   pictureUrl: string | null
-  rootFolderName: string | null
   driveConnected: boolean
   /** Real Phase 1 counts. The prototype's "Graph health" bar is fiction until Phase 3. */
   documentCount: number
@@ -23,12 +23,12 @@ function initials(email: string): string {
 export function NavRail({
   email,
   pictureUrl,
-  rootFolderName,
   driveConnected,
   documentCount,
   folderCount,
 }: Props) {
   const pathname = usePathname()
+  const [avatarFailed, setAvatarFailed] = useState(false)
 
   return (
     <nav className="sb-rail">
@@ -38,7 +38,6 @@ export function NavRail({
         </div>
         <div style={{ minWidth: 0 }}>
           <div className="sb-rail-name">Stone Brain</div>
-          <div className="sb-rail-world">{rootFolderName ?? 'No folder'}</div>
         </div>
       </div>
 
@@ -81,9 +80,25 @@ export function NavRail({
       </div>
 
       <Link href="/settings" className="sb-rail-account">
-        {pictureUrl ? (
+        {pictureUrl && !avatarFailed ? (
+          /*
+           * referrerPolicy is load-bearing, not decoration. lh3.googleusercontent.com
+           * serves avatars but rejects requests carrying a cross-origin Referer,
+           * so the default strict-origin-when-cross-origin turns every one of
+           * these into a 403 and the circle renders empty. no-referrer is the
+           * fix. onError keeps the initials as a real fallback rather than a
+           * blank disc if the URL ever goes stale.
+           */
           // eslint-disable-next-line @next/next/no-img-element
-          <img className="sb-avatar" src={pictureUrl} alt="" width={24} height={24} />
+          <img
+            className="sb-avatar"
+            src={pictureUrl}
+            alt=""
+            width={24}
+            height={24}
+            referrerPolicy="no-referrer"
+            onError={() => setAvatarFailed(true)}
+          />
         ) : (
           <div className="sb-avatar">{initials(email)}</div>
         )}

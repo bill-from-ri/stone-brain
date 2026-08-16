@@ -168,16 +168,9 @@
   line-height: 1.1;
 }
 
-.sb-rail-world {
-  font-size: 10px;
-  color: var(--faint);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  margin-top: 2px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+/* The prototype's second brand line named the Drive folder. Removed: the folder
+   name is the user's own project, not the product's, and it does not belong in
+   the app's identity. */
 
 /* Nocturne's signature: dividers that fade to transparent at their ends. */
 .sb-divider {
@@ -304,20 +297,18 @@
   font-weight: 500;
 }
 
-.sb-header-sub {
-  font-size: 11.5px;
-  color: var(--muted);
-}
-
 .sb-header-spacer {
   flex: 1;
 }
 
+/* The prototype pinned a 300px field to the right. It sits on the left now and
+   takes every pixel between the title (if any) and the right-hand controls. */
 .sb-search {
   display: flex;
   align-items: center;
   gap: 7px;
-  width: 300px;
+  flex: 1;
+  min-width: 0;
   height: 32px;
   padding: 0 10px;
   border: 1px solid var(--line);
@@ -705,6 +696,19 @@
 
 .sb-lib-seg .seg-opt {
   padding: 5px 11px;
+}
+
+/* Nocturne marks the active segment with a square 1px inset ring, which the
+   .seg's own rounded overflow:hidden then shears at the ends. Round the end
+   caps to match — inset by the 1px border the ring sits inside. */
+.sb-lib-seg .seg-opt:first-child {
+  border-radius: calc(var(--radius-md) - 1px) 0 0 calc(var(--radius-md) - 1px);
+}
+.sb-lib-seg .seg-opt:last-child {
+  border-radius: 0 calc(var(--radius-md) - 1px) calc(var(--radius-md) - 1px) 0;
+}
+.sb-lib-seg .seg-opt:only-child {
+  border-radius: calc(var(--radius-md) - 1px);
 }
 
 .sb-lib-table-wrap {

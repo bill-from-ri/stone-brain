@@ -130,7 +130,7 @@ export function DocumentTable({
                   </td>
                   <td className="sb-cell-faint">—</td>
                   <td>
-                    <span className="tag tag-neutral">Unread</span>
+                    <span className="tag tag-neutral">Unverified</span>
                   </td>
                   <td className="sb-cell-faint">—</td>
                   <td className="sb-cell-faint" style={{ textAlign: 'right' }}>

@@ -18,7 +18,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <AppHeader subtitle={session.rootFolderName ?? undefined} />
+      <AppHeader />
       <div className="sb-screen" style={{ padding: '24px 20px' }}>
         <h2 style={{ fontSize: 17, fontWeight: 500, margin: '0 0 4px' }}>
           {session.rootFolderName ?? 'Your library'}
@@ -37,7 +37,7 @@ export default async function HomePage() {
 
         <p className="sb-faint" style={{ maxWidth: 560, lineHeight: 1.6 }}>
           Claims, conflicts, and the relationship graph arrive in Phases 2 and 3. Until then the
-          Library mirrors your Drive folder and every document sits at <em>Unread</em>.
+          Library mirrors your Drive folder and every document sits at <em>Unverified</em>.
         </p>
       </div>
     </>

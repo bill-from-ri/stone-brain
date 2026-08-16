@@ -23,12 +23,3 @@ export const NAV: NavItem[] = [
   { href: '/conflicts', label: 'Conflicts', icon: 'ph ph-warning-diamond', phase: 3 },
   { href: '/graph', label: 'Graph', icon: 'ph ph-graph', phase: 2 },
 ]
-
-export const SCREEN_TITLES: Record<string, { title: string; sub?: string }> = {
-  '/': { title: 'Home' },
-  '/library': { title: 'Library' },
-  '/assistant': { title: 'Writing assistant', sub: 'Grounded in the claim graph' },
-  '/claims': { title: 'Claims' },
-  '/conflicts': { title: 'Conflicts' },
-  '/graph': { title: 'Relationship graph' },
-}

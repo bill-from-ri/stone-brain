@@ -27,7 +27,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <NavRail
         email={session.user.email}
         pictureUrl={session.user.pictureUrl}
-        rootFolderName={session.rootFolderName}
         driveConnected={driveConnected}
         documentCount={documentCount}
         folderCount={folderCount}

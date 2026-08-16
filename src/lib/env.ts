@@ -41,6 +41,12 @@ const schema = z.object({
     .regex(/^[a-z0-9]+$/, 'must be lowercase alphanumeric, e.g. "v1"'),
 
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+
+  // --- Feature flags (see src/lib/flags.ts) ---
+  SHOW_DOCUMENT_IDS: z
+    .enum(['0', '1', 'true', 'false'])
+    .default('0')
+    .transform((v) => v === '1' || v === 'true'),
 })
 
 const parsed = schema.safeParse(process.env)

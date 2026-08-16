@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { SyncResult } from '@/lib/sync/result'
 
@@ -10,28 +10,15 @@ import type { SyncResult } from '@/lib/sync/result'
  * Kept permanently rather than hidden once polling works: users trust a button
  * they can press when they know they just changed something, and it is the
  * escape hatch when the 20s cadence isn't fast enough (decisions §4).
+ *
+ * The readout deliberately shows only transient states. A "Synced 14s ago" line
+ * has to re-render every second to stay honest, and a counter ticking in the
+ * corner of the screen costs more attention than the fact is worth.
  */
-export function SyncControls({
-  lastSyncCompletedAt,
-  initialCrawlDone,
-}: {
-  lastSyncCompletedAt: string | null
-  initialCrawlDone: boolean
-}) {
+export function SyncControls({ initialCrawlDone }: { initialCrawlDone: boolean }) {
   const router = useRouter()
   const [syncing, setSyncing] = useState(false)
   const [error, setError] = useState(false)
-  const [ago, setAgo] = useState<string | null>(null)
-
-  // Rendered null on the server and filled in on the client: a relative time
-  // computed during SSR is wrong by the time it hydrates.
-  useEffect(() => {
-    if (!lastSyncCompletedAt) return setAgo(null)
-    const update = () => setAgo(relative(new Date(lastSyncCompletedAt)))
-    update()
-    const timer = setInterval(update, 1000)
-    return () => clearInterval(timer)
-  }, [lastSyncCompletedAt])
 
   const syncNow = async () => {
     setSyncing(true)
@@ -54,15 +41,7 @@ export function SyncControls({
   return (
     <>
       <span className="sb-sync-state">
-        {syncing
-          ? 'Syncing…'
-          : error
-            ? 'Sync failed'
-            : !initialCrawlDone
-              ? 'Indexing…'
-              : ago
-                ? `Synced ${ago}`
-                : ''}
+        {syncing ? 'Syncing…' : error ? 'Sync failed' : !initialCrawlDone ? 'Indexing…' : ''}
       </span>
       <button className="btn btn-secondary" type="button" onClick={() => void syncNow()} disabled={syncing}>
         <i className={`ph ${syncing ? 'ph-circle-notch' : 'ph-arrows-clockwise'}`} />
@@ -70,14 +49,4 @@ export function SyncControls({
       </button>
     </>
   )
-}
-
-function relative(then: Date): string {
-  const seconds = Math.max(0, Math.round((Date.now() - then.getTime()) / 1000))
-  if (seconds < 60) return `${seconds}s ago`
-  const minutes = Math.round(seconds / 60)
-  if (minutes < 60) return `${minutes}m ago`
-  const hours = Math.round(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
-  return `${Math.round(hours / 24)}d ago`
 }

@@ -8,7 +8,7 @@ export default async function SettingsPage() {
 
   return (
     <>
-      <AppHeader subtitle={session.user.email} />
+      <AppHeader title="Settings" search={false} />
       <div className="sb-screen" style={{ padding: '24px 20px', maxWidth: 560 }}>
         <div className="sb-panel">
           <div className="sb-kicker">Account</div>
