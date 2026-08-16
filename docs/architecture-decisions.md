@@ -809,3 +809,141 @@ you `select` for display makes accidental serialization to the client structural
   absent from *Google Auth Platform → Data Access* is silently dropped from the granted set:
   sign-in appears to succeed and the app then has no Drive access. The callback checks the
   returned scope string explicitly and refuses rather than half-connecting.
+
+---
+
+## 15. Ontology shape and constraints — Decided: closed vocabulary, enforced in the catalog
+
+Phase 2A. The full design is in [ontology-design.md](ontology-design.md); this records why it is
+shaped the way it is. The organising principle: **an invalid claim must be impossible to write,
+not merely something we remember to check.** The writer we are guarding against is an LLM, and it
+produces plausible nonsense at a rate no code review catches.
+
+### One entities table, not nine
+
+The original draft floated a unified `entities` table as a tidiness win. It is actually forced:
+claims need a single foreign-key target and Postgres has no polymorphic foreign key. Nine tables
+would mean either nine nullable FK columns per claim or no referential integrity at all, and
+"managing that by hand" was ruled out immediately.
+
+Going the other way — dropping `entity_type` entirely — was also rejected. Type is what makes
+domain and range expressible; without it there is no way to say that `ruled_by` takes a
+settlement and not an artifact.
+
+### One claims table, not two
+
+Relationship and attribute claims share every downstream concern: sourcing, canonicity, temporal
+bounds, conflict detection, "which claims cite this document". Splitting them means writing all
+of that twice and `UNION`-ing every query. Nullable value columns are the cheaper cost.
+
+### Predicates as a lookup table, not free text
+
+The single highest-value constraint in the design. A free-text relationship column admits
+`rules`, `ruled_by`, `is_ruler_of` and `governs` as four names for one fact, and a graph that
+cannot answer its own questions is the failure this project exists to prevent.
+
+`predicate_signatures` is a separate table because one predicate has several legal signatures and
+because the *combination* is what matters — independent subject and object lists would permit
+their cross product, which is wider than the truth.
+
+### Reference tables are per-user
+
+§1 permits global reference data, and this deliberately does not use that allowance. A world's
+vocabulary is part of the world; one user adding a `Starship` type must not add it to everyone's
+ontology. Scoping costs one column now and is expensive to retrofit — the same argument §5 makes
+for `workspace_id`. It also lets `user_id` participate in the entity foreign keys, so a claim
+reaching into another tenant's entities fails in the catalog rather than in a `WHERE` clause
+someone might forget.
+
+### Denormalized types on claims, and the FK chain they buy
+
+`claims.subject_type` / `object_type` duplicate what `entities` already knows. This was
+questioned and is worth restating: `CHECK` constraints cannot contain subqueries, so a rule that
+requires a lookup has only two homes — denormalized columns plus foreign keys, or a trigger.
+
+Chosen: **columns and foreign keys.** §8 makes Drizzle the sole owner of the schema, and a
+trigger is a hand-written SQL blob Drizzle cannot see, type, or diff — constraint logic outside
+the tool that owns the schema is how a rule silently disappears in a future migration. The
+redundancy is self-policing: composite FKs into `entities (user_id, id, entity_type)` make the
+copy provably honest, and retyping an entity cascades into its claims.
+
+Rejected alternative — **enforce only in Zod.** It is where the good error messages come from and
+it runs first, but it is a layer that can be bypassed by any script, any migration backfill, and
+any future code path that forgets it.
+
+### The `'@none'` sentinel, and why an ugly detail earns its place
+
+Postgres foreign keys use `MATCH SIMPLE`: a NULL in any referencing column silently disables the
+entire constraint. Attribute claims have no `object_type`, so the signature FK would have been
+switched off for exactly the claims it most needed to check — a failure mode that looks like
+working code.
+
+Two `NOT NULL` generated columns (`object_type_key`, `value_kind`) project the nullable reality
+onto a total key space, with `'@none'` standing in for "no object" / "no value". A name-format
+`CHECK` on `entity_types.name` and `predicates.name` guarantees the sentinel cannot collide.
+
+The payoff is that **one five-column foreign key** enforces predicate existence, domain, range,
+relationship-vs-attribute consistency, and value-column/value-type agreement. Five rules
+collapse into one constraint that cannot be forgotten.
+
+The cost is a generic error message on violation, which is why Zod runs first, and a schema that
+needs the comment block it has. Recorded here because the sentinel looks like a hack out of
+context and is the thing most likely to be "cleaned up" by someone who does not know what
+`MATCH SIMPLE` does.
+
+### In-world time is a text label plus a *derived* sort key
+
+`start_date` / `end_date` cannot be `timestamptz`: Nevlos counts years Before Doom (BD) and After
+Doom (AD), to year and usually month. Stored as the verbatim in-world label plus a float sort key,
+with date-valued attributes getting the same pair. This is the one place the original draft's
+field list was wrong for the domain rather than merely underspecified.
+
+Because the calendar is *regular* — two eras, ordered years, months within years — the sort key
+is computable, so it is **derived by a parser rather than supplied by the writer**. An LLM asked
+for an ordinal will confidently invent one, and calendar rules belong in one testable function
+rather than in a prompt. An unparseable label is still stored with a null key: unordered, not
+lost, per §7a.
+
+The calendar Nevlos is reckoned by, and the ordinal encoding, are written up in
+[calendar.md](calendar.md); `src/lib/ontology/calendar.ts` implements it. Because the ordinal is
+a plain float on one scale, the world's other calendar systems need a parser landing on that
+scale rather than a second ordering.
+
+Rejected: **era / year / month as real columns.** More queryable and directly checkable, but it
+hardcodes one world's calendar into the schema and costs nine columns across the three date
+pairs. If era- or year-scoped queries become common they can be added later as generated columns
+over the parsed value, without touching stored data — the cheaper direction to defer.
+
+### Entity name uniqueness — rejected
+
+An earlier revision made `normalized_name` unique per `(user, entity_type)` as a structural
+defence against an extractor minting "Sera", "sera" and "Sera." as three characters. Reverted:
+two distinct entities of one type may legitimately share a name, and a unique index makes that
+unrepresentable rather than merely worth reviewing — the schema would be asserting something
+about the world that is not true.
+
+Duplicate suppression moves to the entity matcher, which must resolve an exact normalized hit to
+the existing row or raise the collision, never silently mint a second one. Weaker in that it can
+be bypassed, and correct in that it can be overridden.
+
+### What is deliberately not enforced
+
+- **`value_enum` membership** — Zod. Doing it in Postgres means a trigger; see above.
+- **Cardinality and contradiction** — Phase 3. `is_functional` and `is_temporal` are carried now
+  and read by nothing, purely so that phase needs no migration. Two rulers is only a conflict if
+  the validity windows overlap, which is precisely the gating the implementation plan asks for.
+
+### Testing against a real Postgres
+
+The whole guarantee lives in the catalog, so asserting it in application code would prove
+nothing. `src/lib/ontology/constraints.test.ts` applies the real migrations to **PGlite**
+(Postgres compiled to WASM, in-process) and asserts each rejection by constraint name. It adds
+one devDependency, needs no Docker daemon, and runs in about a second.
+
+### Growth: a proposals queue, not an open vocabulary
+
+A closed vocabulary that cannot grow strangles the project the first time the extractor correctly
+identifies a relationship we did not anticipate. Phase 2B's extraction schema will therefore
+accept a structured `proposed_predicate` that lands in a queue for human promotion rather than in
+the graph. Closed at write time, open over the project's life — and the queue is a useful signal
+of where the ontology is thin.
