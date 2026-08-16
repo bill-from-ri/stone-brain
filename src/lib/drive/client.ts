@@ -3,7 +3,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { db } from '@/db'
 import { folders, syncState } from '@/db/schema'
 import { DriveAuthError, OutOfScopeError } from '@/lib/google/errors'
-import { DRIVE_ROOT_ALIAS, FILE_FIELDS, MIME_FOLDER } from './fields'
+import { DRIVE_ROOT_ALIAS, FILE_FIELDS, MIME_DOCUMENT, MIME_FOLDER } from './fields'
 import { driveGet, escapeQueryValue, type DriveCallStats } from './request'
 import { ScopeResolver } from './scope'
 import type { DriveChangeList, DriveFile, DriveFileList } from './types'
@@ -103,6 +103,30 @@ export class DriveClient {
     })
     if (verdict === 'out') throw new OutOfScopeError(fileId)
     return file
+  }
+
+  /**
+   * The document body as markdown — one `files.export` call, per ADR §7.
+   *
+   * Routed through getFile() first, which is not merely a convenience: export
+   * takes a file id from a caller, and without the scope check that id could
+   * name any document in the user's Drive. The mime-type check is second
+   * because Drive's own error for exporting a non-document is unhelpful, and
+   * spreadsheets and slides are deliberately out of scope for now.
+   */
+  async exportMarkdown(fileId: string): Promise<string> {
+    const file = await this.getFile(fileId)
+    if (file.mimeType !== MIME_DOCUMENT) {
+      throw new OutOfScopeError(`${fileId} is a ${file.mimeType}, not a Google Doc`)
+    }
+
+    return driveGet<string>(
+      this.userId,
+      `/files/${encodeURIComponent(fileId)}/export`,
+      { mimeType: 'text/markdown' },
+      this.stats,
+      'text',
+    )
   }
 
   /** Immediate children of a folder that must itself already be in scope. */

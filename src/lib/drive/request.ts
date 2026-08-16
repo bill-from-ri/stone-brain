@@ -50,6 +50,13 @@ export async function driveGet<T>(
   path: string,
   params: Record<string, string | undefined>,
   stats?: DriveCallStats,
+  /**
+   * `files.export` returns the document body, not JSON. Threading a mode
+   * through here rather than writing a second fetch keeps every export on the
+   * same retry, backoff and error-classification path as the rest of Drive —
+   * an export is exactly as likely to hit a 429 as a list is.
+   */
+  responseType: 'json' | 'text' = 'json',
 ): Promise<T> {
   const url = new URL(`${DRIVE_API}${path}`)
   for (const [key, value] of Object.entries(params)) {
@@ -81,7 +88,9 @@ export async function driveGet<T>(
       throw lastTransient
     }
 
-    if (response.ok) return (await response.json()) as T
+    if (response.ok) {
+      return (responseType === 'text' ? await response.text() : await response.json()) as T
+    }
 
     const body = (await response.json().catch(() => ({}))) as DriveErrorBody
     const reason = body.error?.errors?.[0]?.reason ?? ''

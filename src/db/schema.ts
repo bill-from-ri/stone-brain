@@ -597,6 +597,11 @@ export const entities = pgTable(
       onDelete: 'set null',
     }),
 
+    /**
+     * `'user'` is a hand-authored entity, and is the default: an entity typed in
+     * through the frontend needs no document behind it, so `source_document_id`
+     * is nullable and no claim on it is required to carry a source.
+     */
     createdBy: text('created_by').$type<Provenance>().notNull().default('user'),
     /** Provenance for re-extraction decisions when a user upgrades models (ADR §11). */
     extractedByModel: text('extracted_by_model'),
@@ -616,6 +621,7 @@ export const entities = pgTable(
     index('entities_user_type_idx').on(t.userId, t.entityType),
     index('entities_user_canonicity_idx').on(t.userId, t.canonicity),
     check('entities_canonicity', sql`${t.canonicity} in ('canon', 'draft')`),
+    check('entities_created_by', sql`${t.createdBy} in ('user', 'llm', 'seed')`),
   ],
 )
 
@@ -669,6 +675,12 @@ export const claims = pgTable(
     canonicity: text('canonicity').$type<Canonicity>().notNull().default('draft'),
     confidence: doublePrecision('confidence'),
 
+    /**
+     * `'user'` — hand-authored, and the default. A manual claim is complete with
+     * no `claim_sources` row at all: sourcing is a property of extracted claims,
+     * not a requirement of the table. ADR §7a's "vanished source" flag applies
+     * only to claims that cited a document in the first place.
+     */
     createdBy: text('created_by').$type<Provenance>().notNull().default('user'),
     extractedByModel: text('extracted_by_model'),
 
@@ -757,6 +769,7 @@ export const claims = pgTable(
     index('claims_user_canonicity_idx').on(t.userId, t.canonicity),
 
     check('claims_canonicity', sql`${t.canonicity} in ('canon', 'draft')`),
+    check('claims_created_by', sql`${t.createdBy} in ('user', 'llm', 'seed')`),
     check(
       'claims_object_pair',
       sql`(${t.objectId} is null) = (${t.objectType} is null)`,

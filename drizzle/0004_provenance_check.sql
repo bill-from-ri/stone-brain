@@ -1,0 +1,2 @@
+ALTER TABLE "claims" ADD CONSTRAINT "claims_created_by" CHECK ("claims"."created_by" in ('user', 'llm', 'seed'));--> statement-breakpoint
+ALTER TABLE "entities" ADD CONSTRAINT "entities_created_by" CHECK ("entities"."created_by" in ('user', 'llm', 'seed'));

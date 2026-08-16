@@ -12,11 +12,12 @@
  *
  * ## Sizing
  *
- * 23 relationship *concepts* and 21 attributes — 63 predicate rows and 241
- * signatures. Relationships are directional (ontology design: "symmetric
- * relationships will therefore have 2 claims each"), so the 23 concepts expand
- * to 42 rows: `RELATIONSHIPS` declares one direction and `deriveOntology()`
- * generates the other, which is why a signature cannot be mirrored incorrectly.
+ * 26 relationship *concepts* and 22 attributes — 70 predicate rows and 254
+ * signatures, over 10 entity types. Relationships are directional (ontology
+ * design: "symmetric relationships will therefore have 2 claims each"), so the
+ * 26 concepts expand to 48 rows: `RELATIONSHIPS` declares one direction and
+ * `deriveOntology()` generates the other, which is why a signature cannot be
+ * mirrored incorrectly.
  *
  * This is deliberately a starting point, not a complete world model. Too small
  * and every extraction stalls on a missing verb; too large and the model picks
@@ -38,8 +39,9 @@ export const ENTITY_TYPES = [
   { name: 'religion', label: 'Religion', pluralLabel: 'Religions', description: 'A faith, cult, or system of worship, including its institutions.' },
   { name: 'settlement', label: 'Settlement', pluralLabel: 'Settlements', description: 'An inhabited place — a city, town, village, keep, or outpost.' },
   { name: 'region', label: 'Region', pluralLabel: 'Regions', description: 'A geographic area: a continent, province, mountain range, sea, or wilderness.' },
-  { name: 'artifact', label: 'Artifact', pluralLabel: 'Artifacts', description: 'A specific notable object — a weapon, relic, text, or regalia.' },
+  { name: 'artifact', label: 'Artifact', pluralLabel: 'Artifacts', description: 'A specific notable object or created thing — a weapon, relic, text, regalia, or a made phenomenon such as a magical barrier.' },
   { name: 'event', label: 'Event', pluralLabel: 'Events', description: 'A bounded happening: a battle, treaty, disaster, coronation, or discovery.' },
+  { name: 'commodity', label: 'Commodity', pluralLabel: 'Commodities', description: 'A class of traded or produced good — grain, salt, iron, silk. A kind of thing, not a particular object; a specific named object is an artifact.' },
 ] as const satisfies readonly EntityTypeDef[]
 
 export type EntityTypeName = (typeof ENTITY_TYPES)[number]['name']
@@ -174,7 +176,8 @@ export const RELATIONSHIPS = [
     label: 'Located in',
     description: 'The subject sits geographically within the object.',
     inverse: { name: 'contains', label: 'Contains', description: 'The object lies geographically within the subject.' },
-    functional: true,
+    // Deliberately not functional: many regions sit inside one region, and a
+    // region can reasonably sit inside more than one.
     pairs: [
       ['settlement', 'region'],
       ['region', 'region'],
@@ -345,11 +348,50 @@ export const RELATIONSHIPS = [
     label: 'Successor of',
     description: 'The subject took over the office, title, or role previously held by the object.',
     inverse: { name: 'predecessor_of', label: 'Predecessor of', description: 'The subject previously held the office, title, or role the object took over.' },
+    /**
+     * Characters only. Where dates exist, succession is derivable from two
+     * `rules` claims and does not need saying — but prose gives succession far
+     * more often than it gives years, and that is the case this exists for.
+     * "Successor state" was dropped as too vague to be worth a predicate.
+     */
+    pairs: [['character', 'character']],
+  },
+  {
+    name: 'produces',
+    label: 'Produces',
+    description: 'The subject grows, mines, or manufactures the object commodity.',
+    inverse: { name: 'produced_by', label: 'Produced by', description: 'The subject commodity is grown, mined, or manufactured by the object.' },
+    temporal: true,
+    // Land produces; only an actor trades. Hence `region` here but not below.
     pairs: [
-      ['character', 'character'],
-      ['faction', 'faction'],
-      ['society', 'society'],
-      ['religion', 'religion'],
+      ['society', 'commodity'],
+      ['settlement', 'commodity'],
+      ['region', 'commodity'],
+      ['faction', 'commodity'],
+    ],
+  },
+  {
+    name: 'exports',
+    label: 'Exports',
+    description: 'The subject sells the object commodity abroad.',
+    inverse: { name: 'exported_by', label: 'Exported by', description: 'The subject commodity is sold abroad by the object.' },
+    temporal: true,
+    pairs: [
+      ['society', 'commodity'],
+      ['settlement', 'commodity'],
+      ['faction', 'commodity'],
+    ],
+  },
+  {
+    name: 'imports',
+    label: 'Imports',
+    description: 'The subject buys the object commodity from elsewhere.',
+    inverse: { name: 'imported_by', label: 'Imported by', description: 'The subject commodity is bought from elsewhere by the object.' },
+    temporal: true,
+    pairs: [
+      ['society', 'commodity'],
+      ['settlement', 'commodity'],
+      ['faction', 'commodity'],
     ],
   },
   {
@@ -388,7 +430,6 @@ const ALL_TYPES = ENTITY_TYPES.map((t) => t.name) as readonly EntityTypeName[]
 export const ATTRIBUTES = [
   { name: 'description', label: 'Description', description: 'A short prose characterisation of the entity.', valueType: 'string', subjects: ALL_TYPES },
   { name: 'title', label: 'Title', description: 'A formal title or office held: "Queen of Ashfall", "High Cantor".', valueType: 'string', temporal: true, subjects: ['character'] },
-  { name: 'epithet', label: 'Epithet', description: 'A byname or descriptive tag: "the Unbroken", "the Drowned City".', valueType: 'string', subjects: ['character', 'settlement', 'artifact', 'region'] },
   { name: 'species', label: 'Species', description: 'The kind of being the character is, in the world\'s own terms.', valueType: 'string', functional: true, subjects: ['character'] },
   { name: 'gender', label: 'Gender', description: 'The character\'s gender as the source material states it.', valueType: 'string', subjects: ['character'] },
   { name: 'occupation', label: 'Occupation', description: 'Trade, profession, or vocation.', valueType: 'string', temporal: true, subjects: ['character'] },
@@ -404,7 +445,24 @@ export const ATTRIBUTES = [
   { name: 'population', label: 'Population', description: 'Number of inhabitants or members.', valueType: 'int', temporal: true, subjects: ['settlement', 'region', 'society', 'faction', 'culture', 'religion'] },
   { name: 'government_type', label: 'Government type', description: 'The form of rule: monarchy, council, theocracy, and so on.', valueType: 'string', temporal: true, functional: true, subjects: ['society', 'settlement', 'region', 'faction'] },
   { name: 'motto', label: 'Motto', description: 'A words-of-the-house style phrase.', valueType: 'string', subjects: ['faction', 'society', 'settlement', 'religion'] },
-  { name: 'terrain', label: 'Terrain', description: 'Dominant landscape or climate of the region.', valueType: 'string', subjects: ['region'] },
+  /**
+   * `climate` and `landform` replace a single free-text `terrain`, which
+   * conflated two independent facts — the Great Steppe is a *plateau* whose
+   * climate is *steppe*. The landform list is strictly geomorphological and
+   * carries no vegetation terms, so the two vocabularies cannot overlap.
+   *
+   * Both are optional, and an absent claim is not a gap to be filled: a region
+   * spanning several biomes should have no `climate` at all, and neither should
+   * one whose climate is undecided.
+   */
+  { name: 'climate', label: 'Climate', description: 'The dominant climate or biome. Leave unset for a region large enough to span several.', valueType: 'string', functional: true, values: ['ice_cap', 'tundra', 'alpine', 'boreal_forest', 'temperate_rainforest', 'temperate_forest', 'temperate_grassland', 'steppe', 'mediterranean', 'semi_arid', 'desert', 'savanna', 'tropical_seasonal_forest', 'tropical_rainforest', 'wetland'], subjects: ['region'] },
+  { name: 'landform', label: 'Landform', description: 'The physical kind of place this is. Purely geomorphological — vegetation belongs to `climate`.', valueType: 'string', functional: true, values: ['continent', 'island', 'archipelago', 'peninsula', 'isthmus', 'coast', 'mountain_range', 'hills', 'plateau', 'plain', 'basin', 'valley', 'canyon', 'sea', 'gulf', 'strait', 'lake', 'river', 'marsh'], subjects: ['region'] },
+  /**
+   * Societies, not regions. Land is not agrarian — the state that farms it is.
+   * A basin can be a bread basket without anyone having decided who rules it,
+   * and that fact belongs to `produces`, not here.
+   */
+  { name: 'economy', label: 'Economy', description: 'What the society principally lives on.', valueType: 'string', values: ['agrarian', 'pastoral', 'mercantile', 'maritime'], temporal: true, functional: true, subjects: ['society'] },
   { name: 'material', label: 'Material', description: 'What the artifact is made of.', valueType: 'string', subjects: ['artifact'] },
   { name: 'power', label: 'Power', description: 'A magical or supernatural property the artifact possesses.', valueType: 'string', subjects: ['artifact'] },
 ] as const satisfies readonly AttributeDef[]
