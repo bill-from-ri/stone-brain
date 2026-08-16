@@ -22,7 +22,9 @@ import { sql } from 'drizzle-orm'
  * or alters tables.
  *
  * Two invariants run through every table below:
- *   1. Every domain row is scoped by user_id. There is no global data.
+ *   1. Every domain row is scoped by user_id. The only exception is the
+ *      ontology's three reference tables, which are global by design — the
+ *      reference-data carve-out §1 allows. See the ontology note further down.
  *   2. workspace_id is carried nullable everywhere (§5) — it costs nothing now
  *      and is expensive to retrofit if a world switcher ever arrives.
  */
@@ -333,12 +335,15 @@ export const documents = pgTable(
  *                         type) combinations are legal
  *   entities / claims     the world itself
  *
- * The three reference tables are **per-user**, not global. ADR §1 permits global
- * reference data, but a world's vocabulary is part of the world — one user
- * adding a `Starship` type must not add it to everyone's ontology. Scoping them
- * costs one column now and is expensive to retrofit, the same argument §5 makes
- * for `workspace_id`. Every user's rows are seeded from
- * `src/lib/ontology/registry.ts` at first use.
+ * The three reference tables are **global** — the reference-data exception ADR
+ * §1 allows. One curated vocabulary, maintained in
+ * `src/lib/ontology/registry.ts` and synced by `seedOntology()`; users do not
+ * define their own. See ADR §15 for why this replaced an earlier per-user
+ * design.
+ *
+ * Tenant isolation does not depend on them: it comes from `user_id`
+ * participating in the `claims → entities` foreign keys below, which is
+ * unchanged.
  *
  * ## Two sentinel values, and why they exist
  *
@@ -396,25 +401,18 @@ export const NONE = '@none'
 export const entityTypes = pgTable(
   'entity_types',
   {
-    userId: uuid('user_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
-
     /** Machine name, and the value that appears in every claim. */
-    name: text('name').notNull(),
+    name: text('name').primaryKey(),
 
     label: text('label').notNull(),
     pluralLabel: text('plural_label').notNull(),
     description: text('description').notNull().default(''),
 
     sortOrder: integer('sort_order').notNull().default(0),
-    /** Seeded from the registry vs. added by this user. */
-    isCore: boolean('is_core').notNull().default(false),
 
     createdAt: ts('created_at').notNull().defaultNow(),
   },
   (t) => [
-    primaryKey({ columns: [t.userId, t.name] }),
     // Also what guarantees '@none' can never be a real type name.
     check('entity_types_name_format', sql`${t.name} ~ '^[a-z][a-z0-9_]*$'`),
   ],
@@ -433,11 +431,7 @@ export const entityTypes = pgTable(
 export const predicates = pgTable(
   'predicates',
   {
-    userId: uuid('user_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
-
-    name: text('name').notNull(),
+    name: text('name').primaryKey(),
     kind: text('kind').$type<PredicateKind>().notNull(),
 
     label: text('label').notNull(),
@@ -463,15 +457,13 @@ export const predicates = pgTable(
     valueEnum: jsonb('value_enum').$type<string[] | null>(),
     unit: text('unit'),
 
-    isCore: boolean('is_core').notNull().default(false),
     createdAt: ts('created_at').notNull().defaultNow(),
   },
   (t) => [
-    primaryKey({ columns: [t.userId, t.name] }),
     foreignKey({
       name: 'predicates_inverse_fk',
-      columns: [t.userId, t.inverseName],
-      foreignColumns: [t.userId, t.name],
+      columns: [t.inverseName],
+      foreignColumns: [t.name],
     }),
     check('predicates_name_format', sql`${t.name} ~ '^[a-z][a-z0-9_]*$'`),
     check('predicates_kind', sql`${t.kind} in ('relationship', 'attribute')`),
@@ -511,10 +503,6 @@ export const predicates = pgTable(
 export const predicateSignatures = pgTable(
   'predicate_signatures',
   {
-    userId: uuid('user_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
-
     predicate: text('predicate').notNull(),
     subjectType: text('subject_type').notNull(),
 
@@ -527,16 +515,16 @@ export const predicateSignatures = pgTable(
   },
   (t) => [
     // Also the target of the claims signature FK.
-    primaryKey({ columns: [t.userId, t.predicate, t.subjectType, t.objectType, t.valueKind] }),
+    primaryKey({ columns: [t.predicate, t.subjectType, t.objectType, t.valueKind] }),
     foreignKey({
       name: 'predicate_signatures_predicate_fk',
-      columns: [t.userId, t.predicate],
-      foreignColumns: [predicates.userId, predicates.name],
+      columns: [t.predicate],
+      foreignColumns: [predicates.name],
     }).onDelete('cascade'),
     foreignKey({
       name: 'predicate_signatures_subject_type_fk',
-      columns: [t.userId, t.subjectType],
-      foreignColumns: [entityTypes.userId, entityTypes.name],
+      columns: [t.subjectType],
+      foreignColumns: [entityTypes.name],
     }).onDelete('cascade'),
     // object_type is NOT FK'd to entity_types because of the sentinel. A typo
     // here yields an unusable signature, not a corrupt claim, and the seeder
@@ -575,7 +563,9 @@ export const entities = pgTable(
       .references(() => users.id, { onDelete: 'cascade' }),
     workspaceId: uuid('workspace_id'),
 
-    entityType: text('entity_type').notNull(),
+    entityType: text('entity_type')
+      .notNull()
+      .references(() => entityTypes.name),
 
     name: text('name').notNull(),
     /** Aliases the entity matcher resolves against, alongside `name`. */
@@ -615,11 +605,6 @@ export const entities = pgTable(
     updatedAt: ts('updated_at').notNull().defaultNow(),
   },
   (t) => [
-    foreignKey({
-      name: 'entities_entity_type_fk',
-      columns: [t.userId, t.entityType],
-      foreignColumns: [entityTypes.userId, entityTypes.name],
-    }),
     /**
      * Not redundant with the primary key: this is the target of the composite
      * FK from `claims`, which is what makes a claim's denormalized
@@ -756,9 +741,8 @@ export const claims = pgTable(
      */
     foreignKey({
       name: 'claims_signature_fk',
-      columns: [t.userId, t.predicate, t.subjectType, t.objectTypeKey, t.valueKind],
+      columns: [t.predicate, t.subjectType, t.objectTypeKey, t.valueKind],
       foreignColumns: [
-        predicateSignatures.userId,
         predicateSignatures.predicate,
         predicateSignatures.subjectType,
         predicateSignatures.objectType,

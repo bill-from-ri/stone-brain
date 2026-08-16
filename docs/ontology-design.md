@@ -134,13 +134,28 @@ This is a starting point, not a complete world model. Too small and every extrac
 missing verb; too large and the model picks inconsistently between near-synonyms. It grows
 through the proposals queue below rather than by being guessed at up front.
 
-### Per-user, not global
+### Global, not per-user
 
-The three reference tables are scoped by `user_id`. A world's vocabulary is part of the world,
-and one user adding a `Starship` type must not add it to everyone's ontology. Each user's rows
-are seeded from the registry by
-[`seedOntology()`](../src/lib/ontology/seed.ts), which is idempotent: core rows are re-upserted
-so a registry edit propagates, and anything the user added or edited is left alone.
+The three reference tables are **global** — one curated vocabulary, shared by every user, with no
+`user_id` column. Users do not define their own: most worlds want much the same types and
+relationships, so per-user vocabularies buy a customisation few would make in exchange for setup
+friction everyone pays. And because predicate descriptions *are* the extraction prompt, refining
+one shared set raises quality for everyone, where forked copies would each drift somewhere
+untested. See ADR §15 for the full reasoning, including what this replaced.
+
+Tenant isolation is unaffected: it comes from `user_id` in the `claims → entities` foreign keys,
+which the reference tables were never part of.
+
+[`seedOntology()`](../src/lib/ontology/seed.ts) syncs the registry into those tables. It takes no
+user, is idempotent, and is how a registry edit reaches a database:
+
+```
+npm run db:migrate && npm run db:seed
+```
+
+It also prunes rows the registry no longer declares — but only where nothing points at them. A
+predicate with claims hanging off it is retained and reported rather than deleted, since dropping
+it would orphan real data. Retiring one for real means migrating its claims first.
 
 ## What the database enforces
 
@@ -274,11 +289,11 @@ At present the vocabulary renders to ~2,250 tokens and the JSON Schema to ~425.
 A closed vocabulary that cannot grow will strangle the project the first time the extractor
 correctly identifies a relationship we did not anticipate. So the extraction schema gives it a
 structured way to fail: a `proposed_predicate` object (name, description, an example subject and
-object) that lands in a proposals queue instead of the graph. The user promotes it into the
-registry or rejects it.
+object) that lands in a proposals queue instead of the graph. Because the vocabulary is global and curated, promotion means **editing the registry and
+re-running the seed** — a maintainer decision, not a per-user setting. The queue's job is to
+surface where the ontology is actually thin.
 
-Closed at write time, open over the life of the project — and the queue doubles as a signal of
-where the ontology is actually thin.
+Closed at write time, open over the life of the project.
 
 *(Phase 2B. Not built yet.)*
 
@@ -289,7 +304,9 @@ where the ontology is actually thin.
   auto-write and dedupe the reciprocal claim rather than asking the model for both. Doing it at
   generation time keeps the round trip cheap and keeps the two directions consistent by
   construction.
-- **The entity matcher** normalizes model output — surface strings, never IDs — against `name`
-  and `name_variants`. On a miss it creates the entity as `draft` and flags it. It never
-  auto-merges on a fuzzy match: it proposes the merge and the user confirms. An extractor never
-  mints canon.
+- **The entity matcher writes nothing.** It normalizes a surface string against `name` and
+  `name_variants` and answers with a match, a set of ambiguous candidates, or nothing found. It
+  does not create drafts, does not merge, and does not promote — a matcher that writes is no
+  longer a matcher, and silently merging two distinct entities destroys information that nothing
+  downstream would surface. Creating entities for names it could not resolve is Phase 2B's
+  agent-proposal step, which decides deliberately and records why.

@@ -71,37 +71,36 @@ beforeAll(async () => {
   otherUserId = users.rows[1]!.id
 
   // Seeding mirrors src/lib/ontology/seed.ts. It is duplicated rather than
-  // imported because seed.ts binds to the Neon-backed `db` singleton.
+  // imported because seed.ts binds to the Neon-backed `db` singleton. The
+  // vocabulary is global, so it is seeded once rather than per user.
   const { predicates, signatures } = deriveOntology()
 
   for (const [i, type] of ENTITY_TYPES.entries()) {
     await db.query(
-      `insert into entity_types (user_id, name, label, plural_label, description, sort_order, is_core)
-       values ($1, $2, $3, $4, $5, $6, true)`,
-      [userId, type.name, type.label, type.pluralLabel, type.description, i],
+      `insert into entity_types (name, label, plural_label, description, sort_order)
+       values ($1, $2, $3, $4, $5)`,
+      [type.name, type.label, type.pluralLabel, type.description, i],
     )
   }
   for (const p of predicates) {
     await db.query(
       `insert into predicates
-         (user_id, name, kind, label, description, is_symmetric, is_temporal, is_functional,
-          value_type, value_enum, unit, is_core)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,true)`,
-      [userId, p.name, p.kind, p.label, p.description, p.isSymmetric, p.isTemporal,
+         (name, kind, label, description, is_symmetric, is_temporal, is_functional,
+          value_type, value_enum, unit)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      [p.name, p.kind, p.label, p.description, p.isSymmetric, p.isTemporal,
        p.isFunctional, p.valueType, p.valueEnum ? JSON.stringify(p.valueEnum) : null, p.unit],
     )
   }
   for (const p of predicates) {
     if (!p.inverseName) continue
-    await db.query(`update predicates set inverse_name = $3 where user_id = $1 and name = $2`, [
-      userId, p.name, p.inverseName,
-    ])
+    await db.query(`update predicates set inverse_name = $2 where name = $1`, [p.name, p.inverseName])
   }
   for (const s of signatures) {
     await db.query(
-      `insert into predicate_signatures (user_id, predicate, subject_type, object_type, value_kind)
-       values ($1, $2, $3, $4, $5)`,
-      [userId, s.predicate, s.subjectType, s.objectType, s.valueKind],
+      `insert into predicate_signatures (predicate, subject_type, object_type, value_kind)
+       values ($1, $2, $3, $4)`,
+      [s.predicate, s.subjectType, s.objectType, s.valueKind],
     )
   }
 
@@ -251,6 +250,11 @@ describe('entity integrity', () => {
     ).toBe('claims_subject_fk')
   })
 
+  /**
+   * Still enforced after the vocabulary went global: tenant isolation comes
+   * from user_id participating in the claims → entities foreign keys, which the
+   * reference tables were never part of.
+   */
   it('rejects a claim reaching into another user’s entities', async () => {
     expect(
       await violation(claim('subject_id, subject_type, predicate, value_int'), [

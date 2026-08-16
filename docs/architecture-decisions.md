@@ -846,14 +846,42 @@ cannot answer its own questions is the failure this project exists to prevent.
 because the *combination* is what matters — independent subject and object lists would permit
 their cross product, which is wider than the truth.
 
-### Reference tables are per-user
+### Reference tables are global — one curated vocabulary
 
-§1 permits global reference data, and this deliberately does not use that allowance. A world's
-vocabulary is part of the world; one user adding a `Starship` type must not add it to everyone's
-ontology. Scoping costs one column now and is expensive to retrofit — the same argument §5 makes
-for `workspace_id`. It also lets `user_id` participate in the entity foreign keys, so a claim
-reaching into another tenant's entities fails in the catalog rather than in a `WHERE` clause
-someone might forget.
+> ~~**Superseded (2026-08-16).** An earlier revision scoped `entity_types`, `predicates` and
+> `predicate_signatures` by `user_id`, on the reasoning that a world's vocabulary is part of the
+> world and one user adding a `Starship` type must not add it to everyone's ontology.~~ Reversed
+> before any rows existed; migration `0003_global_ontology` drops the column. The original
+> reasoning is kept below because it is still the argument to answer if this is ever revisited.
+
+Two things decided it, neither of which the per-user design accounted for:
+
+- **Per-user vocabularies are friction, not flexibility.** Most worlds want roughly the same
+  entity types and relationships. Asking every user to curate 63 predicates before extracting
+  anything is a setup burden in exchange for a customisation the great majority will never make.
+- **One vocabulary can be made good; a thousand cannot.** Predicate names and descriptions are
+  the extraction prompt (§15, *The registry is the LLM's instruction sheet*). Refining one shared
+  set improves extraction quality for everyone; per-user copies would fork on first edit and each
+  would drift somewhere untested.
+
+**Tenancy is unaffected.** Isolation never came from the reference tables — it comes from
+`user_id` participating in the `claims → entities` foreign keys, which are unchanged. A claim
+still cannot reach another user's entities, and the constraint test asserting that still passes.
+
+Consequences:
+
+- `seedOntology()` takes no user. It syncs the registry into the database once, is idempotent,
+  and is how a registry edit reaches production (`npm run db:seed`, after `db:migrate`). New
+  signups need no ontology setup at all.
+- The `is_core` columns are gone. They distinguished seeded rows from user-added ones, and there
+  are no user-added ones.
+- The predicate-proposals queue changes meaning: it surfaces gaps for **the maintainer** to add
+  to the registry, rather than letting each user extend their own copy. A better fit for the
+  quality argument above.
+- Retiring a predicate is now a shared decision. The seeder prunes rows the registry no longer
+  declares, but only where nothing points at them — a predicate with claims is retained and
+  reported rather than deleted, because silently dropping it would orphan real data and failing
+  the whole sync over it would be worse than saying so.
 
 ### Denormalized types on claims, and the FK chain they buy
 
