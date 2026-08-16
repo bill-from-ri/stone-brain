@@ -114,8 +114,8 @@ code. Three reference tables sit in front of `entities` and `claims`:
 | `predicate_signatures` | legal `(predicate, subject type, object type / value type)` triples | nonsense pairings |
 
 `predicates.description` is not documentation: it is the text handed to the extraction model.
-**The registry is the LLM's instruction sheet**, and it is generated from the same source that
-seeds the tables and builds the Zod validator, so the three cannot drift.
+**The registry is the LLM's instruction sheet** — see *The extraction contract* below, which is
+generated from the same source that seeds these tables.
 
 ### Why signatures are a table
 
@@ -202,6 +202,70 @@ them are `ON UPDATE NO ACTION` — a cascade cannot write a generated column, so
 rename would fail at the FK anyway. Renaming a type or a predicate is therefore a deliberate
 data migration, not a casual edit. Retyping an individual **entity** is the common case and is
 fully supported: that FK cascades.
+
+---
+
+# The extraction contract
+
+[`src/lib/ontology/extraction.ts`](../src/lib/ontology/extraction.ts) owns the boundary between
+the model and the tables: the schema the model is given, the validation its output must survive,
+and the translation into rows.
+
+What an LLM emits is **not a claim row** — it writes entity names rather than UUIDs, has no
+`user_id`, and gives dates as labels rather than sort keys:
+
+```json
+{ "subject": "Ashfall", "subject_type": "settlement",
+  "predicate": "ruled_by", "object": "Sera", "object_type": "character",
+  "start_time": "AD 412", "quote": "…", "paragraph": 14 }
+```
+
+`parseExtraction()` turns that into the shape the entity matcher consumes: value routed into the
+column its predicate declares, `start_order` derived by the calendar parser, names left for the
+matcher to resolve.
+
+## Why validate when the database already enforces all of this
+
+The catalog can only answer yes or no, one row at a time, after the model has already been paid
+for. This layer:
+
+- **rejects per claim** — two bad claims out of thirty cost two claims, not the document
+- **produces errors a retry can act on** — `'ruledby' is not in the vocabulary. Did you mean:
+  ruled_by?` rather than `claims_signature_fk`
+- **checks what the catalog structurally cannot** — `value_enum` membership
+- **refuses invented fields** rather than silently dropping them
+- **generates the prompt** — the vocabulary listing and the JSON Schema
+
+It is the working surface, not the authority. It may be wrong, improved, or bypassed; the foreign
+keys are the thing that cannot be.
+
+## Asking the model to type its entities
+
+`subject_type` and `object_type` are part of the wire format, which looks like extra work for the
+model. It is what allows domain and range to be checked *before* any database work — and a type
+that later disagrees with the matched entity is itself a signal worth having.
+
+## Suggestions stop where spelling stops
+
+An unknown predicate gets the nearest real names by edit distance, which is the mistake a model
+given an enum actually makes (`ruledby`, `member-of`). Below a distance threshold it offers
+**nothing**: the nearest strings to `governs` are `owns` and `power`, and naming those would push
+the model onto a wrong-but-legal predicate that nothing downstream would ever flag. A genuine gap
+in the vocabulary is told to stay a gap.
+
+## One source, three consumers
+
+The seeded reference tables, the validator, and the prompt all derive from the same ontology.
+Written separately they drift, and the failure is silent — the prompt offers a predicate the
+validator rejects, extraction quietly yields nothing, and it reads as a bad model rather than a
+bug. `compileOntology()` takes rows rather than importing the registry, so the runtime can
+compile a user's *edited* vocabulary out of the database while tests compile the registry.
+
+A drift suite in `extraction.test.ts` asserts the three agree: every registry predicate compiles,
+appears in the rendered vocabulary and in the JSON Schema, and every signature the registry
+declares is accepted by the validator.
+
+At present the vocabulary renders to ~2,250 tokens and the JSON Schema to ~425.
 
 ---
 
