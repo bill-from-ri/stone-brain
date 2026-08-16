@@ -3,6 +3,7 @@ import type { NeonDatabase } from 'drizzle-orm/neon-serverless'
 import type * as schema from '@/db/schema'
 import { claimSources, claims, documents, entities } from '@/db/schema'
 import { ordinalFor } from './calendar'
+import { normalizeName } from './matcher'
 import { deriveOntology } from './registry'
 
 /**
@@ -247,16 +248,6 @@ export type WorldSeedReport = {
   claimsCreated: number
   claimsExisting: number
   documentId: string | null
-}
-
-/** Matches `entities.normalized_name`, which the entity matcher will also use. */
-export function normalizeName(name: string): string {
-  return name
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim()
 }
 
 export async function seedWorld(db: Db, userId: string): Promise<WorldSeedReport> {

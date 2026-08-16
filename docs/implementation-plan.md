@@ -28,7 +28,7 @@ For claims to be made, we need to have the ontology in place first. This will in
 - [x] Set up PSQL DB  
 - [x] Seed with starting Entities and Claims (link to documents)  
 - [ ] Create basic entity matcher function  
-- [ ] Wire up Claims––both table and graph views––on frontend to visualize everything (users should have the ability to define and edit Claims via the frontend)
+- [ ] Wire up Claims––both table and graph views––on frontend to visualize everything (users should have the ability to define and edit Claims via the frontend). Remember to mark the seed document as Verified
 
 ## Claim Generation
 

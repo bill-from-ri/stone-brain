@@ -6,7 +6,7 @@ the reasoning behind the constraint layer lives in [architecture-decisions.md §
 
 ## Entities
 
-We start with nine entity types:
+We start with ten entity types:
 
 * Characters
 * Factions
@@ -15,8 +15,9 @@ We start with nine entity types:
 * Religions
 * Settlements
 * Regions
-* Artifacts
+* Artifacts — including created phenomena, not only portable objects
 * Events
+* Commodities — classes of traded or produced good, not particular objects
 
 **These live in one `entities` table with an `entity_type` column, not nine tables.** The note
 at the bottom of the original draft was right, and it turns out to be forced rather than merely
@@ -109,7 +110,7 @@ code. Three reference tables sit in front of `entities` and `claims`:
 
 | Table | Holds | Stops |
 | --- | --- | --- |
-| `entity_types` | the nine types, as rows | unknown types |
+| `entity_types` | the ten types, as rows | unknown types |
 | `predicates` | the verb vocabulary — `ruled_by`, `population`, … | invented predicates |
 | `predicate_signatures` | legal `(predicate, subject type, object type / value type)` triples | nonsense pairings |
 
@@ -125,8 +126,8 @@ truth — so the legal *combination* is the row.
 
 ### The starting vocabulary
 
-Defined in [`src/lib/ontology/registry.ts`](../src/lib/ontology/registry.ts): **23 relationship
-concepts and 21 attributes**, expanding to 63 predicate rows and 241 signatures. Only one
+Defined in [`src/lib/ontology/registry.ts`](../src/lib/ontology/registry.ts): **26 relationship
+concepts and 22 attributes**, expanding to 70 predicate rows and 254 signatures. Only one
 direction of each relationship is written by hand; the inverse predicate and its mirrored
 signatures are generated, so the two directions cannot disagree about which types they accept.
 
@@ -280,7 +281,59 @@ A drift suite in `extraction.test.ts` asserts the three agree: every registry pr
 appears in the rendered vocabulary and in the JSON Schema, and every signature the registry
 declares is accepted by the validator.
 
-At present the vocabulary renders to ~2,250 tokens and the JSON Schema to ~425.
+At present the vocabulary renders to roughly 2,500 tokens and the JSON Schema to about 450.
+
+---
+
+# The entity matcher
+
+[`src/lib/ontology/matcher.ts`](../src/lib/ontology/matcher.ts). Resolves a surface string to an
+entity that already exists, and does nothing else.
+
+```
+resolve(index, name, { type? })
+  → { matched, entity }
+  → { ambiguous, candidates }
+  → { none, suggestions }
+```
+
+**It writes nothing.** Not a limitation — the definition. It never creates, merges, renames, or
+promotes. Two consequences carry the design:
+
+- A name it cannot resolve is **not** quietly turned into a draft entity. Minting entities for
+  unrecognised names is how a bad extraction fills a world with junk.
+- A near miss is **never** returned as a match. `normalized_name` is deliberately not unique, so
+  two distinct entities may share a name; silently picking one destroys information nothing
+  downstream would surface. Suggestions are returned separately from matches, and never as one.
+
+The asymmetry is deliberate: a duplicate entity is visible and fixable, a wrong merge is neither.
+
+## What counts as a match
+
+- **Exact**, on the normalized key — case, punctuation and diacritics folded, so `Akál`, `Akal`
+  and `akal.` are one key.
+- **A declared variant** — `Nethros` resolves to Enua, and the result says `via: 'variant'` so a
+  UI can show why.
+- **A dropped leading article** — `Dragon's Shroud` finds `The Dragon's Shroud`. Not a guess about
+  which entity was meant; it is the same name.
+
+Everything else is a suggestion, with a reason: `other_type` when the name exists but under a type
+the caller did not ask for (usually the more useful answer), or `near_miss` by edit distance —
+thresholded, and silent when nothing is close, on the same reasoning as the extraction layer's
+predicate suggestions.
+
+## `type` is optional
+
+Extraction always knows the type; a user typing into a form may not. Without it, a name resolving
+to exactly one entity still resolves — only a name shared across types comes back ambiguous
+instead of being guessed at.
+
+## The case that proves it
+
+The first seed contains `Frost Gulf` as a region **and** as a variant of `Runara`, because the
+source document uses the phrase for both the bay and the forested land around it. Resolving it
+returns both, labelled, in either direction and with or without a type. A unique index would have
+made that world unrepresentable.
 
 ---
 
@@ -304,9 +357,5 @@ Closed at write time, open over the life of the project.
   auto-write and dedupe the reciprocal claim rather than asking the model for both. Doing it at
   generation time keeps the round trip cheap and keeps the two directions consistent by
   construction.
-- **The entity matcher writes nothing.** It normalizes a surface string against `name` and
-  `name_variants` and answers with a match, a set of ambiguous candidates, or nothing found. It
-  does not create drafts, does not merge, and does not promote — a matcher that writes is no
-  longer a matcher, and silently merging two distinct entities destroys information that nothing
-  downstream would surface. Creating entities for names it could not resolve is Phase 2B's
-  agent-proposal step, which decides deliberately and records why.
+- **Agent-proposed entities.** The matcher deliberately never creates one (see below), so a name
+  it cannot resolve waits for 2B's proposal step, which decides deliberately and records why.

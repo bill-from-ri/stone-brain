@@ -37,6 +37,7 @@
 import { z } from 'zod'
 import type { ValueType } from '@/db/schema'
 import { ordinalFor } from './calendar'
+import { normalizeName } from './matcher'
 import { type PredicateRow, type SignatureRow, NONE, deriveOntology } from './registry'
 
 /* ------------------------------------------------------------------ compiling */
@@ -186,8 +187,6 @@ const asNumber = (value: string | number): number | null => {
   const n = Number(trimmed)
   return Number.isFinite(n) ? n : null
 }
-
-const normalizeName = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '')
 
 /**
  * Everything the enum cannot express: which combinations are legal, which value
