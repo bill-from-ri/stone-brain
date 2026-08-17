@@ -1,4 +1,4 @@
-import { DocumentSearch } from './DocumentSearch'
+import { GlobalSearch } from './GlobalSearch'
 
 type Props = {
   /**
@@ -18,7 +18,7 @@ export function AppHeader({ title, search = true, actions }: Props) {
   return (
     <header className="sb-header">
       {title && <div className="sb-header-title">{title}</div>}
-      {search ? <DocumentSearch /> : <div className="sb-header-spacer" />}
+      {search ? <GlobalSearch /> : <div className="sb-header-spacer" />}
       {actions}
     </header>
   )

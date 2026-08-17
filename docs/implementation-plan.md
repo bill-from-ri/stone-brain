@@ -27,8 +27,12 @@ For claims to be made, we need to have the ontology in place first. This will in
 
 - [x] Set up PSQL DB  
 - [x] Seed with starting Entities and Claims (link to documents)  
-- [ ] Create basic entity matcher function  
-- [ ] Wire up Claims––both table and graph views––on frontend to visualize everything (users should have the ability to define and edit Claims via the frontend). Remember to mark the seed document as Verified
+- [x] Create basic entity matcher function  
+- [x] Wire up Claims––both table and graph views––on frontend to visualize everything (users should have the ability to define and edit Claims via the frontend). Remember to mark the seed document as Verified
+
+**Phase 2A is complete.** What it left behind, beyond the checklist: a constraint layer that makes an invalid claim unwritable, the Nevlos calendar and its parser, an extraction contract whose validator and prompt are generated from one registry, and 29 entities / 28 claims hand-seeded from *Written Map (1012)* as ground truth for the 2B bake-off.
+
+Carried forward deliberately: inverse claims are materialised on hand-entry, and the extraction path will need the same (2B §5); the entity matcher never writes, so agent-proposed entities are 2B's job.
 
 ## Claim Generation
 

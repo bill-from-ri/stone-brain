@@ -1,5 +1,6 @@
 import type { DocumentRow } from '@/db/queries/library'
 import { flags } from '@/lib/flags'
+import { displayStatus } from '@/lib/documents/status'
 import { DetailPaneShell } from './DetailPaneShell'
 
 /**
@@ -19,6 +20,11 @@ export function DetailPane({ doc }: { doc: DocumentRow | null }) {
   )
 }
 
+function StatusTag({ status }: { status: string }) {
+  const { label, tone } = displayStatus(status)
+  return <span className={tone === 'good' ? 'tag sb-tag-ok' : 'tag tag-neutral'}>{label}</span>
+}
+
 function DetailBody({ doc }: { doc: DocumentRow }) {
   return (
     <>
@@ -31,7 +37,7 @@ function DetailBody({ doc }: { doc: DocumentRow }) {
       </div>
 
       <div className="sb-detail-tags">
-        <span className="tag tag-neutral">Unverified</span>
+        <StatusTag status={doc.status} />
       </div>
 
       <div className="sb-tree-divider" style={{ margin: '16px 0' }} />

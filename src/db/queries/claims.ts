@@ -1,0 +1,487 @@
+import 'server-only'
+import { aliasedTable, and, asc, count, desc, eq, ilike, isNull, or, sql } from 'drizzle-orm'
+import { db } from '@/db'
+import {
+  claimSources,
+  claims,
+  documents,
+  entities,
+  entityTypes,
+  predicateSignatures,
+  predicates,
+} from '@/db/schema'
+import { normalizeName } from '@/lib/ontology/matcher'
+
+/**
+ * Every query here takes userId as its first parameter and filters on it, on
+ * the same rule as library.ts: a query without a user scope is the same class
+ * of bug as a scope-check bypass.
+ *
+ * The reference tables (`predicates`, `entity_types`) are global and carry no
+ * user column — see the ontology note in src/db/schema.ts — so they join
+ * unscoped by design.
+ */
+
+const subject = aliasedTable(entities, 'subject')
+const object = aliasedTable(entities, 'object')
+
+export type ClaimRow = {
+  id: string
+  subjectId: string
+  subjectName: string
+  subjectType: string
+  predicate: string
+  predicateLabel: string
+  predicateKind: string
+  inverseName: string | null
+  objectId: string | null
+  objectName: string | null
+  objectType: string | null
+  /** Rendered value for an attribute claim; null for a relationship. */
+  value: string | null
+  valueType: string | null
+  startTime: string | null
+  endTime: string | null
+  canonicity: string
+  createdBy: string
+  sourceCount: number
+}
+
+/** The shape both list and detail read, so the two can never disagree. */
+const claimSelection = {
+  id: claims.id,
+  subjectId: claims.subjectId,
+  subjectName: subject.name,
+  subjectType: claims.subjectType,
+  predicate: claims.predicate,
+  predicateLabel: predicates.label,
+  predicateKind: predicates.kind,
+  inverseName: predicates.inverseName,
+  objectId: claims.objectId,
+  objectName: object.name,
+  objectType: claims.objectType,
+  /**
+   * One rendered string rather than four nullable columns. Exactly one is
+   * populated — the schema enforces it — so coalescing loses nothing and saves
+   * every caller from re-deriving which column mattered.
+   */
+  value: sql<string | null>`coalesce(
+    ${claims.valueString},
+    ${claims.valueTime},
+    ${claims.valueInt}::text,
+    ${claims.valueFloat}::text
+  )`,
+  valueType: predicates.valueType,
+  startTime: claims.startTime,
+  endTime: claims.endTime,
+  canonicity: claims.canonicity,
+  createdBy: claims.createdBy,
+  /**
+   * Table names are spelled out rather than interpolated. Drizzle renders an
+   * interpolated column *unqualified* inside a raw subquery, so
+   * `${claimSources.claimId} = ${claims.id}` becomes `claim_id = id` — and
+   * because `claim_sources` has its own `id`, that resolves to the inner table
+   * and silently counts zero instead of failing. A wrong number that looks
+   * plausible is the worst possible outcome here, so this stays literal.
+   */
+  sourceCount: sql<number>`(
+    select count(*)::int from claim_sources
+    where claim_sources.claim_id = claims.id
+  )`,
+}
+
+function claimsBase(userId: string) {
+  return db
+    .select(claimSelection)
+    .from(claims)
+    .innerJoin(subject, eq(subject.id, claims.subjectId))
+    .leftJoin(object, eq(object.id, claims.objectId))
+    .innerJoin(predicates, eq(predicates.name, claims.predicate))
+    .where(eq(claims.userId, userId))
+    .$dynamic()
+}
+
+export type ClaimFilters = {
+  /** Only claims where this entity is the subject or the object. */
+  entityId?: string
+  /** Matches subject name, object name, or predicate. */
+  query?: string
+}
+
+export async function getClaims(
+  userId: string,
+  filters: ClaimFilters = {},
+  limit = 500,
+): Promise<ClaimRow[]> {
+  const conditions = [eq(claims.userId, userId)]
+
+  if (filters.entityId) {
+    conditions.push(
+      or(eq(claims.subjectId, filters.entityId), eq(claims.objectId, filters.entityId))!,
+    )
+  }
+
+  if (filters.query) {
+    const escaped = filters.query.replace(/([\\%_])/g, '\\$1')
+    conditions.push(
+      or(
+        ilike(subject.name, `%${escaped}%`),
+        ilike(object.name, `%${escaped}%`),
+        ilike(claims.predicate, `%${escaped}%`),
+        ilike(claims.valueString, `%${escaped}%`),
+      )!,
+    )
+  }
+
+  return claimsBase(userId)
+    .where(and(...conditions))
+    .orderBy(asc(subject.name), asc(claims.predicate))
+    .limit(limit)
+}
+
+export async function getClaim(userId: string, claimId: string): Promise<ClaimRow | null> {
+  const [row] = await claimsBase(userId)
+    .where(and(eq(claims.userId, userId), eq(claims.id, claimId)))
+    .limit(1)
+
+  return row ?? null
+}
+
+export type ClaimSourceRow = {
+  id: string
+  quote: string | null
+  paragraphIndex: number | null
+  documentName: string | null
+  documentId: string | null
+  /** Null when the document has been removed from the Library (decisions §7a). */
+  driveFileId: string | null
+  removed: boolean
+}
+
+export async function getClaimSources(
+  userId: string,
+  claimId: string,
+): Promise<ClaimSourceRow[]> {
+  const rows = await db
+    .select({
+      id: claimSources.id,
+      quote: claimSources.quote,
+      paragraphIndex: claimSources.paragraphIndex,
+      documentName: claimSources.documentName,
+      documentId: claimSources.documentId,
+      driveFileId: documents.driveFileId,
+      removedAt: documents.removedAt,
+    })
+    .from(claimSources)
+    .leftJoin(documents, eq(documents.id, claimSources.documentId))
+    .where(and(eq(claimSources.userId, userId), eq(claimSources.claimId, claimId)))
+    .orderBy(asc(claimSources.paragraphIndex))
+
+  return rows.map(({ removedAt, ...row }) => ({
+    ...row,
+    // A vanished source is a first-class state, not a missing row.
+    removed: row.documentId === null || removedAt !== null,
+  }))
+}
+
+/* ---------------------------------------------------------------- entities */
+
+export type EntityRow = {
+  id: string
+  name: string
+  entityType: string
+  canonicity: string
+  summary: string | null
+  nameVariants: string[]
+  /** Claims where this entity appears on either side. */
+  claimCount: number
+}
+
+/** Literal for the same reason as `sourceCount` above — see that comment. */
+const claimCountSql = sql<number>`(
+  select count(*)::int from claims
+  where claims.subject_id = entities.id or claims.object_id = entities.id
+)`
+
+export async function getEntities(
+  userId: string,
+  filters: { type?: string; query?: string } = {},
+): Promise<EntityRow[]> {
+  const conditions = [eq(entities.userId, userId)]
+
+  if (filters.type) conditions.push(eq(entities.entityType, filters.type))
+  if (filters.query) {
+    const escaped = filters.query.replace(/([\\%_])/g, '\\$1')
+    conditions.push(ilike(entities.name, `%${escaped}%`))
+  }
+
+  return db
+    .select({
+      id: entities.id,
+      name: entities.name,
+      entityType: entities.entityType,
+      canonicity: entities.canonicity,
+      summary: entities.summary,
+      nameVariants: entities.nameVariants,
+      claimCount: claimCountSql,
+    })
+    .from(entities)
+    .where(and(...conditions))
+    .orderBy(desc(claimCountSql), asc(entities.name))
+}
+
+export async function getEntity(userId: string, entityId: string): Promise<EntityRow | null> {
+  const [row] = await db
+    .select({
+      id: entities.id,
+      name: entities.name,
+      entityType: entities.entityType,
+      canonicity: entities.canonicity,
+      summary: entities.summary,
+      nameVariants: entities.nameVariants,
+      claimCount: claimCountSql,
+    })
+    .from(entities)
+    .where(and(eq(entities.userId, userId), eq(entities.id, entityId)))
+    .limit(1)
+
+  return row ?? null
+}
+
+export async function getEntityTypeCounts(userId: string): Promise<Map<string, number>> {
+  const rows = await db
+    .select({ entityType: entities.entityType, n: count() })
+    .from(entities)
+    .where(eq(entities.userId, userId))
+    .groupBy(entities.entityType)
+
+  return new Map(rows.map((r) => [r.entityType, r.n]))
+}
+
+/* -------------------------------------------------------------- the graph */
+
+export type GraphNode = {
+  id: string
+  name: string
+  entityType: string
+  degree: number
+}
+
+export type GraphEdge = {
+  id: string
+  sourceId: string
+  targetId: string
+  predicate: string
+  predicateLabel: string
+}
+
+/**
+ * Relationship claims only — an attribute has no second endpoint to draw.
+ *
+ * Both directions of a relationship are stored as separate claims once Phase 2B
+ * materialises inverses, and drawing both would double every line. The pair is
+ * collapsed here rather than in the renderer so the node degrees are honest.
+ */
+export async function getGraph(
+  userId: string,
+  limit = 400,
+): Promise<{ nodes: GraphNode[]; edges: GraphEdge[] }> {
+  const rows = await db
+    .select({
+      id: claims.id,
+      sourceId: claims.subjectId,
+      targetId: claims.objectId,
+      predicate: claims.predicate,
+      predicateLabel: predicates.label,
+      inverseName: predicates.inverseName,
+      sourceName: subject.name,
+      sourceType: claims.subjectType,
+      targetName: object.name,
+      targetType: claims.objectType,
+    })
+    .from(claims)
+    .innerJoin(subject, eq(subject.id, claims.subjectId))
+    .innerJoin(object, eq(object.id, claims.objectId))
+    .innerJoin(predicates, eq(predicates.name, claims.predicate))
+    .where(eq(claims.userId, userId))
+    .limit(limit)
+
+  const nodes = new Map<string, GraphNode>()
+  const edges: GraphEdge[] = []
+  const seenPairs = new Set<string>()
+
+  for (const row of rows) {
+    if (!row.targetId || !row.targetName || !row.targetType) continue
+
+    // An unordered key, so A—rules→B and B—ruled_by→A collapse to one line.
+    const pair = [row.sourceId, row.targetId].sort().join('|')
+    const key = `${pair}|${[row.predicate, row.inverseName ?? row.predicate].sort().join('|')}`
+    if (seenPairs.has(key)) continue
+    seenPairs.add(key)
+
+    for (const [id, name, entityType] of [
+      [row.sourceId, row.sourceName, row.sourceType],
+      [row.targetId, row.targetName, row.targetType],
+    ] as const) {
+      const existing = nodes.get(id)
+      if (existing) existing.degree++
+      else nodes.set(id, { id, name, entityType, degree: 1 })
+    }
+
+    edges.push({
+      id: row.id,
+      sourceId: row.sourceId,
+      targetId: row.targetId,
+      predicate: row.predicate,
+      predicateLabel: row.predicateLabel,
+    })
+  }
+
+  return { nodes: [...nodes.values()], edges }
+}
+
+/* --------------------------------------------------------------- vocabulary */
+
+export type PredicateOption = {
+  name: string
+  label: string
+  kind: string
+  description: string
+  inverseName: string | null
+  valueType: string | null
+  valueEnum: string[] | null
+}
+
+/** The vocabulary, for the claim editor's pickers. */
+export async function getPredicates(): Promise<PredicateOption[]> {
+  return db
+    .select({
+      name: predicates.name,
+      label: predicates.label,
+      kind: predicates.kind,
+      description: predicates.description,
+      inverseName: predicates.inverseName,
+      valueType: predicates.valueType,
+      valueEnum: predicates.valueEnum,
+    })
+    .from(predicates)
+    .orderBy(asc(predicates.name))
+}
+
+/** Claims whose only source document has left the Library (decisions §7a). */
+export async function countUnsourcedClaims(userId: string): Promise<number> {
+  const [row] = await db
+    .select({ n: count() })
+    .from(claims)
+    .innerJoin(claimSources, eq(claimSources.claimId, claims.id))
+    .leftJoin(documents, eq(documents.id, claimSources.documentId))
+    .where(
+      and(
+        eq(claims.userId, userId),
+        or(isNull(claimSources.documentId), sql`${documents.removedAt} is not null`),
+      ),
+    )
+
+  return row?.n ?? 0
+}
+
+export type EntitySearchHit = {
+  id: string
+  name: string
+  entityType: string
+  /** Display form from `entity_types.label`, so the UI never re-derives it. */
+  entityTypeLabel: string
+  /** Set when the query matched an alias rather than the name. */
+  matchedVariant: string | null
+}
+
+/**
+ * Entity search for the header typeahead.
+ *
+ * Matches the name, and — via the matcher's normalized key — aliases too, so
+ * "Nethros" finds Enua. Variants live in JSONB and would have to be normalised
+ * inside SQL to be searchable there, so the alias pass is done in memory over a
+ * deliberately small candidate set. See the scale note in matcher.ts.
+ */
+export async function searchEntities(
+  userId: string,
+  query: string,
+  limit = 8,
+): Promise<EntitySearchHit[]> {
+  const escaped = query.replace(/([\\%_])/g, '\\$1')
+
+  const rows = await db
+    .select({
+      id: entities.id,
+      name: entities.name,
+      entityType: entities.entityType,
+      entityTypeLabel: entityTypes.label,
+      nameVariants: entities.nameVariants,
+      claimCount: claimCountSql,
+    })
+    .from(entities)
+    .innerJoin(entityTypes, eq(entityTypes.name, entities.entityType))
+    .where(
+      and(
+        eq(entities.userId, userId),
+        or(
+          ilike(entities.name, `%${escaped}%`),
+          // Substring match inside the raw JSONB text. Loose on purpose: it only
+          // widens the candidate set, and the alias is confirmed below.
+          sql`${entities.nameVariants}::text ilike ${`%${escaped}%`}`,
+        ),
+      ),
+    )
+    .orderBy(desc(claimCountSql), asc(entities.name))
+    .limit(limit)
+
+  const needle = normalizeName(query)
+
+  return rows.map(({ nameVariants, claimCount: _claimCount, ...row }) => {
+    const nameHit = normalizeName(row.name).includes(needle)
+    const variant = nameHit
+      ? null
+      : (nameVariants.find((v) => normalizeName(v).includes(needle)) ?? null)
+    return { ...row, matchedVariant: variant }
+  })
+}
+
+export type EntityTypeOption = { name: string; label: string; pluralLabel: string }
+
+/** The type vocabulary, for pickers and for display labels. */
+export async function getEntityTypes(): Promise<EntityTypeOption[]> {
+  return db
+    .select({
+      name: entityTypes.name,
+      label: entityTypes.label,
+      pluralLabel: entityTypes.pluralLabel,
+    })
+    .from(entityTypes)
+    .orderBy(asc(entityTypes.sortOrder))
+}
+
+export type SignatureRow = {
+  predicate: string
+  subjectType: string
+  /** A real entity type, or '@none' for an attribute signature. */
+  objectType: string
+}
+
+/**
+ * Domain and range, for the claim editor's pickers.
+ *
+ * Shipped to the client so choosing a subject can narrow the predicate list and
+ * choosing a predicate can narrow the object list. ~254 rows of short strings;
+ * cheaper than a round trip per keystroke, and it is the same table the
+ * signature foreign key checks against, so the picker and the catalog cannot
+ * disagree about what is legal.
+ */
+export async function getSignatures(): Promise<SignatureRow[]> {
+  return db
+    .select({
+      predicate: predicateSignatures.predicate,
+      subjectType: predicateSignatures.subjectType,
+      objectType: predicateSignatures.objectType,
+    })
+    .from(predicateSignatures)
+}

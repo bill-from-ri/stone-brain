@@ -2,13 +2,20 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { apiRequireReady } from '@/lib/auth/guard'
 import { searchDocuments } from '@/db/queries/library'
+import { searchEntities } from '@/db/queries/claims'
 
 /**
- * Backs the header's typeahead.
+ * Backs the header's typeahead, over documents *and* entities.
  *
- * Reads the Postgres mirror only — never Drive. The mirror is what the Library
- * shows, so searching it is the only way the dropdown and the table can agree,
- * and it keeps a keystroke-rate endpoint off anyone's Drive quota.
+ * Reads Postgres only — never Drive. The mirror is what the Library shows, so
+ * searching it is the only way the dropdown and the table can agree, and it
+ * keeps a keystroke-rate endpoint off anyone's Drive quota.
+ *
+ * Entities come back through the same alias-aware path the entity matcher uses,
+ * so "Nethros" finds Enua here exactly as it would during extraction. The two
+ * kinds are returned as separate lists rather than one interleaved one: they
+ * navigate to different places and carry different subtitles, and merging them
+ * would only push the distinction into the client.
  */
 
 const querySchema = z.object({
@@ -16,7 +23,7 @@ const querySchema = z.object({
 })
 
 export type SearchResponse = {
-  hits: {
+  documents: {
     driveFileId: string
     name: string
     /** Path relative to the library root, e.g. 'History/Ancient'. Empty at root. */
@@ -24,26 +31,47 @@ export type SearchResponse = {
     /** Null when the parent folder is outside the mirror — not navigable. */
     folderId: string | null
   }[]
+  entities: {
+    id: string
+    name: string
+    /** Display form of the type, e.g. 'Settlement'. From entity_types.label. */
+    typeLabel: string
+    /** Set when the match was on an alias, so the row can say why it is here. */
+    matchedVariant: string | null
+  }[]
 }
 
 export async function GET(request: NextRequest) {
   const guard = await apiRequireReady()
   if (!guard.ok) return guard.response
 
+  const empty: SearchResponse = { documents: [], entities: [] }
+
   const parsed = querySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams))
-  if (!parsed.success) return NextResponse.json({ hits: [] } satisfies SearchResponse)
+  if (!parsed.success) return NextResponse.json(empty)
+
+  const query = parsed.data.q.trim()
 
   // userId comes from the session. Never from the request.
-  const hits = await searchDocuments(guard.session.user.id, parsed.data.q.trim())
+  const [docs, ents] = await Promise.all([
+    searchDocuments(guard.session.user.id, query),
+    searchEntities(guard.session.user.id, query),
+  ])
 
   const rootName = guard.session.rootFolderName
 
   return NextResponse.json({
-    hits: hits.map((hit) => ({
+    documents: docs.map((hit) => ({
       driveFileId: hit.driveFileId,
       name: hit.name,
       path: relativePath(hit.folderPath, rootName),
       folderId: hit.parentDriveFolderId,
+    })),
+    entities: ents.map((hit) => ({
+      id: hit.id,
+      name: hit.name,
+      typeLabel: hit.entityTypeLabel,
+      matchedVariant: hit.matchedVariant,
     })),
   } satisfies SearchResponse)
 }

@@ -3,6 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import type { Route } from 'next'
 import type { DocumentRow } from '@/db/queries/library'
+import { displayStatus } from '@/lib/documents/status'
 
 /**
  * The Library's centre pane, ported from the prototype (lines 228-257).
@@ -14,6 +15,9 @@ import type { DocumentRow } from '@/db/queries/library'
  *
  * Claims / Last checked / Conflicts render as em-dashes, matching the draft's
  * own "Never checked" rows. A zero would claim we looked and found none.
+ *
+ * Status reads the stored column through one shared map, rather than the
+ * hardcoded "Unverified" Phase 1 shipped on every row.
  */
 export function DocumentTable({
   documents,
@@ -80,7 +84,7 @@ export function DocumentTable({
                   </td>
                   <td className="sb-cell-faint">—</td>
                   <td>
-                    <span className="tag tag-neutral">Unverified</span>
+                    <StatusTag status={doc.status} />
                   </td>
                   <td className="sb-cell-faint">—</td>
                   <td className="sb-cell-faint" style={{ textAlign: 'right' }}>
@@ -94,6 +98,11 @@ export function DocumentTable({
       </div>
     </div>
   )
+}
+
+function StatusTag({ status }: { status: string }) {
+  const { label, tone } = displayStatus(status)
+  return <span className={tone === 'good' ? 'tag sb-tag-ok' : 'tag tag-neutral'}>{label}</span>
 }
 
 function EmptyState({ indexing }: { indexing: boolean }) {

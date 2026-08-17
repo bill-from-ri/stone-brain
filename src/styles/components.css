@@ -1072,3 +1072,390 @@
 .sb-detail-ids code {
   color: var(--muted);
 }
+
+/* An entity is not a file, and the dropdown mixes them, so the icon carries
+   the distinction before the subtitle is read. */
+.sb-search-opt-icon--entity {
+  color: var(--gold-lite);
+}
+
+/* Verified is the one document status the product has actually earned, so it
+   is the one that gets colour. Everything else stays neutral. */
+.sb-tag-ok {
+  background: var(--ok-dim);
+  color: #8fc39d;
+}
+
+/* ═══════════════════════════════════════════════════════ claims & graph ═══ */
+
+/* Both screens share the prototype's three-column split: a rail of entities,
+   the working surface, and a pane about whatever is selected. */
+.sb-claims,
+.sb-graph {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+}
+
+.sb-ent-rail {
+  width: 242px;
+  flex: none;
+  border-right: 1px solid var(--line);
+  padding: 16px 14px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.sb-ent-find {
+  height: 30px;
+}
+
+.sb-ent-kicker {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 16px 0 8px;
+}
+
+.sb-ent-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sb-ent-tags .tag {
+  cursor: pointer;
+  border: 0;
+  font: inherit;
+  font-size: 11px;
+}
+
+.sb-tag-on {
+  background: var(--gold-dim);
+  color: var(--gold-pale);
+}
+
+.sb-ent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-height: 0;
+}
+
+.sb-ent-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sb-ent-item:hover {
+  background: var(--panel);
+}
+
+.sb-ent-item > i {
+  font-size: 14px;
+  color: var(--faint);
+}
+
+.sb-ent-item--on,
+.sb-ent-item--on:hover {
+  background: var(--gold-dim);
+  color: var(--gold-pale);
+}
+
+.sb-ent-item--on > i {
+  color: var(--gold-lite);
+}
+
+.sb-ent-item-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sb-ent-item-n {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.sb-ent-note {
+  font-size: 12px;
+  color: var(--faint);
+  padding: 6px 8px;
+}
+
+/* ── the claim table ── */
+
+.sb-claims-centre {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sb-claims-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+.sb-claims-count {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.sb-claims-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 4px 24px 40px;
+}
+
+.sb-claim-table {
+  font-size: 12.5px;
+}
+
+.sb-claim-table tbody tr {
+  cursor: pointer;
+}
+
+/* The middle column is the verb, and the prototype's gold is what makes the
+   row read as a sentence rather than three unrelated cells. */
+.sb-claim-predicate {
+  color: var(--gold-pale);
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 11.5px;
+}
+
+.sb-claim-type {
+  color: var(--faint);
+  font-size: 11px;
+}
+
+.sb-claim-value {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 11.5px;
+}
+
+/* ── the claim pane ── */
+
+.sb-claims-pane {
+  width: 320px;
+  flex: none;
+  border-left: 1px solid var(--line);
+  padding: 18px;
+  overflow: auto;
+}
+
+.sb-claims-pane--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 12.5px;
+}
+
+.sb-claim-tuple {
+  margin-top: 10px;
+  font-size: 12.5px;
+  font-family: ui-monospace, Menlo, monospace;
+  line-height: 1.65;
+  color: #d6d3cb;
+  padding: 11px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+}
+
+.sb-claim-source + .sb-claim-source {
+  margin-top: 14px;
+}
+
+.sb-quote {
+  margin: 0;
+  padding: 11px 13px;
+  border-left: 1px solid var(--gold-line);
+  background: var(--surface);
+  border-radius: 0 6px 6px 0;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: #cfccc4;
+}
+
+.sb-claim-cite {
+  font-size: 11px;
+  color: var(--faint);
+  margin-top: 7px;
+}
+
+/* §7a: a claim whose evidence has vanished must not look like an ordinary one. */
+.sb-claim-cite--gone {
+  color: #c98a82;
+}
+
+.sb-claim-note {
+  font-size: 12px;
+  margin: 0;
+}
+
+.sb-claim-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.sb-claim-confirm-row {
+  display: flex;
+  gap: 7px;
+}
+
+/* ── the editor ── */
+
+.sb-claim-form {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.sb-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.sb-field > span {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.sb-field select.input,
+.sb-field input.input {
+  height: 32px;
+  min-height: 0;
+  font-size: 12.5px;
+}
+
+.sb-field-row {
+  display: flex;
+  gap: 9px;
+}
+
+.sb-field-row .sb-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.sb-field-hint {
+  margin: -4px 0 0;
+  font-size: 11px;
+  color: var(--faint);
+  line-height: 1.5;
+}
+
+.sb-check {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* The inverse confirmation. Deliberately loud enough to read before saving:
+   one click asserts two facts, and the second should never be a surprise. */
+.sb-inverse-note {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px 11px;
+  background: var(--gold-dim);
+  border: 1px solid var(--gold-line);
+  border-radius: 8px;
+}
+
+.sb-inverse-preview {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 11.5px;
+  color: var(--gold-pale);
+  overflow-wrap: anywhere;
+}
+
+.sb-form-error {
+  margin: 0;
+  font-size: 12px;
+  color: #e08c86;
+  line-height: 1.5;
+}
+
+.sb-btn-sm {
+  height: 30px;
+  font-size: 12px;
+}
+
+/* ── the graph ── */
+
+.sb-graph-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sb-graph-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 22px;
+  border-bottom: 1px solid var(--line);
+}
+
+.sb-graph-title {
+  font-size: 13px;
+}
+
+.sb-graph-title .sb-faint {
+  font-size: 11.5px;
+}
+
+.sb-graph-spacer {
+  flex: 1;
+}
+
+.sb-graph-stage {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  background: radial-gradient(circle at 50% 42%, #1b1f25, var(--bg) 70%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sb-graph-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.sb-graph-node {
+  cursor: pointer;
+}
+
+.sb-graph-node:hover circle {
+  stroke: var(--gold-line);
+}
