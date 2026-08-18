@@ -36,16 +36,16 @@ export function WorldCentre({
    */
   canCreate: boolean
 }) {
-  const { entityId, selectEntity, pending } = useWorldSelection()
+  const { entityId, selectEntity } = useWorldSelection()
 
   const focusName = entityId ? (entities.find((e) => e.id === entityId)?.name ?? null) : null
 
   /*
    * Choosing an entity re-filters the claims underneath, which only the server
    * can do, so this pane — unlike the rail and the detail pane beside it — does
-   * still wait on a round trip. `pending` fades it while that lands instead of
-   * freezing the screen, so the rows you are leaving stay readable and the rail
-   * stays clickable.
+   * still wait on a round trip. It is deliberately left alone while that lands:
+   * the rows stay at full strength and stay clickable, and the new ones swap in
+   * when they arrive. Nothing here should react to a pane opening beside it.
    */
   return (
     <RecordPane
@@ -72,13 +72,11 @@ export function WorldCentre({
         </>
       }
     >
-      <div className="sb-pane-stale" data-pending={pending || undefined}>
-        {view === 'graph' ? (
-          <GraphView graph={graph} activeEntityId={entityId} onSelect={selectEntity} />
-        ) : (
-          <ClaimsTable claims={claims} />
-        )}
-      </div>
+      {view === 'graph' ? (
+        <GraphView graph={graph} activeEntityId={entityId} onSelect={selectEntity} />
+      ) : (
+        <ClaimsTable claims={claims} />
+      )}
     </RecordPane>
   )
 }

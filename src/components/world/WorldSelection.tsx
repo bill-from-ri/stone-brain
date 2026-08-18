@@ -19,9 +19,10 @@ import type { Route } from 'next'
  * is no longer on the path between clicking a thing and seeing it.
  *
  * Choosing an entity does still need the server, because it re-filters the
- * claims underneath. That navigation now runs as a non-blocking transition:
- * `pending` lets the table say it is catching up while the rail and the pane
- * stay live, rather than the screen freezing until it lands.
+ * claims underneath. That navigation runs as a non-blocking transition, so the
+ * rail and the pane stay live and the table keeps showing the rows you have
+ * while the new ones are fetched. Nothing dims or otherwise reacts to a
+ * transition being in flight — the pane opening is the feedback.
  */
 
 export type Selection = {
@@ -31,8 +32,6 @@ export type Selection = {
 }
 
 type SelectionApi = Selection & {
-  /** True while a selection change is still being reflected by the server. */
-  pending: boolean
   selectEntity: (id: string | null) => void
   selectClaim: (id: string | null) => void
   toggleComposing: () => void
@@ -62,6 +61,11 @@ export function WorldSelectionProvider({
   const router = useRouter()
   const pathname = usePathname()
   const params = useSearchParams()
+  /*
+   * `pending` is not exposed and nothing renders from it. It is here for the
+   * reconcile guard below, which has to know whether a write of ours is still
+   * in flight before it will adopt the server's params.
+   */
   const [pending, startTransition] = useTransition()
 
   const [selection, setSelection] = useState<Selection>(initial)
@@ -107,7 +111,6 @@ export function WorldSelectionProvider({
 
   const api: SelectionApi = {
     ...selection,
-    pending,
 
     // Picking an entity clears the claim: a claim about something else is not
     // an answer to "show me this entity".
