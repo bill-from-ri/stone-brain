@@ -333,7 +333,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .sb-rail[data-ready='true'],
-  .sb-lib-detail {
+  .sb-detail-pane {
     transition: none;
   }
   .sb-search-menu {
@@ -375,7 +375,8 @@
 }
 
 /* -------------------------------------------------------------- header */
-/* Prototype lines 90-100. */
+/* Prototype lines 90-100, minus its title and its two buttons: the header is
+   the same on every screen and holds search alone. */
 
 .sb-header {
   height: 52px;
@@ -387,17 +388,11 @@
   border-bottom: 1px solid var(--line);
 }
 
-.sb-header-title {
-  font-size: 14px;
-  font-weight: 500;
-}
-
 .sb-header-spacer {
   flex: 1;
 }
 
-/* The prototype pinned a 300px field to the right. It sits on the left now and
-   takes every pixel between the title (if any) and the right-hand controls. */
+/* The prototype pinned a 300px field to the right. It spans the header now. */
 .sb-search-wrap {
   position: relative;
   flex: 1;
@@ -509,12 +504,6 @@
   padding: 9px 10px;
   font-size: 12px;
   color: var(--faint);
-}
-
-.sb-header .btn {
-  height: 32px;
-  font-size: 12.5px;
-  white-space: nowrap;
 }
 
 .sb-sync-state {
@@ -833,21 +822,41 @@
   padding: 1px 4px;
 }
 
-/* -- centre pane (draft line 228) -- */
+/* -- centre pane (draft line 228) --
+   .sb-pane / .sb-pane-bar / .sb-pane-body are shared with Claims: both screens
+   are a bar naming what you are looking at, then a selectable table. */
 
-.sb-lib-centre {
+.sb-pane {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
 }
 
-.sb-lib-bar {
+.sb-pane-bar {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 14px 22px;
   border-bottom: 1px solid var(--line);
+}
+
+.sb-pane-bar-spacer {
+  flex: 1;
+}
+
+/* The draft's folder-level buttons sit on this bar at 30px (lines 238, 604). */
+.sb-pane-bar .btn {
+  height: 30px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.sb-pane-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 6px 22px 22px;
 }
 
 .sb-crumbs {
@@ -867,27 +876,37 @@
   color: var(--ink);
 }
 
-.sb-lib-table-wrap {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  padding: 6px 22px 22px;
+/* An ancestor in the path is a way back up, so it looks and behaves like one. */
+.sb-crumb-link {
+  color: inherit;
 }
 
-.sb-doc-table {
-  font-size: 13px;
+.sb-crumb-link:hover {
+  color: var(--gold-pale);
+}
+
+/* One table for both screens. The draft runs the Library at 13px and the claim
+   table a size down (lines 242, 467), which is the only difference between them.
+   The selected row is the draft's gold wash — Claims had been missing it. */
+.sb-table {
   width: 100%;
+  font-size: 13px;
 }
 
-.sb-doc-table tbody tr {
+.sb-table--dense {
+  font-size: 12.5px;
+}
+
+.sb-table tbody tr {
   cursor: pointer;
 }
 
-.sb-doc-table tbody tr:hover {
+.sb-table tbody tr:hover {
   background: var(--panel);
 }
 
-.sb-doc-table tbody tr.sb-row--on {
+.sb-table tbody tr.sb-row--on,
+.sb-table tbody tr.sb-row--on:hover {
   background: var(--gold-dim);
 }
 
@@ -906,6 +925,11 @@
 
 .sb-cell-faint {
   color: var(--faint);
+}
+
+/* The draft greys a real secondary value and fades an absent one (line 245). */
+.sb-cell-muted {
+  color: var(--muted);
 }
 
 .sb-empty {
@@ -933,8 +957,8 @@
 /* Closed is width:0, not display:none, so it can be animated. The body keeps its
    full width inside the clip, which is what makes the content slide away rather
    than squash on the way out. */
-.sb-lib-detail {
-  width: 290px;
+.sb-detail-pane {
+  width: var(--sb-detail-w, 290px);
   flex: none;
   border-left: 1px solid var(--line);
   overflow: hidden;
@@ -943,14 +967,14 @@
     border-left-color 190ms ease;
 }
 
-.sb-lib-detail[data-open='false'] {
+.sb-detail-pane[data-open='false'] {
   width: 0;
   border-left-color: transparent;
 }
 
-.sb-lib-detail-body {
+.sb-detail-pane-body {
   position: relative;
-  width: 290px;
+  width: var(--sb-detail-w, 290px);
   height: 100%;
   padding: 18px;
   overflow: auto;
@@ -1083,7 +1107,7 @@
    is the one that gets colour. Everything else stays neutral. */
 .sb-tag-ok {
   background: var(--ok-dim);
-  color: #8fc39d;
+  color: #9ed3ac;
 }
 
 /* ═══════════════════════════════════════════════════════ claims & graph ═══ */
@@ -1197,49 +1221,21 @@
   padding: 6px 8px;
 }
 
-/* ── the claim table ── */
-
-.sb-claims-centre {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.sb-claims-bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 14px 24px;
-  border-bottom: 1px solid var(--line);
-}
+/* ── the claim table ──
+   The frame is .sb-pane / .sb-table, shared with the Library. What is left here
+   is only what a claim row looks like. */
 
 .sb-claims-count {
   font-size: 12px;
   color: var(--muted);
 }
 
-.sb-claims-table-wrap {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  padding: 4px 24px 40px;
-}
-
-.sb-claim-table {
-  font-size: 12.5px;
-}
-
-.sb-claim-table tbody tr {
-  cursor: pointer;
-}
-
-/* The middle column is the verb, and the prototype's gold is what makes the
-   row read as a sentence rather than three unrelated cells. */
+/* The middle column is the verb, and the prototype's gold is what makes the row
+   read as a sentence rather than three unrelated cells. Nothing else: the draft
+   sets the whole table in the body face (line 470), and the monospace the port
+   had added made the verb read as a code token rather than a word. */
 .sb-claim-predicate {
   color: var(--gold-pale);
-  font-family: ui-monospace, Menlo, monospace;
-  font-size: 11.5px;
 }
 
 .sb-claim-type {
@@ -1247,32 +1243,11 @@
   font-size: 11px;
 }
 
-.sb-claim-value {
-  font-family: ui-monospace, Menlo, monospace;
-  font-size: 11.5px;
-}
-
 /* ── the claim pane ── */
-
-.sb-claims-pane {
-  width: 320px;
-  flex: none;
-  border-left: 1px solid var(--line);
-  padding: 18px;
-  overflow: auto;
-}
-
-.sb-claims-pane--empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  font-size: 12.5px;
-}
 
 .sb-claim-tuple {
   margin-top: 10px;
-  font-size: 12.5px;
+  font-size: 13px;
   font-family: ui-monospace, Menlo, monospace;
   line-height: 1.65;
   color: #d6d3cb;

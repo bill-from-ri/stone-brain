@@ -62,10 +62,7 @@ export default async function ClaimsPage({
 
   return (
     <>
-      <AppHeader
-        title="Claims"
-        actions={<NewClaimButton composing={composing} disabled={entityRows.length === 0} />}
-      />
+      <AppHeader />
 
       <div className="sb-claims">
         <EntityFilter
@@ -79,6 +76,7 @@ export default async function ClaimsPage({
           claims={claimRows}
           focusName={focus?.name ?? null}
           selectedClaimId={selected?.id ?? null}
+          actions={<NewClaimButton composing={composing} disabled={entityRows.length === 0} />}
         />
 
         <ClaimDetail

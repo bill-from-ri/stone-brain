@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import type { Route } from 'next'
 import { useMemo, useState } from 'react'
 import type { EntityTypeOption, GraphEdge, GraphNode } from '@/db/queries/claims'
+import { EntityRail } from '@/components/shared/EntityRail'
 
 /**
  * The relationship graph.
@@ -38,17 +39,7 @@ export function GraphCanvas({
 
   const ranked = useMemo(() => [...nodes].sort((a, b) => b.degree - a.degree), [nodes])
 
-  const [find, setFind] = useState('')
-  const [type, setType] = useState<string | null>(null)
   const [focusId, setFocusId] = useState<string | null>(ranked[0]?.id ?? null)
-
-  const listed = useMemo(() => {
-    const needle = find.trim().toLowerCase()
-    return ranked.filter(
-      (n) =>
-        (!type || n.entityType === type) && (!needle || n.name.toLowerCase().includes(needle)),
-    )
-  }, [ranked, find, type])
 
   const focus = nodes.find((n) => n.id === focusId) ?? null
 
@@ -84,51 +75,20 @@ export function GraphCanvas({
 
   return (
     <div className="sb-graph">
-      <aside className="sb-ent-rail">
-        <label className="sb-search sb-ent-find">
-          <i className="ph ph-magnifying-glass" />
-          <input
-            className="input"
-            value={find}
-            onChange={(e) => setFind(e.target.value)}
-            placeholder="Find an entity"
-            aria-label="Find an entity"
-          />
-        </label>
-
-        <div className="sb-ent-kicker">Entity types</div>
-        <div className="sb-ent-tags">
-          {entityTypes
-            .filter((t) => (typeCounts[t.name] ?? 0) > 0)
-            .map((t) => (
-              <button
-                key={t.name}
-                type="button"
-                className={`tag ${type === t.name ? 'sb-tag-on' : 'tag-neutral'}`}
-                onClick={() => setType(type === t.name ? null : t.name)}
-              >
-                {t.label} {typeCounts[t.name]}
-              </button>
-            ))}
-        </div>
-
-        <div className="sb-ent-kicker">Most connected</div>
-        <div className="sb-ent-list">
-          {listed.map((node) => (
-            <button
-              key={node.id}
-              type="button"
-              className={`sb-ent-item${node.id === focusId ? ' sb-ent-item--on' : ''}`}
-              onClick={() => setFocusId(node.id)}
-            >
-              <i className="ph ph-polygon" />
-              <span className="sb-ent-item-name">{node.name}</span>
-              <span className="sb-ent-item-n">{node.degree}</span>
-            </button>
-          ))}
-          {listed.length === 0 && <div className="sb-ent-note">No entities match.</div>}
-        </div>
-      </aside>
+      <EntityRail
+        entities={ranked.map((n) => ({
+          id: n.id,
+          name: n.name,
+          entityType: n.entityType,
+          count: n.degree,
+        }))}
+        entityTypes={entityTypes}
+        typeCounts={typeCounts}
+        activeId={focusId}
+        // Unlike Claims, deselecting here would leave nothing to draw, so a
+        // second click on the focused entity keeps it focused.
+        onSelect={(id) => id && setFocusId(id)}
+      />
 
       <div className="sb-graph-main">
         <div className="sb-graph-bar">
@@ -190,13 +150,15 @@ export function GraphCanvas({
                   className="sb-graph-node"
                   onClick={() => setFocusId(s.other.id)}
                 >
-                  <circle cx={s.x} cy={s.y} r="30" fill="var(--panel)" stroke="var(--line-2)" />
+                  {/* The draft's neighbour node: r 33, panel fill, a faint ring
+                      and 11px label (lines 693-698). */}
+                  <circle cx={s.x} cy={s.y} r="33" fill="var(--panel)" stroke="var(--line-2)" />
                   <text
                     x={s.x}
-                    y={s.y + 3}
+                    y={s.y + 4}
                     textAnchor="middle"
-                    fontSize="9.5"
-                    fill="var(--ink)"
+                    fontSize="11"
+                    fill="#dcd9d1"
                     fontFamily="Inter, sans-serif"
                   >
                     {truncate(s.other.name)}
@@ -217,7 +179,7 @@ export function GraphCanvas({
                   x={CENTRE.x}
                   y={CENTRE.y + 4}
                   textAnchor="middle"
-                  fontSize="11"
+                  fontSize="12"
                   fill="var(--gold-pale)"
                   fontFamily="Inter, sans-serif"
                 >

@@ -29,7 +29,7 @@ export default async function GraphPage() {
 
   return (
     <>
-      <AppHeader title="Graph" />
+      <AppHeader />
       <GraphCanvas
         nodes={graph.nodes}
         edges={graph.edges}

@@ -5,6 +5,7 @@ import type {
   PredicateOption,
   SignatureRow,
 } from '@/db/queries/claims'
+import { DetailPaneShell } from '@/components/shared/DetailPaneShell'
 import { ClaimEditor } from './ClaimEditor'
 import { ClaimActions } from './ClaimActions'
 
@@ -19,6 +20,8 @@ import { ClaimActions } from './ClaimActions'
  * an ordinary citation.
  *
  * A SERVER component, so opening a claim costs no round trip beyond the page.
+ * It sits in the Library's pane shell, so it collapses, animates and closes the
+ * same way the document pane does rather than standing there empty.
  */
 export function ClaimDetail({
   claim,
@@ -37,29 +40,25 @@ export function ClaimDetail({
   predicates: PredicateOption[]
   signatures: SignatureRow[]
 }) {
-  if (composing) {
-    return (
-      <aside className="sb-claims-pane">
+  return (
+    <DetailPaneShell open={composing || claim !== null} clears={['claim', 'new']} width={320}>
+      {composing ? (
         <ClaimEditor
           entities={entities}
           entityTypes={entityTypes}
           predicates={predicates}
           signatures={signatures}
         />
-      </aside>
-    )
-  }
+      ) : (
+        claim && <ClaimBody claim={claim} sources={sources} />
+      )}
+    </DetailPaneShell>
+  )
+}
 
-  if (!claim) {
-    return (
-      <aside className="sb-claims-pane sb-claims-pane--empty">
-        <p className="sb-faint">Select a claim to see what it rests on.</p>
-      </aside>
-    )
-  }
-
+function ClaimBody({ claim, sources }: { claim: ClaimRow; sources: ClaimSourceRow[] }) {
   return (
-    <aside className="sb-claims-pane">
+    <>
       <div className="sb-detail-kicker">Claim</div>
       <div className="sb-claim-tuple">
         ({claim.subjectName}, <span className="sb-faint">{claim.subjectType}</span>,{' '}
@@ -108,7 +107,7 @@ export function ClaimDetail({
       <div className="sb-tree-divider" style={{ margin: '16px 0' }} />
 
       <ClaimActions claimId={claim.id} hasInverse={Boolean(claim.inverseName && claim.objectId)} />
-    </aside>
+    </>
   )
 }
 

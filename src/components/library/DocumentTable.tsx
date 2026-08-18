@@ -1,9 +1,23 @@
 'use client'
 
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import type { Route } from 'next'
 import type { DocumentRow } from '@/db/queries/library'
 import { displayStatus } from '@/lib/documents/status'
+import {
+  EmptyState,
+  PaneBarSpacer,
+  RecordPane,
+  RecordTable,
+  useParamWriter,
+  type Column,
+} from '@/components/shared/RecordTable'
+
+export type Crumb = {
+  name: string
+  /** null for "My Drive", which sits above the root and is not ours to open. */
+  folderId: string | null
+}
 
 /**
  * The Library's centre pane, ported from the prototype (lines 228-257).
@@ -11,114 +25,110 @@ import { displayStatus } from '@/lib/documents/status'
  * The draft's layout: a breadcrumb bar, then the table. The draft's "Check
  * folder" button is deliberately omitted — it belongs to Phase 3 — as is its
  * All/Removed filter, since soft-deleted documents are no longer shown here at
- * all (decisions §7a).
+ * all (decisions §7a). The sync control takes the right of the bar, where the
+ * draft put its own folder-level button.
  *
  * Claims / Last checked / Conflicts render as em-dashes, matching the draft's
  * own "Never checked" rows. A zero would claim we looked and found none.
- *
- * Status reads the stored column through one shared map, rather than the
- * hardcoded "Unverified" Phase 1 shipped on every row.
  */
 export function DocumentTable({
   documents,
   breadcrumb,
   selectedDriveFileId,
   indexing,
+  actions,
 }: {
   documents: DocumentRow[]
-  breadcrumb: string[]
+  breadcrumb: Crumb[]
   selectedDriveFileId: string | null
   indexing: boolean
+  /** The sync button and its readout, which the page owns. */
+  actions?: React.ReactNode
 }) {
-  const router = useRouter()
-  const pathname = usePathname()
-  const params = useSearchParams()
+  const setParams = useParamWriter()
 
-  const setParam = (mutate: (p: URLSearchParams) => void) => {
-    const next = new URLSearchParams(params)
-    mutate(next)
-    router.replace(`${pathname}?${next}` as Route, { scroll: false })
-  }
+  const columns: Column<DocumentRow>[] = [
+    {
+      key: 'name',
+      header: 'Name',
+      width: '44%',
+      cell: (doc) => (
+        <div className="sb-doc-name">
+          <i className="ph ph-file-doc" />
+          <span>{doc.name}</span>
+        </div>
+      ),
+    },
+    { key: 'claims', header: 'Claims', cell: () => <span className="sb-cell-faint">—</span> },
+    { key: 'status', header: 'Status', cell: (doc) => <StatusTag status={doc.status} /> },
+    { key: 'checked', header: 'Last checked', cell: () => <span className="sb-cell-faint">—</span> },
+    {
+      key: 'conflicts',
+      header: 'Conflicts',
+      align: 'right',
+      cell: () => <span className="sb-cell-faint">—</span>,
+    },
+  ]
 
   return (
-    <div className="sb-lib-centre">
-      <div className="sb-lib-bar">
-        <div className="sb-crumbs">
-          {breadcrumb.map((part, i) => (
-            <span key={`${part}-${i}`}>
-              {i > 0 && <span className="sb-crumb-sep">/</span>}
-              <span className={i === breadcrumb.length - 1 ? 'sb-crumb-here' : undefined}>
-                {part}
-              </span>
-            </span>
-          ))}
-        </div>
-      </div>
+    <RecordPane
+      bar={
+        <>
+          <Breadcrumb crumbs={breadcrumb} />
+          <PaneBarSpacer />
+          {actions}
+        </>
+      }
+    >
+      <RecordTable
+        columns={columns}
+        rows={documents}
+        rowKey={(doc) => doc.driveFileId}
+        selectedKey={selectedDriveFileId}
+        onSelect={(doc) => setParams((p) => p.set('doc', doc.driveFileId))}
+        empty={
+          indexing ? (
+            <EmptyState
+              icon="ph ph-circle-notch"
+              title="Indexing your folder…"
+              note="Documents appear here as they are found."
+            />
+          ) : (
+            <EmptyState
+              title="No Google Docs in this folder."
+              note="Slides, sheets and uploaded files are skipped."
+            />
+          )
+        }
+      />
+    </RecordPane>
+  )
+}
 
-      <div className="sb-lib-table-wrap">
-        {documents.length === 0 ? (
-          <EmptyState indexing={indexing} />
-        ) : (
-          <table className="table sb-doc-table">
-            <thead>
-              <tr>
-                <th style={{ width: '44%' }}>Name</th>
-                <th>Claims</th>
-                <th>Status</th>
-                <th>Last checked</th>
-                <th style={{ textAlign: 'right' }}>Conflicts</th>
-              </tr>
-            </thead>
-            <tbody>
-              {documents.map((doc) => (
-                <tr
-                  key={doc.id}
-                  onClick={() => setParam((p) => p.set('doc', doc.driveFileId))}
-                  className={doc.driveFileId === selectedDriveFileId ? 'sb-row--on' : undefined}
-                >
-                  <td>
-                    <div className="sb-doc-name">
-                      <i className="ph ph-file-doc" />
-                      <span>{doc.name}</span>
-                    </div>
-                  </td>
-                  <td className="sb-cell-faint">—</td>
-                  <td>
-                    <StatusTag status={doc.status} />
-                  </td>
-                  <td className="sb-cell-faint">—</td>
-                  <td className="sb-cell-faint" style={{ textAlign: 'right' }}>
-                    —
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </div>
+/** Every ancestor is a link — the path is how you walk back up, not a label. */
+function Breadcrumb({ crumbs }: { crumbs: Crumb[] }) {
+  return (
+    <nav className="sb-crumbs" aria-label="Folder path">
+      {crumbs.map((crumb, i) => {
+        const here = i === crumbs.length - 1
+        return (
+          <span key={`${crumb.name}-${i}`}>
+            {i > 0 && <span className="sb-crumb-sep">/</span>}
+            {crumb.folderId && !here ? (
+              <Link className="sb-crumb-link" href={`/library/${crumb.folderId}` as Route}>
+                {crumb.name}
+              </Link>
+            ) : (
+              <span className={here ? 'sb-crumb-here' : undefined}>{crumb.name}</span>
+            )}
+          </span>
+        )
+      })}
+    </nav>
   )
 }
 
 function StatusTag({ status }: { status: string }) {
   const { label, tone } = displayStatus(status)
   return <span className={tone === 'good' ? 'tag sb-tag-ok' : 'tag tag-neutral'}>{label}</span>
-}
-
-function EmptyState({ indexing }: { indexing: boolean }) {
-  if (indexing) {
-    return (
-      <div className="sb-empty">
-        <i className="ph ph-circle-notch" />
-        <p>Indexing your folder…</p>
-        <p className="sb-faint">Documents appear here as they are found.</p>
-      </div>
-    )
-  }
-  return (
-    <div className="sb-empty">
-      <p>No Google Docs in this folder.</p>
-      <p className="sb-faint">Slides, sheets and uploaded files are skipped.</p>
-    </div>
-  )
 }

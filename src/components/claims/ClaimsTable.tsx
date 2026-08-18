@@ -1,8 +1,14 @@
 'use client'
 
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import type { Route } from 'next'
 import type { ClaimRow } from '@/db/queries/claims'
+import {
+  EmptyState,
+  PaneBarSpacer,
+  RecordPane,
+  RecordTable,
+  useParamWriter,
+  type Column,
+} from '@/components/shared/RecordTable'
 
 /**
  * The claim table, from the prototype (lines 467-483).
@@ -16,113 +22,125 @@ import type { ClaimRow } from '@/db/queries/claims'
  * in the faint position where a relationship shows the object's entity type.
  * They are the same shape of statement and splitting them into two tables would
  * only make the page harder to read.
+ *
+ * The frame — bar, table, selection — is the Library's; see RecordTable.
  */
 export function ClaimsTable({
   claims,
   focusName,
   selectedClaimId,
+  actions,
 }: {
   claims: ClaimRow[]
   focusName: string | null
   selectedClaimId: string | null
+  /** "New claim", which the page owns. */
+  actions?: React.ReactNode
 }) {
-  const router = useRouter()
-  const pathname = usePathname()
-  const params = useSearchParams()
+  const setParams = useParamWriter()
 
-  const setParam = (mutate: (p: URLSearchParams) => void) => {
-    const next = new URLSearchParams(params)
-    mutate(next)
-    router.replace(`${pathname}?${next}` as Route, { scroll: false })
-  }
+  const columns: Column<ClaimRow>[] = [
+    {
+      key: 'subject',
+      header: 'Entity',
+      cell: (claim) => (
+        <>
+          {claim.subjectName} <span className="sb-claim-type">{claim.subjectType}</span>
+        </>
+      ),
+    },
+    {
+      key: 'predicate',
+      header: 'Relationship',
+      cell: (claim) => <span className="sb-claim-predicate">{claim.predicate}</span>,
+    },
+    {
+      key: 'object',
+      header: 'Entity or value',
+      cell: (claim) =>
+        claim.objectName ? (
+          <>
+            {claim.objectName} <span className="sb-claim-type">{claim.objectType}</span>
+          </>
+        ) : (
+          <>
+            {claim.value} <span className="sb-claim-type">{claim.valueType}</span>
+          </>
+        ),
+    },
+    {
+      key: 'when',
+      header: 'When',
+      width: 90,
+      cell: (claim) => <Faded value={whenOf(claim)} />,
+    },
+    {
+      key: 'sources',
+      header: 'Sources',
+      width: 74,
+      align: 'right',
+      cell: (claim) => <Faded value={claim.sourceCount === 0 ? '—' : String(claim.sourceCount)} />,
+    },
+  ]
 
   return (
-    <div className="sb-claims-centre">
-      <div className="sb-claims-bar">
-        <div className="sb-claims-count">
-          {claims.length} {claims.length === 1 ? 'claim' : 'claims'}
-          {focusName && (
-            <>
-              {' about '}
-              <strong>{focusName}</strong>
-            </>
-          )}
-        </div>
-        {focusName && (
-          <button
-            type="button"
-            className="btn btn-secondary sb-btn-sm"
-            onClick={() =>
-              setParam((p) => {
-                p.delete('entity')
-                p.delete('claim')
-              })
-            }
-          >
-            Show all
-          </button>
-        )}
-      </div>
-
-      <div className="sb-claims-table-wrap">
-        {claims.length === 0 ? (
-          <div className="sb-empty">
-            <p>No claims yet.</p>
-            <p className="sb-faint">
-              Add one by hand, or wait for extraction in Phase 2.
-            </p>
+    <RecordPane
+      bar={
+        <>
+          <div className="sb-claims-count">
+            {claims.length} {claims.length === 1 ? 'claim' : 'claims'}
+            {focusName && (
+              <>
+                {' about '}
+                <strong>{focusName}</strong>
+              </>
+            )}
           </div>
-        ) : (
-          <table className="table sb-claim-table">
-            <thead>
-              <tr>
-                <th>Entity</th>
-                <th>Relationship</th>
-                <th>Entity or value</th>
-                <th style={{ width: 90 }}>When</th>
-                <th style={{ width: 74, textAlign: 'right' }}>Sources</th>
-              </tr>
-            </thead>
-            <tbody>
-              {claims.map((claim) => (
-                <tr
-                  key={claim.id}
-                  onClick={() => setParam((p) => {
-                    p.set('claim', claim.id)
-                    p.delete('new')
-                  })}
-                  className={claim.id === selectedClaimId ? 'sb-row--on' : undefined}
-                >
-                  <td>
-                    <span className="sb-claim-entity">{claim.subjectName}</span>{' '}
-                    <span className="sb-claim-type">{claim.subjectType}</span>
-                  </td>
-                  <td className="sb-claim-predicate">{claim.predicate}</td>
-                  <td>
-                    {claim.objectName ? (
-                      <>
-                        <span className="sb-claim-entity">{claim.objectName}</span>{' '}
-                        <span className="sb-claim-type">{claim.objectType}</span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="sb-claim-value">{claim.value}</span>{' '}
-                        <span className="sb-claim-type">{claim.valueType}</span>
-                      </>
-                    )}
-                  </td>
-                  <td className="sb-cell-faint">{whenOf(claim)}</td>
-                  <td className="sb-cell-faint" style={{ textAlign: 'right' }}>
-                    {claim.sourceCount === 0 ? '—' : claim.sourceCount}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </div>
+          {focusName && (
+            <button
+              type="button"
+              className="btn btn-secondary sb-btn-sm"
+              onClick={() =>
+                setParams((p) => {
+                  p.delete('entity')
+                  p.delete('claim')
+                })
+              }
+            >
+              Show all
+            </button>
+          )}
+          <PaneBarSpacer />
+          {actions}
+        </>
+      }
+    >
+      <RecordTable
+        dense
+        columns={columns}
+        rows={claims}
+        rowKey={(claim) => claim.id}
+        selectedKey={selectedClaimId}
+        onSelect={(claim) =>
+          setParams((p) => {
+            p.set('claim', claim.id)
+            p.delete('new')
+          })
+        }
+        empty={
+          <EmptyState
+            title="No claims yet."
+            note="Add one by hand, or wait for extraction in Phase 2."
+          />
+        }
+      />
+    </RecordPane>
   )
+}
+
+/** The prototype greys a real value and fades an absent one. */
+function Faded({ value }: { value: string }) {
+  return <span className={value === '—' ? 'sb-cell-faint' : 'sb-cell-muted'}>{value}</span>
 }
 
 /**

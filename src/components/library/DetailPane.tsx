@@ -1,7 +1,7 @@
 import type { DocumentRow } from '@/db/queries/library'
 import { flags } from '@/lib/flags'
 import { displayStatus } from '@/lib/documents/status'
-import { DetailPaneShell } from './DetailPaneShell'
+import { DetailPaneShell } from '@/components/shared/DetailPaneShell'
 
 /**
  * The Library's right pane, ported from the prototype (lines 259-285).
@@ -16,7 +16,9 @@ import { DetailPaneShell } from './DetailPaneShell'
  */
 export function DetailPane({ doc }: { doc: DocumentRow | null }) {
   return (
-    <DetailPaneShell open={doc !== null}>{doc && <DetailBody doc={doc} />}</DetailPaneShell>
+    <DetailPaneShell open={doc !== null} clears={['doc']}>
+      {doc && <DetailBody doc={doc} />}
+    </DetailPaneShell>
   )
 }
 
