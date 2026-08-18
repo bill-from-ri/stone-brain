@@ -44,17 +44,19 @@ export default async function LibraryFolderPage({
   const selectedDoc = selectedDocId ? await getDocument(userId, selectedDocId) : null
 
   /*
-   * "My Drive / Nevlos / History" — the draft's breadcrumb, built by walking
-   * parents rather than splitting folders.path, so every ancestor carries the
-   * id needed to link to it. "My Drive" is above our root and stays plain text.
+   * "Nevlos / History" — built by walking parents rather than splitting
+   * folders.path, so every ancestor carries the id needed to link to it.
+   *
+   * The path starts at the chosen root and stops there. The draft opened with
+   * "My Drive", but that is a place this product cannot open: everything above
+   * the root is outside the grant, so naming it offers a step you cannot take.
    */
   const byId = new Map(tree.map((f) => [f.driveFolderId, f]))
-  const ancestors: Crumb[] = []
+  const breadcrumb: Crumb[] = []
   for (let node = activeFolder; node; node = byId.get(node.parentDriveFolderId ?? '')!) {
-    ancestors.unshift({ name: node.name, folderId: node.driveFolderId })
+    breadcrumb.unshift({ name: node.name, folderId: node.driveFolderId })
     if (node.isRoot || !node.parentDriveFolderId || !byId.has(node.parentDriveFolderId)) break
   }
-  const breadcrumb: Crumb[] = [{ name: 'My Drive', folderId: null }, ...ancestors]
 
   return (
     <>

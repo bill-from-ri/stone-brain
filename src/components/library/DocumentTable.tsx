@@ -15,8 +15,7 @@ import {
 
 export type Crumb = {
   name: string
-  /** null for "My Drive", which sits above the root and is not ours to open. */
-  folderId: string | null
+  folderId: string
 }
 
 /**
@@ -105,21 +104,24 @@ export function DocumentTable({
   )
 }
 
-/** Every ancestor is a link — the path is how you walk back up, not a label. */
+/**
+ * Every ancestor is a link — the path is how you walk back up, not a label.
+ * It begins at the root folder; nothing above it is inside the Drive grant.
+ */
 function Breadcrumb({ crumbs }: { crumbs: Crumb[] }) {
   return (
     <nav className="sb-crumbs" aria-label="Folder path">
       {crumbs.map((crumb, i) => {
         const here = i === crumbs.length - 1
         return (
-          <span key={`${crumb.name}-${i}`}>
+          <span key={crumb.folderId}>
             {i > 0 && <span className="sb-crumb-sep">/</span>}
-            {crumb.folderId && !here ? (
+            {here ? (
+              <span className="sb-crumb-here">{crumb.name}</span>
+            ) : (
               <Link className="sb-crumb-link" href={`/library/${crumb.folderId}` as Route}>
                 {crumb.name}
               </Link>
-            ) : (
-              <span className={here ? 'sb-crumb-here' : undefined}>{crumb.name}</span>
             )}
           </span>
         )
