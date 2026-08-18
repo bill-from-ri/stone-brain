@@ -11,7 +11,16 @@ import { useState } from 'react'
  * a side effect of deleting a different one is exactly the kind of quiet loss
  * this project exists to prevent.
  */
-export function ClaimActions({ claimId, hasInverse }: { claimId: string; hasInverse: boolean }) {
+export function ClaimActions({
+  claimId,
+  hasInverse,
+  onDeleted,
+}: {
+  claimId: string
+  hasInverse: boolean
+  /** Clears the selection pointing at a claim that no longer exists. */
+  onDeleted?: () => void
+}) {
   const router = useRouter()
   const [confirming, setConfirming] = useState(false)
   const [alsoInverse, setAlsoInverse] = useState(true)
@@ -23,6 +32,9 @@ export function ClaimActions({ claimId, hasInverse }: { claimId: string; hasInve
       method: 'DELETE',
     })
     setBusy(false)
+    // Order matters: drop the selection first, so the pane is not briefly
+    // rendering a deleted claim while the refreshed table arrives.
+    onDeleted?.()
     router.refresh()
   }
 

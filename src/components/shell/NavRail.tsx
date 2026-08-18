@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import type { Route } from 'next'
 import { NAV } from './nav'
 
 type Props = {
@@ -12,6 +13,17 @@ type Props = {
   /** Real Phase 1 counts. The prototype's "Graph health" bar is fiction until Phase 3. */
   documentCount: number
   folderCount: number
+  /**
+   * The canonical Library URL, already resolved to the root folder.
+   *
+   * /library is only an alias: it is a dynamic page whose whole body is a
+   * session lookup followed by a redirect to /library/<rootFolderId>. Linking
+   * to it from the rail made the commonest navigation in the product pay for
+   * two server renders — the redirect, then the real page — before anything
+   * was drawn. The layout already knows the root folder, so the rail points
+   * straight at the destination and the alias stays for typed URLs only.
+   */
+  libraryHref: Route
 }
 
 const COLLAPSE_KEY = 'sb:rail-collapsed'
@@ -28,6 +40,7 @@ export function NavRail({
   driveConnected,
   documentCount,
   folderCount,
+  libraryHref,
 }: Props) {
   const pathname = usePathname()
   const [avatarFailed, setAvatarFailed] = useState(false)
@@ -93,7 +106,7 @@ export function NavRail({
           return (
             <Link
               key={item.href}
-              href={item.href}
+              href={item.href === '/library' ? libraryHref : item.href}
               className={`sb-rail-item${active ? ' sb-rail-item--on' : ''}${
                 item.phase > 1 ? ' sb-rail-item--preview' : ''
               }`}

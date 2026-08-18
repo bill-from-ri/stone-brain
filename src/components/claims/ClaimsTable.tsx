@@ -1,8 +1,9 @@
 'use client'
 
 import type { ClaimRow } from '@/db/queries/claims'
-import { EmptyState, RecordTable, useParamWriter, type Column } from '@/components/shared/RecordTable'
+import { EmptyState, RecordTable, type Column } from '@/components/shared/RecordTable'
 import { predicateText } from '@/components/shared/predicate'
+import { useWorldSelection } from '@/components/world/WorldSelection'
 
 /**
  * The claim table, from the prototype (lines 467-483).
@@ -20,14 +21,8 @@ import { predicateText } from '@/components/shared/predicate'
  * The frame around it — pane, bar, view toggle — belongs to WorldCentre; the
  * table itself is the Library's, via RecordTable.
  */
-export function ClaimsTable({
-  claims,
-  selectedClaimId,
-}: {
-  claims: ClaimRow[]
-  selectedClaimId: string | null
-}) {
-  const setParams = useParamWriter()
+export function ClaimsTable({ claims }: { claims: ClaimRow[] }) {
+  const { claimId, selectClaim } = useWorldSelection()
 
   const columns: Column<ClaimRow>[] = [
     {
@@ -81,13 +76,8 @@ export function ClaimsTable({
       columns={columns}
       rows={claims}
       rowKey={(claim) => claim.id}
-      selectedKey={selectedClaimId}
-      onSelect={(claim) =>
-        setParams((p) => {
-          p.set('claim', claim.id)
-          p.delete('new')
-        })
-      }
+      selectedKey={claimId}
+      onSelect={(claim) => selectClaim(claim.id)}
       empty={
         <EmptyState
           title="No claims yet."

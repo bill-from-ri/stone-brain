@@ -1,30 +1,17 @@
 'use client'
 
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import type { Route } from 'next'
+import { useWorldSelection } from '@/components/world/WorldSelection'
 
-/** Opens the editor in the right pane, via the URL so it survives a reload. */
-export function NewClaimButton({
-  composing,
-  disabled,
-}: {
-  composing: boolean
-  disabled: boolean
-}) {
-  const router = useRouter()
-  const pathname = usePathname()
-  const params = useSearchParams()
-
-  const toggle = () => {
-    const next = new URLSearchParams(params)
-    if (composing) {
-      next.delete('new')
-    } else {
-      next.set('new', '1')
-      next.delete('claim')
-    }
-    router.replace(`${pathname}?${next}` as Route, { scroll: false })
-  }
+/**
+ * Opens the editor in the right pane.
+ *
+ * Still written to the URL — `?new=1` survives a reload — but through the
+ * shared selection, so the pane opens on the click rather than on the server's
+ * answer to it.
+ */
+export function NewClaimButton({ disabled }: { disabled: boolean }) {
+  const { composing, toggleComposing } = useWorldSelection()
+  const toggle = toggleComposing
 
   return (
     <button

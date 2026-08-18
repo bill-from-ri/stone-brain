@@ -1,7 +1,10 @@
-import type { DocumentRow } from '@/db/queries/library'
+import { Suspense } from 'react'
+import { getDocument, type DocumentRow } from '@/db/queries/library'
 import { flags } from '@/lib/flags'
 import { displayStatus } from '@/lib/documents/status'
+import { requireReady } from '@/lib/auth/guard'
 import { DetailPaneShell } from '@/components/shared/DetailPaneShell'
+import { SkelDetail } from '@/components/shared/Skeleton'
 
 /**
  * The Library's right pane, ported from the prototype (lines 259-285).
@@ -11,15 +14,48 @@ import { DetailPaneShell } from '@/components/shared/DetailPaneShell'
  * that skeleton and fills it with the metadata we actually have; the claims
  * section states plainly that it is empty rather than showing invented cards.
  *
- * A SERVER component — it reads the row the page already fetched, so opening the
- * pane makes no Drive call and no second round trip.
+ * A SERVER component, and it does its own read rather than taking the row from
+ * the page. That read used to be a fourth await in the page body, after the
+ * batch that fetches the tree, the counts and the table — so every Library
+ * navigation paid for it, including the ones with nothing selected, and the
+ * whole screen waited on a query that fills one 290px column.
+ *
+ * Suspended here instead: the frame opens on the click, the tree and the table
+ * render without waiting, and the body streams in behind a skeleton. It makes
+ * no Drive call either way.
  */
-export function DetailPane({ doc }: { doc: DocumentRow | null }) {
+export function DetailPane({ driveFileId }: { driveFileId: string | null }) {
   return (
-    <DetailPaneShell open={doc !== null} clears={['doc']}>
-      {doc && <DetailBody doc={doc} />}
+    <DetailPaneShell open={driveFileId !== null} clears={['doc']}>
+      {driveFileId && (
+        // Keyed so that moving between documents shows the skeleton again
+        // rather than holding the previous one's details under a new title.
+        <Suspense key={driveFileId} fallback={<SkelDetail />}>
+          <DetailBodyLoader driveFileId={driveFileId} />
+        </Suspense>
+      )}
     </DetailPaneShell>
   )
+}
+
+/**
+ * Resolves the session itself rather than accepting a userId as a prop.
+ *
+ * `getSession` is wrapped in React's cache(), so this costs no extra query — and
+ * it keeps the rule from guard.ts intact: every query in src/db/queries takes a
+ * userId that came from the session, at the point it is used.
+ */
+async function DetailBodyLoader({ driveFileId }: { driveFileId: string }) {
+  const session = await requireReady()
+  const doc = await getDocument(session.user.id, driveFileId)
+
+  // A `?doc=` pointing at something that has left the folder: say so, rather
+  // than leaving the skeleton pulsing at a document that is never coming.
+  if (!doc) {
+    return <p className="sb-faint sb-claim-note">That document is no longer in this folder.</p>
+  }
+
+  return <DetailBody doc={doc} />
 }
 
 function StatusTag({ status }: { status: string }) {

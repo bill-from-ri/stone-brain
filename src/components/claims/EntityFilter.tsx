@@ -2,10 +2,10 @@
 
 import type { EntityRow, EntityTypeOption } from '@/db/queries/claims'
 import { EntityRail } from '@/components/shared/EntityRail'
-import { useParamWriter } from '@/components/shared/RecordTable'
+import { useWorldSelection } from '@/components/world/WorldSelection'
 
 /**
- * Claims' left rail: the shared EntityRail, wired to the query string.
+ * The World's left rail: the shared EntityRail, wired to the screen's selection.
  *
  * It sits on Claims rather than only on Graph because "show me everything about
  * X" is the question this screen is actually for, and the prototype's Claims
@@ -15,14 +15,12 @@ export function EntityFilter({
   entities,
   entityTypes,
   typeCounts,
-  activeEntityId,
 }: {
   entities: EntityRow[]
   entityTypes: EntityTypeOption[]
   typeCounts: Record<string, number>
-  activeEntityId: string | null
 }) {
-  const setParams = useParamWriter()
+  const { entityId, selectEntity } = useWorldSelection()
 
   return (
     <EntityRail
@@ -35,14 +33,8 @@ export function EntityFilter({
       }))}
       entityTypes={entityTypes}
       typeCounts={typeCounts}
-      activeId={activeEntityId}
-      onSelect={(id) =>
-        setParams((p) => {
-          if (id) p.set('entity', id)
-          else p.delete('entity')
-          p.delete('claim')
-        })
-      }
+      activeId={entityId}
+      onSelect={selectEntity}
     />
   )
 }

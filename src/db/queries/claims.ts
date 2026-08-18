@@ -1,4 +1,5 @@
 import 'server-only'
+import { unstable_cache } from 'next/cache'
 import { aliasedTable, and, asc, count, desc, eq, ilike, isNull, or, sql } from 'drizzle-orm'
 import { db } from '@/db'
 import {
@@ -21,6 +22,32 @@ import { normalizeName } from '@/lib/ontology/matcher'
  * user column — see the ontology note in src/db/schema.ts — so they join
  * unscoped by design.
  */
+
+/**
+ * The ontology — predicates, entity types, signatures — is global reference
+ * data. It has no user column, it is written only by `npm run db:seed`, and it
+ * is read on every render of the World screen to populate the claim editor's
+ * pickers. Re-reading it per navigation was three round trips for bytes that
+ * had not changed since the last seed, so the three readers below are cached
+ * across requests.
+ *
+ * The hour is a backstop, not the intended invalidation path. `db:seed` runs as
+ * a plain tsx script outside the server, so it cannot call `revalidateTag` —
+ * nothing in-process knows the vocabulary moved. A deploy clears the cache
+ * anyway (the build id is part of every key), which covers the normal case of
+ * seeding and shipping together; the TTL only bounds how long a *running*
+ * server can keep serving a vocabulary that was reseeded underneath it.
+ *
+ * The tag is here so that an in-app writer — a future ontology editor, which is
+ * the thing that would make this urgent — can invalidate all three at once.
+ *
+ * One constraint this buys: `unstable_cache` needs Next's incremental cache in
+ * context, so these three are callable only from a request. A plain tsx script
+ * that imports them throws "incrementalCache missing"; a script that wants the
+ * vocabulary should query the tables directly, as scripts/seed-ontology.ts does.
+ */
+export const ONTOLOGY_TAG = 'ontology'
+const ONTOLOGY_TTL_SECONDS = 60 * 60
 
 const subject = aliasedTable(entities, 'subject')
 const object = aliasedTable(entities, 'object')
@@ -311,7 +338,13 @@ export type Graph = {
  * collapsed here rather than in the renderer so the node degrees are honest.
  */
 export async function getGraph(userId: string, limit = 1200): Promise<Graph> {
-  const rows = await db
+  /*
+   * The three reads are independent, so they are issued together rather than
+   * awaited one after another. Over Neon's HTTP driver every query is its own
+   * request, so three sequential awaits cost three full round trips — on a
+   * dataset this size that was the entire cost of the query, not the work.
+   */
+  const relationshipRows = db
     .select({
       id: claims.id,
       sourceId: claims.subjectId,
@@ -331,12 +364,12 @@ export async function getGraph(userId: string, limit = 1200): Promise<Graph> {
     .where(eq(claims.userId, userId))
     .limit(limit)
 
-  const entityRows = await db
+  const entityRowsPromise = db
     .select({ id: entities.id, name: entities.name, entityType: entities.entityType })
     .from(entities)
     .where(eq(entities.userId, userId))
 
-  const attributeRows = await db
+  const attributeRowsPromise = db
     .select({
       id: claims.id,
       subjectId: claims.subjectId,
@@ -349,6 +382,12 @@ export async function getGraph(userId: string, limit = 1200): Promise<Graph> {
     .innerJoin(predicates, eq(predicates.name, claims.predicate))
     .where(and(eq(claims.userId, userId), isNull(claims.objectId)))
     .limit(limit)
+
+  const [rows, entityRows, attributeRows] = await Promise.all([
+    relationshipRows,
+    entityRowsPromise,
+    attributeRowsPromise,
+  ])
 
   const nodes = new Map<string, GraphNode>(
     entityRows.map((e) => [e.id, { id: e.id, name: e.name, entityType: e.entityType, degree: 0 }]),
@@ -414,20 +453,23 @@ export type PredicateOption = {
 }
 
 /** The vocabulary, for the claim editor's pickers. */
-export async function getPredicates(): Promise<PredicateOption[]> {
-  return db
-    .select({
-      name: predicates.name,
-      label: predicates.label,
-      kind: predicates.kind,
-      description: predicates.description,
-      inverseName: predicates.inverseName,
-      valueType: predicates.valueType,
-      valueEnum: predicates.valueEnum,
-    })
-    .from(predicates)
-    .orderBy(asc(predicates.name))
-}
+export const getPredicates = unstable_cache(
+  async (): Promise<PredicateOption[]> =>
+    db
+      .select({
+        name: predicates.name,
+        label: predicates.label,
+        kind: predicates.kind,
+        description: predicates.description,
+        inverseName: predicates.inverseName,
+        valueType: predicates.valueType,
+        valueEnum: predicates.valueEnum,
+      })
+      .from(predicates)
+      .orderBy(asc(predicates.name)),
+  ['ontology', 'predicates'],
+  { tags: [ONTOLOGY_TAG], revalidate: ONTOLOGY_TTL_SECONDS },
+)
 
 /** Claims whose only source document has left the Library (decisions §7a). */
 export async function countUnsourcedClaims(userId: string): Promise<number> {
@@ -510,16 +552,19 @@ export async function searchEntities(
 export type EntityTypeOption = { name: string; label: string; pluralLabel: string }
 
 /** The type vocabulary, for pickers and for display labels. */
-export async function getEntityTypes(): Promise<EntityTypeOption[]> {
-  return db
-    .select({
-      name: entityTypes.name,
-      label: entityTypes.label,
-      pluralLabel: entityTypes.pluralLabel,
-    })
-    .from(entityTypes)
-    .orderBy(asc(entityTypes.sortOrder))
-}
+export const getEntityTypes = unstable_cache(
+  async (): Promise<EntityTypeOption[]> =>
+    db
+      .select({
+        name: entityTypes.name,
+        label: entityTypes.label,
+        pluralLabel: entityTypes.pluralLabel,
+      })
+      .from(entityTypes)
+      .orderBy(asc(entityTypes.sortOrder)),
+  ['ontology', 'entity-types'],
+  { tags: [ONTOLOGY_TAG], revalidate: ONTOLOGY_TTL_SECONDS },
+)
 
 export type SignatureRow = {
   predicate: string
@@ -537,12 +582,15 @@ export type SignatureRow = {
  * signature foreign key checks against, so the picker and the catalog cannot
  * disagree about what is legal.
  */
-export async function getSignatures(): Promise<SignatureRow[]> {
-  return db
-    .select({
-      predicate: predicateSignatures.predicate,
-      subjectType: predicateSignatures.subjectType,
-      objectType: predicateSignatures.objectType,
-    })
-    .from(predicateSignatures)
-}
+export const getSignatures = unstable_cache(
+  async (): Promise<SignatureRow[]> =>
+    db
+      .select({
+        predicate: predicateSignatures.predicate,
+        subjectType: predicateSignatures.subjectType,
+        objectType: predicateSignatures.objectType,
+      })
+      .from(predicateSignatures),
+  ['ontology', 'signatures'],
+  { tags: [ONTOLOGY_TAG], revalidate: ONTOLOGY_TTL_SECONDS },
+)

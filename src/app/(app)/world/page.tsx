@@ -2,13 +2,11 @@ import { AppHeader } from '@/components/shell/AppHeader'
 import { EntityFilter } from '@/components/claims/EntityFilter'
 import { WorldCentre } from '@/components/world/WorldCentre'
 import { WorldDetail } from '@/components/world/WorldDetail'
+import { WorldSelectionProvider } from '@/components/world/WorldSelection'
 import type { WorldViewMode } from '@/components/world/ViewToggle'
 import {
-  getClaim,
-  getClaimSources,
   getClaims,
   getEntities,
-  getEntity,
   getEntityTypeCounts,
   getEntityTypes,
   getGraph,
@@ -34,6 +32,25 @@ export const dynamic = 'force-dynamic'
  * a "Commit to graph" footer. None of that exists yet: there is no extraction
  * (Phase 2B) and no contradiction detection (Phase 3). What is kept is the part
  * that was always right, over the whole graph rather than one document's output.
+ *
+ * ---
+ *
+ * On what this page does and does not fetch.
+ *
+ * It used to resolve the selection here too: `getEntity` for the focused
+ * entity, then `getClaim`, then `getClaimSources`, each awaited after the
+ * others. Over Neon's HTTP driver that was three further round trips stacked on
+ * top of the batch below, and all three ran on every navigation — including the
+ * ones that only opened a pane over data the browser was already holding.
+ *
+ * They are gone. The selected entity is a row in `entityRows`, the selected
+ * claim is a row in `claimRows`, and both are already being sent to the client
+ * so that the rail and the table can draw them; WorldDetail renders the pane
+ * from those. Sources, the one thing genuinely not here, are fetched by the
+ * pane from /api/claims/[id] when a claim is actually opened.
+ *
+ * What remains is one parallel batch, so the page costs a single round trip's
+ * latency rather than four in sequence.
  */
 export default async function WorldPage({
   searchParams,
@@ -60,54 +77,41 @@ export default async function WorldPage({
       getGraph(userId),
     ])
 
-  const focus = params.entity ? await getEntity(userId, params.entity) : null
-
-  const selected = params.claim ? await getClaim(userId, params.claim) : null
-  const sources = selected ? await getClaimSources(userId, selected.id) : []
-
-  const composing = params.new === '1'
-
-  // Counted from the claims already fetched rather than asked of the database
-  // again: this is the same set the table is showing.
-  const relationshipCount = focus
-    ? claimRows.filter((claim) => claim.objectId !== null).length
-    : 0
-
   return (
     <>
       <AppHeader />
 
-      <div className="sb-world">
-        <EntityFilter
-          entities={entityRows}
-          entityTypes={entityTypes}
-          typeCounts={Object.fromEntries(typeCounts)}
-          activeEntityId={params.entity ?? null}
-        />
+      <WorldSelectionProvider
+        initial={{
+          entityId: params.entity ?? null,
+          claimId: params.claim ?? null,
+          composing: params.new === '1',
+        }}
+      >
+        <div className="sb-world">
+          <EntityFilter
+            entities={entityRows}
+            entityTypes={entityTypes}
+            typeCounts={Object.fromEntries(typeCounts)}
+          />
 
-        <WorldCentre
-          view={view}
-          claims={claimRows}
-          focusName={focus?.name ?? null}
-          selectedClaimId={selected?.id ?? null}
-          graph={graph}
-          activeEntityId={params.entity ?? null}
-          composing={composing}
-          canCreate={entityRows.length > 0}
-        />
+          <WorldCentre
+            view={view}
+            claims={claimRows}
+            entities={entityRows}
+            graph={graph}
+            canCreate={entityRows.length > 0}
+          />
 
-        <WorldDetail
-          claim={selected}
-          sources={sources}
-          entity={focus}
-          relationshipCount={relationshipCount}
-          composing={composing}
-          entities={entityRows.map((e) => ({ id: e.id, name: e.name, entityType: e.entityType }))}
-          entityTypes={entityTypes}
-          predicates={predicates}
-          signatures={signatures}
-        />
-      </div>
+          <WorldDetail
+            claims={claimRows}
+            entities={entityRows}
+            entityTypes={entityTypes}
+            predicates={predicates}
+            signatures={signatures}
+          />
+        </div>
+      </WorldSelectionProvider>
     </>
   )
 }

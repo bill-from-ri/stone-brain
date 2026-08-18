@@ -21,12 +21,21 @@ import { useParamWriter } from './RecordTable'
 export function DetailPaneShell({
   open,
   clears,
+  onClose,
   width = 290,
   children,
 }: {
   open: boolean
-  /** Query params the close button drops — `doc` here, `claim` and `new` there. */
-  clears: string[]
+  /**
+   * Query params the close button drops — `doc` on the Library.
+   *
+   * Ignored when `onClose` is given. The World screen keeps its selection in
+   * client state so its pane can open without a round trip, and there closing
+   * is a state change that writes the URL afterwards rather than a URL edit
+   * that the server has to answer before anything moves.
+   */
+  clears?: string[]
+  onClose?: () => void
   width?: number
   children: React.ReactNode
 }) {
@@ -37,7 +46,8 @@ export function DetailPaneShell({
     if (open) setHeld(children)
   }, [open, children])
 
-  const close = () => setParams((p) => clears.forEach((key) => p.delete(key)))
+  const close = () =>
+    onClose ? onClose() : setParams((p) => (clears ?? []).forEach((key) => p.delete(key)))
 
   return (
     <aside

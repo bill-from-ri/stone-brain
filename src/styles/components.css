@@ -1547,3 +1547,81 @@
   line-height: 1.6;
   color: var(--muted);
 }
+
+/* ============================================================ loading skeletons
+
+   The fallback a route's loading.tsx paints while its server render is in
+   flight. Every app screen is force-dynamic, so without a Suspense boundary the
+   browser sat on the previous page — fully drawn, apparently idle — until the
+   whole render came back. These are the shapes it shows instead.
+
+   They trace the real three-pane grid rather than centring a spinner, so the
+   frame does not jump when the content swaps in. */
+
+.sb-skel {
+  background: var(--line);
+  border-radius: 4px;
+  opacity: 0.55;
+  animation: sb-skel-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes sb-skel-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* A skeleton that animates is a progress signal; one that flashes is a
+   vestibular problem. Reduced-motion keeps the shape and drops the pulse. */
+@media (prefers-reduced-motion: reduce) {
+  .sb-skel {
+    animation: none;
+    opacity: 0.45;
+  }
+}
+
+.sb-skel-rail {
+  padding: 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sb-skel-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 12px 0;
+}
+
+.sb-skel-row {
+  height: 13px;
+}
+
+/* The centre pane's body while a selection is still being reflected by the
+   server. Choosing an entity re-filters the claims, which is a real round trip;
+   this marks the rows as stale rather than blanking them, so the screen stays
+   readable and the rail beside it stays live. */
+
+.sb-pane-stale {
+  height: 100%;
+  min-height: 0;
+  transition: opacity 120ms ease-out;
+}
+
+.sb-pane-stale[data-pending] {
+  opacity: 0.45;
+  /* Clicking a row that is about to be replaced would select a claim from the
+     list you are leaving. */
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sb-pane-stale {
+    transition: none;
+  }
+}

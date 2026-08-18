@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import type { Route } from 'next'
 import { NavRail } from '@/components/shell/NavRail'
 import { ConnectionBanner } from '@/components/shell/ConnectionBanner'
 import { getShellCounts } from '@/db/queries/library'
@@ -30,6 +31,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         driveConnected={driveConnected}
         documentCount={documentCount}
         folderCount={folderCount}
+        // `needs_root` redirected above, so the root folder is known by here.
+        libraryHref={`/library/${session.rootDriveFolderId}` as Route}
       />
       <main className="sb-main">
         {!driveConnected && <ConnectionBanner returnTo="/library" />}

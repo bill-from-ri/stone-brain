@@ -11,10 +11,22 @@ import { ClaimActions } from './ClaimActions'
  * document has left the Library is called out rather than quietly rendered as
  * an ordinary citation.
  *
- * A SERVER component, so opening a claim costs no round trip beyond the page.
+ * Rendered on the client from the table row that was clicked, so the claim
+ * itself is drawn with no round trip at all. Only its source passages have to
+ * be fetched, and `sourcesLoading` covers the moment before they land.
  * The pane around it belongs to WorldDetail — this is only what goes inside.
  */
-export function ClaimDetail({ claim, sources }: { claim: ClaimRow; sources: ClaimSourceRow[] }) {
+export function ClaimDetail({
+  claim,
+  sources,
+  sourcesLoading = false,
+  onDeleted,
+}: {
+  claim: ClaimRow
+  sources: ClaimSourceRow[]
+  sourcesLoading?: boolean
+  onDeleted?: () => void
+}) {
   return (
     <>
       <div className="sb-detail-kicker">Claim</div>
@@ -45,7 +57,11 @@ export function ClaimDetail({ claim, sources }: { claim: ClaimRow; sources: Clai
         {sources.length === 0 ? 'Source' : 'Read from'}
       </div>
 
-      {sources.length === 0 ? (
+      {/* "Entered by hand" is a claim about the data, so it waits until the
+          sources are actually known rather than being the default answer. */}
+      {sourcesLoading ? (
+        <p className="sb-faint sb-claim-note">Looking for sources…</p>
+      ) : sources.length === 0 ? (
         <p className="sb-faint sb-claim-note">
           Entered by hand. A claim needs no document behind it.
         </p>
@@ -64,7 +80,11 @@ export function ClaimDetail({ claim, sources }: { claim: ClaimRow; sources: Clai
 
       <div className="sb-tree-divider" style={{ margin: '16px 0' }} />
 
-      <ClaimActions claimId={claim.id} hasInverse={Boolean(claim.inverseName && claim.objectId)} />
+      <ClaimActions
+        claimId={claim.id}
+        hasInverse={Boolean(claim.inverseName && claim.objectId)}
+        onDeleted={onDeleted}
+      />
     </>
   )
 }

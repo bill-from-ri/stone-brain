@@ -106,7 +106,10 @@ export function GlobalSearch() {
     setValue('')
 
     if (entry.kind === 'entity') {
-      router.push(`/claims?entity=${encodeURIComponent(entry.hit.id)}` as Route)
+      // /world directly, not the /claims alias: that alias is a dynamic page
+      // whose only job is to redirect here, so going through it would make
+      // every entity hit pay for two server renders before anything drew.
+      router.push(`/world?entity=${encodeURIComponent(entry.hit.id)}` as Route)
       return
     }
     if (!entry.hit.folderId) return

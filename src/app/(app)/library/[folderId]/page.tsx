@@ -5,7 +5,6 @@ import { DocumentTable, type Crumb } from '@/components/library/DocumentTable'
 import { FolderTree } from '@/components/library/FolderTree'
 import { SyncPoller } from '@/components/library/SyncPoller'
 import {
-  getDocument,
   getDocuments,
   getFolderDocCounts,
   getFolderTree,
@@ -15,7 +14,13 @@ import { requireReady } from '@/lib/auth/guard'
 
 export const dynamic = 'force-dynamic'
 
-/** The three-pane Library, ported from the prototype (lines 208-287). */
+/**
+ * The three-pane Library, ported from the prototype (lines 208-287).
+ *
+ * One parallel batch and nothing after it. The detail pane's read used to be a
+ * fifth query awaited here, which put a round trip between the click and the
+ * table on every navigation; it now lives inside the pane, suspended.
+ */
 export default async function LibraryFolderPage({
   params,
   searchParams,
@@ -39,8 +44,6 @@ export default async function LibraryFolderPage({
   // the root. Either way it is not ours to render.
   const activeFolder = tree.find((f) => f.driveFolderId === folderId)
   if (!activeFolder) notFound()
-
-  const selectedDoc = selectedDocId ? await getDocument(userId, selectedDocId) : null
 
   /*
    * "Nevlos / History" — built by walking parents rather than splitting
@@ -79,7 +82,10 @@ export default async function LibraryFolderPage({
           selectedDriveFileId={selectedDocId ?? null}
           indexing={!(syncStatus?.initialCrawlDone ?? false)}
         />
-        <DetailPane doc={selectedDoc} />
+        {/* Reads its own row, behind a Suspense boundary — see DetailPane. The
+            page no longer waits on it, so an unselected Library costs nothing
+            for the pane and a selected one streams it in. */}
+        <DetailPane driveFileId={selectedDocId ?? null} />
       </div>
     </>
   )
