@@ -24,15 +24,18 @@ export type Column<T> = {
 
 export function RecordPane({
   bar,
+  flush,
   children,
 }: {
   bar: React.ReactNode
+  /** For a body that fills the pane itself — the graph, which has no margins. */
+  flush?: boolean
   children: React.ReactNode
 }) {
   return (
     <div className="sb-pane">
       <div className="sb-pane-bar">{bar}</div>
-      <div className="sb-pane-body">{children}</div>
+      <div className={`sb-pane-body${flush ? ' sb-pane-body--flush' : ''}`}>{children}</div>
     </div>
   )
 }

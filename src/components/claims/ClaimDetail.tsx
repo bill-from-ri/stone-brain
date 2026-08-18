@@ -1,17 +1,9 @@
-import type {
-  ClaimRow,
-  ClaimSourceRow,
-  EntityTypeOption,
-  PredicateOption,
-  SignatureRow,
-} from '@/db/queries/claims'
-import { DetailPaneShell } from '@/components/shared/DetailPaneShell'
-import { ClaimEditor } from './ClaimEditor'
+import type { ClaimRow, ClaimSourceRow } from '@/db/queries/claims'
 import { ClaimActions } from './ClaimActions'
 
 /**
- * The right pane, from the prototype (lines 500-514): the claim as a tuple, the
- * passage it was read from, and its actions.
+ * The right pane's claim body, from the prototype (lines 500-514): the claim as
+ * a tuple, the passage it was read from, and its actions.
  *
  * The prototype's "Conflicts with" block is deliberately absent — contradiction
  * detection is Phase 3, and a panel that never populates reads as broken. What
@@ -20,43 +12,9 @@ import { ClaimActions } from './ClaimActions'
  * an ordinary citation.
  *
  * A SERVER component, so opening a claim costs no round trip beyond the page.
- * It sits in the Library's pane shell, so it collapses, animates and closes the
- * same way the document pane does rather than standing there empty.
+ * The pane around it belongs to WorldDetail — this is only what goes inside.
  */
-export function ClaimDetail({
-  claim,
-  sources,
-  composing,
-  entities,
-  entityTypes,
-  predicates,
-  signatures,
-}: {
-  claim: ClaimRow | null
-  sources: ClaimSourceRow[]
-  composing: boolean
-  entities: { id: string; name: string; entityType: string }[]
-  entityTypes: EntityTypeOption[]
-  predicates: PredicateOption[]
-  signatures: SignatureRow[]
-}) {
-  return (
-    <DetailPaneShell open={composing || claim !== null} clears={['claim', 'new']} width={320}>
-      {composing ? (
-        <ClaimEditor
-          entities={entities}
-          entityTypes={entityTypes}
-          predicates={predicates}
-          signatures={signatures}
-        />
-      ) : (
-        claim && <ClaimBody claim={claim} sources={sources} />
-      )}
-    </DetailPaneShell>
-  )
-}
-
-function ClaimBody({ claim, sources }: { claim: ClaimRow; sources: ClaimSourceRow[] }) {
+export function ClaimDetail({ claim, sources }: { claim: ClaimRow; sources: ClaimSourceRow[] }) {
   return (
     <>
       <div className="sb-detail-kicker">Claim</div>

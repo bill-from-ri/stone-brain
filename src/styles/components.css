@@ -859,6 +859,15 @@
   padding: 6px 22px 22px;
 }
 
+/* The graph draws to the edges and scrolls nothing: it pans instead. */
+.sb-pane-body--flush {
+  padding: 0;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  background: radial-gradient(circle at 50% 42%, #1b1f25, var(--bg) 70%);
+}
+
 .sb-crumbs {
   font-size: 12.5px;
   color: var(--muted);
@@ -1112,10 +1121,10 @@
 
 /* ═══════════════════════════════════════════════════════ claims & graph ═══ */
 
-/* Both screens share the prototype's three-column split: a rail of entities,
-   the working surface, and a pane about whatever is selected. */
-.sb-claims,
-.sb-graph {
+/* The World's three-column split, from the prototype: a rail of entities, the
+   working surface, and a pane about whatever is selected. The Library is the
+   same shape with folders in place of entities. */
+.sb-world {
   display: flex;
   height: 100%;
   min-height: 0;
@@ -1384,53 +1393,157 @@
 
 /* ── the graph ── */
 
-.sb-graph-main {
+/* Rendered in world units inside a viewBox the component pans and zooms, so
+   every stroke is non-scaling: a line that thickens as you zoom in reads as a
+   different, heavier relationship. */
+
+/* Holds the stage while the layout is computed on mount. */
+.sb-graph-placeholder {
   flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.sb-graph-bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 22px;
-  border-bottom: 1px solid var(--line);
-}
-
-.sb-graph-title {
-  font-size: 13px;
-}
-
-.sb-graph-title .sb-faint {
-  font-size: 11.5px;
-}
-
-.sb-graph-spacer {
-  flex: 1;
-}
-
-.sb-graph-stage {
-  flex: 1;
-  min-height: 0;
-  position: relative;
-  background: radial-gradient(circle at 50% 42%, #1b1f25, var(--bg) 70%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .sb-graph-svg {
-  width: 100%;
-  height: 100%;
+  flex: 1;
+  min-width: 0;
   display: block;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
 }
+
+.sb-graph-svg:active {
+  cursor: grabbing;
+}
+
+.sb-graph-svg text {
+  pointer-events: none;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+/* -- edges -- */
+
+.sb-graph-edge line {
+  stroke: var(--line-2);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.sb-graph-edge text {
+  font-size: 9.5px;
+  fill: var(--muted);
+}
+
+/* -- nodes -- */
 
 .sb-graph-node {
   cursor: pointer;
 }
 
-.sb-graph-node:hover circle {
+.sb-graph-node circle,
+.sb-graph-node rect {
+  fill: var(--panel);
+  stroke: var(--line-2);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.sb-graph-node:hover circle,
+.sb-graph-node:hover rect {
   stroke: var(--gold-line);
+}
+
+.sb-graph-node text {
+  font-size: 11px;
+  fill: #dcd9d1;
+}
+
+/* An attribute is a value, not a thing: a diamond, smaller, and quieter. */
+.sb-graph-node--attr rect {
+  fill: var(--surface);
+}
+
+.sb-graph-node text.sb-graph-label--attr {
+  font-size: 9.5px;
+  fill: var(--faint);
+}
+
+/* The selected entity, in the same gold the rail and the tables use. */
+.sb-graph-node--on circle {
+  fill: var(--gold-dim);
+  stroke: var(--gold);
+  stroke-width: 1.6;
+}
+
+.sb-graph-node--on text {
+  fill: var(--gold-pale);
+}
+
+/* Dimming rather than hiding: selecting an entity should let you read one
+   corner of the world without losing your place in the rest of it. */
+.sb-graph-node--dim,
+.sb-graph-edge--dim {
+  opacity: 0.13;
+}
+
+.sb-graph-svg[data-dimming='true'] .sb-graph-node:not(.sb-graph-node--dim) circle,
+.sb-graph-svg[data-dimming='true'] .sb-graph-node:not(.sb-graph-node--dim) rect {
+  stroke: var(--gold-line);
+}
+
+.sb-graph-node,
+.sb-graph-edge {
+  transition: opacity 140ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sb-graph-node,
+  .sb-graph-edge {
+    transition: none;
+  }
+}
+
+/* ── the view toggle ── */
+
+/* The prototype's segmented control (line 661), at bar height. */
+.sb-view-toggle {
+  border-radius: 7px;
+}
+
+.sb-view-toggle .seg-opt {
+  padding: 0 10px;
+  height: 30px;
+  font-size: 12px;
+  gap: 6px;
+  color: var(--muted);
+}
+
+.sb-view-toggle .seg-opt i {
+  font-size: 14px;
+}
+
+.sb-view-toggle .seg-opt:has(input:checked) {
+  color: var(--gold-pale);
+  background: var(--gold-dim);
+  box-shadow: inset 0 0 0 1px var(--gold-line);
+}
+
+/* ── the entity pane ── */
+
+.sb-entity-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.sb-entity-title > i {
+  font-size: 17px;
+  color: var(--gold-lite);
+  flex: none;
+}
+
+.sb-entity-summary {
+  margin: 12px 0 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--muted);
 }

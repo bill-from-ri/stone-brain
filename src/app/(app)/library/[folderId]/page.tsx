@@ -3,7 +3,6 @@ import { AppHeader } from '@/components/shell/AppHeader'
 import { DetailPane } from '@/components/library/DetailPane'
 import { DocumentTable, type Crumb } from '@/components/library/DocumentTable'
 import { FolderTree } from '@/components/library/FolderTree'
-import { SyncControls } from '@/components/library/SyncControls'
 import { SyncPoller } from '@/components/library/SyncPoller'
 import {
   getDocument,
@@ -79,7 +78,6 @@ export default async function LibraryFolderPage({
           breadcrumb={breadcrumb}
           selectedDriveFileId={selectedDocId ?? null}
           indexing={!(syncStatus?.initialCrawlDone ?? false)}
-          actions={<SyncControls initialCrawlDone={syncStatus?.initialCrawlDone ?? false} />}
         />
         <DetailPane doc={selectedDoc} />
       </div>

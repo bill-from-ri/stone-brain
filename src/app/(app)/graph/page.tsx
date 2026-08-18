@@ -1,41 +1,11 @@
-import { AppHeader } from '@/components/shell/AppHeader'
-import { GraphCanvas } from '@/components/graph/GraphCanvas'
-import { getEntityTypeCounts, getEntityTypes, getGraph } from '@/db/queries/claims'
-import { requireReady } from '@/lib/auth/guard'
+import { redirect } from 'next/navigation'
+import { worldUrl } from '@/lib/world-url'
 
-export const dynamic = 'force-dynamic'
-
-/**
- * The Graph screen, from the prototype's GRAPH view (lines 619-700).
- *
- * The prototype drew a hand-placed SVG around one hub entity. This keeps its
- * shape — type filters and a most-connected list on the left, a node-and-edge
- * canvas on the right — but lays the nodes out from the real graph.
- *
- * Its era slider is deliberately absent. Filtering by date needs the claim
- * ordinals to mean something across the corpus, and most of the seeded claims
- * carry no date at all; a slider that silently hid undated claims would misread
- * as "nothing happened then".
- */
-export default async function GraphPage() {
-  const session = await requireReady()
-  const userId = session.user.id
-
-  const [graph, entityTypes, typeCounts] = await Promise.all([
-    getGraph(userId),
-    getEntityTypes(),
-    getEntityTypeCounts(userId),
-  ])
-
-  return (
-    <>
-      <AppHeader />
-      <GraphCanvas
-        nodes={graph.nodes}
-        edges={graph.edges}
-        entityTypes={entityTypes}
-        typeCounts={Object.fromEntries(typeCounts)}
-      />
-    </>
-  )
+/** The graph is now a view of /world; see the note on worldUrl. */
+export default async function GraphRedirect({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
+  redirect(worldUrl(await searchParams, { view: 'graph' }))
 }

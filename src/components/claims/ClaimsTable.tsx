@@ -1,14 +1,8 @@
 'use client'
 
 import type { ClaimRow } from '@/db/queries/claims'
-import {
-  EmptyState,
-  PaneBarSpacer,
-  RecordPane,
-  RecordTable,
-  useParamWriter,
-  type Column,
-} from '@/components/shared/RecordTable'
+import { EmptyState, RecordTable, useParamWriter, type Column } from '@/components/shared/RecordTable'
+import { predicateText } from '@/components/shared/predicate'
 
 /**
  * The claim table, from the prototype (lines 467-483).
@@ -23,19 +17,15 @@ import {
  * They are the same shape of statement and splitting them into two tables would
  * only make the page harder to read.
  *
- * The frame — bar, table, selection — is the Library's; see RecordTable.
+ * The frame around it — pane, bar, view toggle — belongs to WorldCentre; the
+ * table itself is the Library's, via RecordTable.
  */
 export function ClaimsTable({
   claims,
-  focusName,
   selectedClaimId,
-  actions,
 }: {
   claims: ClaimRow[]
-  focusName: string | null
   selectedClaimId: string | null
-  /** "New claim", which the page owns. */
-  actions?: React.ReactNode
 }) {
   const setParams = useParamWriter()
 
@@ -52,7 +42,9 @@ export function ClaimsTable({
     {
       key: 'predicate',
       header: 'Relationship',
-      cell: (claim) => <span className="sb-claim-predicate">{claim.predicate}</span>,
+      cell: (claim) => (
+        <span className="sb-claim-predicate">{predicateText(claim.predicateLabel)}</span>
+      ),
     },
     {
       key: 'object',
@@ -84,57 +76,25 @@ export function ClaimsTable({
   ]
 
   return (
-    <RecordPane
-      bar={
-        <>
-          <div className="sb-claims-count">
-            {claims.length} {claims.length === 1 ? 'claim' : 'claims'}
-            {focusName && (
-              <>
-                {' about '}
-                <strong>{focusName}</strong>
-              </>
-            )}
-          </div>
-          {focusName && (
-            <button
-              type="button"
-              className="btn btn-secondary sb-btn-sm"
-              onClick={() =>
-                setParams((p) => {
-                  p.delete('entity')
-                  p.delete('claim')
-                })
-              }
-            >
-              Show all
-            </button>
-          )}
-          <PaneBarSpacer />
-          {actions}
-        </>
+    <RecordTable
+      dense
+      columns={columns}
+      rows={claims}
+      rowKey={(claim) => claim.id}
+      selectedKey={selectedClaimId}
+      onSelect={(claim) =>
+        setParams((p) => {
+          p.set('claim', claim.id)
+          p.delete('new')
+        })
       }
-    >
-      <RecordTable
-        dense
-        columns={columns}
-        rows={claims}
-        rowKey={(claim) => claim.id}
-        selectedKey={selectedClaimId}
-        onSelect={(claim) =>
-          setParams((p) => {
-            p.set('claim', claim.id)
-            p.delete('new')
-          })
-        }
-        empty={
-          <EmptyState
-            title="No claims yet."
-            note="Add one by hand, or wait for extraction in Phase 2."
-          />
-        }
-      />
-    </RecordPane>
+      empty={
+        <EmptyState
+          title="No claims yet."
+          note="Add one by hand, or wait for extraction in Phase 2."
+        />
+      }
+    />
   )
 }
 

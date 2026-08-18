@@ -4,6 +4,7 @@ import Link from 'next/link'
 import type { Route } from 'next'
 import type { DocumentRow } from '@/db/queries/library'
 import { displayStatus } from '@/lib/documents/status'
+import { SyncControls } from './SyncControls'
 import {
   EmptyState,
   PaneBarSpacer,
@@ -35,14 +36,11 @@ export function DocumentTable({
   breadcrumb,
   selectedDriveFileId,
   indexing,
-  actions,
 }: {
   documents: DocumentRow[]
   breadcrumb: Crumb[]
   selectedDriveFileId: string | null
   indexing: boolean
-  /** The sync button and its readout, which the page owns. */
-  actions?: React.ReactNode
 }) {
   const setParams = useParamWriter()
 
@@ -75,7 +73,7 @@ export function DocumentTable({
         <>
           <Breadcrumb crumbs={breadcrumb} />
           <PaneBarSpacer />
-          {actions}
+          <SyncControls initialCrawlDone={!indexing} />
         </>
       }
     >

@@ -27,7 +27,11 @@ export function FolderTree({
 
   return (
     <div className="sb-lib-tree">
-      <div className="sb-tree-kicker">My Drive</div>
+      {/* The draft's kicker read "My Drive", with the root folder beneath it as
+          a child. It says "Folders" now, for the same reason the breadcrumb
+          starts at the root: everything above the chosen folder is outside the
+          grant, and naming it implies a place you can navigate to. */}
+      <div className="sb-tree-kicker">Folders</div>
 
       {roots.map((node) => (
         <Branch key={node.driveFolderId} node={node} activeFolderId={activeFolderId} />

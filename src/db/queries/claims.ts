@@ -276,16 +276,41 @@ export type GraphEdge = {
 }
 
 /**
- * Relationship claims only — an attribute has no second endpoint to draw.
+ * An attribute claim, drawn as a leaf hanging off its subject.
+ *
+ * It has no second entity, so it cannot be an edge between two nodes — but
+ * omitting it would mean the graph and the claim table disagreed about how many
+ * claims exist, and a picture that quietly drops half your assertions is worse
+ * than a slightly busier one. The renderer marks them with a different shape.
+ */
+export type GraphAttribute = {
+  id: string
+  subjectId: string
+  predicate: string
+  predicateLabel: string
+  value: string
+  valueType: string | null
+}
+
+export type Graph = {
+  nodes: GraphNode[]
+  edges: GraphEdge[]
+  attributes: GraphAttribute[]
+}
+
+/**
+ * The whole graph: every entity, the relationships between them, and the
+ * attributes hanging off them.
+ *
+ * Every entity is a node, including ones nothing has been said about yet. The
+ * view's job is to show the world as it stands, and an entity with no claims is
+ * a real and interesting state — it is precisely what you have not written up.
  *
  * Both directions of a relationship are stored as separate claims once Phase 2B
  * materialises inverses, and drawing both would double every line. The pair is
  * collapsed here rather than in the renderer so the node degrees are honest.
  */
-export async function getGraph(
-  userId: string,
-  limit = 400,
-): Promise<{ nodes: GraphNode[]; edges: GraphEdge[] }> {
+export async function getGraph(userId: string, limit = 1200): Promise<Graph> {
   const rows = await db
     .select({
       id: claims.id,
@@ -306,7 +331,28 @@ export async function getGraph(
     .where(eq(claims.userId, userId))
     .limit(limit)
 
-  const nodes = new Map<string, GraphNode>()
+  const entityRows = await db
+    .select({ id: entities.id, name: entities.name, entityType: entities.entityType })
+    .from(entities)
+    .where(eq(entities.userId, userId))
+
+  const attributeRows = await db
+    .select({
+      id: claims.id,
+      subjectId: claims.subjectId,
+      predicate: claims.predicate,
+      predicateLabel: predicates.label,
+      value: claimSelection.value,
+      valueType: predicates.valueType,
+    })
+    .from(claims)
+    .innerJoin(predicates, eq(predicates.name, claims.predicate))
+    .where(and(eq(claims.userId, userId), isNull(claims.objectId)))
+    .limit(limit)
+
+  const nodes = new Map<string, GraphNode>(
+    entityRows.map((e) => [e.id, { id: e.id, name: e.name, entityType: e.entityType, degree: 0 }]),
+  )
   const edges: GraphEdge[] = []
   const seenPairs = new Set<string>()
 
@@ -319,14 +365,14 @@ export async function getGraph(
     if (seenPairs.has(key)) continue
     seenPairs.add(key)
 
-    for (const [id, name, entityType] of [
-      [row.sourceId, row.sourceName, row.sourceType],
-      [row.targetId, row.targetName, row.targetType],
-    ] as const) {
-      const existing = nodes.get(id)
-      if (existing) existing.degree++
-      else nodes.set(id, { id, name, entityType, degree: 1 })
-    }
+    // An endpoint outside the entity list would be a dangling foreign key, but
+    // skipping rather than inventing a node keeps the invariant "every node is
+    // an entity row" true for the renderer.
+    const source = nodes.get(row.sourceId)
+    const target = nodes.get(row.targetId)
+    if (!source || !target) continue
+    source.degree++
+    target.degree++
 
     edges.push({
       id: row.id,
@@ -337,7 +383,22 @@ export async function getGraph(
     })
   }
 
-  return { nodes: [...nodes.values()], edges }
+  const attributes: GraphAttribute[] = []
+  for (const row of attributeRows) {
+    const subjectNode = nodes.get(row.subjectId)
+    if (!subjectNode || row.value === null) continue
+    subjectNode.degree++
+    attributes.push({
+      id: row.id,
+      subjectId: row.subjectId,
+      predicate: row.predicate,
+      predicateLabel: row.predicateLabel,
+      value: row.value,
+      valueType: row.valueType,
+    })
+  }
+
+  return { nodes: [...nodes.values()], edges, attributes }
 }
 
 /* --------------------------------------------------------------- vocabulary */
