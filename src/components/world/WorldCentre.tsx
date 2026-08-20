@@ -36,7 +36,7 @@ export function WorldCentre({
    */
   canCreate: boolean
 }) {
-  const { entityId, selectEntity } = useWorldSelection()
+  const { entityId, inspecting, selectEntity, toggleInspecting } = useWorldSelection()
 
   const focusName = entityId ? (entities.find((e) => e.id === entityId)?.name ?? null) : null
 
@@ -62,9 +62,22 @@ export function WorldCentre({
             )}
           </div>
           {focusName && (
-            <button type="button" className="btn btn-secondary" onClick={() => selectEntity(null)}>
-              Show all
-            </button>
+            <>
+              {/* The way back to an entity's pane once it has been closed —
+                  the rail cannot do it, since clicking the active entry there
+                  clears the filter. */}
+              <button
+                type="button"
+                className="btn btn-secondary"
+                aria-pressed={inspecting}
+                onClick={toggleInspecting}
+              >
+                {inspecting ? 'Hide details' : 'Details'}
+              </button>
+              <button type="button" className="btn btn-secondary" onClick={() => selectEntity(null)}>
+                Show all
+              </button>
+            </>
           )}
           <PaneBarSpacer />
           <NewClaimButton disabled={!canCreate} />

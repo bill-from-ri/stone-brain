@@ -55,7 +55,14 @@ export const dynamic = 'force-dynamic'
 export default async function WorldPage({
   searchParams,
 }: {
-  searchParams: Promise<{ entity?: string; claim?: string; q?: string; new?: string; view?: string }>
+  searchParams: Promise<{
+    entity?: string
+    claim?: string
+    q?: string
+    new?: string
+    view?: string
+    detail?: string
+  }>
 }) {
   const session = await requireReady()
   const userId = session.user.id
@@ -86,6 +93,12 @@ export default async function WorldPage({
           entityId: params.entity ?? null,
           claimId: params.claim ?? null,
           composing: params.new === '1',
+          /*
+           * Absent on a bare `?entity=` link — including the ones /claims and
+           * /graph still redirect here — so such a link lands on the entity's
+           * claims with the pane shut, and the bar's Details button opens it.
+           */
+          inspecting: params.detail === '1',
         }}
       >
         <div className="sb-world">

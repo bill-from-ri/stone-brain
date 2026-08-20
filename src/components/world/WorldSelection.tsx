@@ -18,6 +18,15 @@ import type { Route } from 'next'
  * seeded from the server's params and re-adopts them on back/forward — but it
  * is no longer on the path between clicking a thing and seeing it.
  *
+ * Choosing an entity and inspecting one are two different things, and they are
+ * two different pieces of state here. `entityId` narrows the claims underneath;
+ * `inspecting` says whether the pane is open over that entity. Picking from the
+ * rail does both, because you asked about the thing and the pane is the answer,
+ * but closing the pane only clears `inspecting` — the claims stay filtered, and
+ * `Show all` in the bar remains the one way to widen them again. Collapsing the
+ * two meant there was no way to read an entity's claims without a pane over
+ * them, and no way to dismiss the pane without also losing the filter.
+ *
  * Choosing an entity does still need the server, because it re-filters the
  * claims underneath. That navigation runs as a non-blocking transition, so the
  * rail and the pane stay live and the table keeps showing the rows you have
@@ -29,13 +38,17 @@ export type Selection = {
   entityId: string | null
   claimId: string | null
   composing: boolean
+  /** Whether the pane is open over `entityId`. Independent of the filter. */
+  inspecting: boolean
 }
 
 type SelectionApi = Selection & {
   selectEntity: (id: string | null) => void
   selectClaim: (id: string | null) => void
   toggleComposing: () => void
-  /** Drops the narrowest thing currently open — the pane's close button. */
+  /** Opens or closes the pane over the focused entity, leaving the filter be. */
+  toggleInspecting: () => void
+  /** Closes the pane, whatever it is about. The entity filter survives. */
   closeDetail: () => void
 }
 
@@ -48,7 +61,12 @@ export function useWorldSelection(): SelectionApi {
 }
 
 function sameSelection(a: Selection, b: Selection): boolean {
-  return a.entityId === b.entityId && a.claimId === b.claimId && a.composing === b.composing
+  return (
+    a.entityId === b.entityId &&
+    a.claimId === b.claimId &&
+    a.composing === b.composing &&
+    a.inspecting === b.inspecting
+  )
 }
 
 export function WorldSelectionProvider({
@@ -100,6 +118,8 @@ export function WorldSelectionProvider({
       else query.delete('claim')
       if (next.composing) query.set('new', '1')
       else query.delete('new')
+      if (next.inspecting && next.entityId) query.set('detail', '1')
+      else query.delete('detail')
 
       const qs = query.toString()
       const href = (qs ? `${pathname}?${qs}` : pathname) as Route
@@ -113,15 +133,23 @@ export function WorldSelectionProvider({
     ...selection,
 
     // Picking an entity clears the claim: a claim about something else is not
-    // an answer to "show me this entity".
+    // an answer to "show me this entity". It also opens the pane over it —
+    // clicking a rail entry is a request to see the thing, not only to filter
+    // by it — which the close button and the bar's toggle can then undo.
     selectEntity: useCallback(
-      (id: string | null) => commit({ entityId: id, claimId: null, composing: false }),
+      (id: string | null) =>
+        commit({ entityId: id, claimId: null, composing: false, inspecting: id !== null }),
       [commit],
     ),
 
     selectClaim: useCallback(
       (id: string | null) =>
-        commit({ entityId: latest.current.entityId, claimId: id, composing: false }),
+        commit({
+          entityId: latest.current.entityId,
+          claimId: id,
+          composing: false,
+          inspecting: latest.current.inspecting,
+        }),
       [commit],
     ),
 
@@ -131,23 +159,40 @@ export function WorldSelectionProvider({
           entityId: latest.current.entityId,
           claimId: null,
           composing: !latest.current.composing,
+          inspecting: latest.current.inspecting,
+        }),
+      [commit],
+    ),
+
+    toggleInspecting: useCallback(
+      () =>
+        commit({
+          entityId: latest.current.entityId,
+          claimId: null,
+          composing: false,
+          inspecting: !latest.current.inspecting,
         }),
       [commit],
     ),
 
     /*
-     * Closing undoes whatever the pane is currently about. Over a claim or the
-     * editor that is the claim, dropping you back to the entity you were
-     * reading; over an entity there is nothing narrower to fall back to, so it
-     * clears the entity itself rather than leaving a button that does nothing.
+     * Close means close: the pane goes, and nothing else moves.
+     *
+     * It used to step down one level instead — a claim fell back to the entity
+     * pane, and an entity, having nothing narrower to fall back to, dropped the
+     * entity itself and with it the filter on the table. So the button either
+     * refused to close the pane or silently widened the claims underneath, and
+     * "these claims, no pane" was a state you could not reach at all. Both
+     * clicks now do the one thing the X says it does; `Show all` in the bar is
+     * what clears the filter.
      */
     closeDetail: useCallback(() => {
-      const now = latest.current
-      if (now.claimId || now.composing) {
-        commit({ entityId: now.entityId, claimId: null, composing: false })
-      } else {
-        commit({ entityId: null, claimId: null, composing: false })
-      }
+      commit({
+        entityId: latest.current.entityId,
+        claimId: null,
+        composing: false,
+        inspecting: false,
+      })
     }, [commit]),
   }
 

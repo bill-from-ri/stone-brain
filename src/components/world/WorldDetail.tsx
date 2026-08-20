@@ -19,9 +19,14 @@ import { useWorldSelection } from './WorldSelection'
  * The right pane, and the one place that decides what it is about.
  *
  * Precedence runs from the most specific thing you have picked to the least:
- * a claim you clicked, else the entity you are looking through, else nothing —
- * in which case the pane closes and the table takes the width, the same rule
- * the Library follows.
+ * a claim you clicked, else the entity you are looking through *if you asked to
+ * see it*, else nothing — in which case the pane closes and the table takes the
+ * width, the same rule the Library follows.
+ *
+ * That middle clause is the whole of `inspecting`. An entity being selected
+ * means the claims are filtered to it, which is a question about the table and
+ * not a request for a pane; the pane over it opens when picked from the rail
+ * and closes on the X or Escape, and the filter is untouched either way.
  *
  * A CLIENT component, and that is the whole point of it. Everything it needs to
  * draw is already here: the claim is the row that was clicked and the entity is
@@ -44,12 +49,13 @@ export function WorldDetail({
   predicates: PredicateOption[]
   signatures: SignatureRow[]
 }) {
-  const { entityId, claimId, composing, closeDetail, selectClaim } = useWorldSelection()
+  const { entityId, claimId, composing, inspecting, closeDetail, selectClaim } = useWorldSelection()
 
   const localClaim = claimId ? (claims.find((c) => c.id === claimId) ?? null) : null
   const { claim, sources, loading } = useClaimDetail(claimId, localClaim)
 
   const entity = entityId ? (entities.find((e) => e.id === entityId) ?? null) : null
+  const shownEntity = inspecting ? entity : null
 
   /*
    * Counted from the rows the client already has rather than asked of the
@@ -77,14 +83,31 @@ export function WorldDetail({
       sourcesLoading={loading}
       onDeleted={() => selectClaim(null)}
     />
-  ) : entity ? (
-    <EntityDetail entity={entity} entityTypes={entityTypes} relationshipCount={relationshipCount} />
+  ) : shownEntity ? (
+    <EntityDetail
+      entity={shownEntity}
+      entityTypes={entityTypes}
+      relationshipCount={relationshipCount}
+    />
   ) : null
 
   // Open the moment something is picked, not when its sources arrive: the claim
   // itself is already known, and holding the pane shut for the fetch would put
   // back exactly the delay this removed.
-  const open = composing || Boolean(claimId) || Boolean(entity)
+  const open = composing || Boolean(claimId) || Boolean(shownEntity)
+
+  /*
+   * Escape closes the pane, except over the editor, where the pane holds a
+   * half-typed claim and a stray keystroke should not throw it away.
+   */
+  useEffect(() => {
+    if (!open || composing) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeDetail()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, composing, closeDetail])
 
   return (
     <DetailPaneShell open={open} onClose={closeDetail} width={320}>
