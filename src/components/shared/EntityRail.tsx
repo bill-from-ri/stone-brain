@@ -15,9 +15,30 @@ export type RailEntity = {
 }
 
 /**
+ * How the rail's entities are ordered. The prototype only ever offered the
+ * first of these, which answers "what is this world mostly about?" and nothing
+ * else — a rail of any size is also something you scan alphabetically, and the
+ * thin end of the list is where the entities nobody has said much about yet
+ * are, which is its own useful question.
+ *
+ * Grouping by type is the one ordering that is not a single key: within a type
+ * it stays on most-connected, because that is the order you want once the
+ * question has narrowed to "which organisation?".
+ */
+export type RailSort = 'connected-desc' | 'connected-asc' | 'name-asc' | 'name-desc' | 'type'
+
+const SORT_LABELS: { value: RailSort; label: string }[] = [
+  { value: 'connected-desc', label: 'Most connected' },
+  { value: 'connected-asc', label: 'Least connected' },
+  { value: 'name-asc', label: 'A–Z' },
+  { value: 'name-desc', label: 'Z–A' },
+  { value: 'type', label: 'By type' },
+]
+
+/**
  * The left rail of both Claims and Graph, lifted from the prototype's GRAPH
- * sidebar (lines 622-645): a find field, type counts, then entities ordered by
- * how connected they are.
+ * sidebar (lines 622-645): a find field, type counts, then entities in a
+ * chosen order.
  *
  * Claims and Graph each had their own copy of this markup. They are the same
  * list asking the same question — "which entity are we talking about?" — and
@@ -40,17 +61,51 @@ export function EntityRail({
 }) {
   const [find, setFind] = useState('')
   const [type, setType] = useState<string | null>(null)
+  const [sort, setSort] = useState<RailSort>('connected-desc')
+
+  const typeLabels = useMemo(
+    () => new Map(entityTypes.map((t) => [t.name, t.label])),
+    [entityTypes],
+  )
 
   const shown = useMemo(() => {
     const needle = find.trim().toLowerCase()
-    return entities.filter(
+    const matched = entities.filter(
       (e) =>
         (!type || e.entityType === type) &&
         (!needle ||
           e.name.toLowerCase().includes(needle) ||
           (e.variants ?? []).some((v) => v.toLowerCase().includes(needle))),
     )
-  }, [entities, find, type])
+
+    /*
+     * Sorted here rather than in the query. The rail is filtered on the client
+     * already, so re-ordering it is the same kind of work — and asking the
+     * server to re-sort would put a round trip in front of a control that has
+     * nothing new to fetch.
+     *
+     * Every ordering falls back to the name, so entities tied on a count keep a
+     * stable, readable order instead of the database's.
+     */
+    const byName = (a: RailEntity, b: RailEntity) => a.name.localeCompare(b.name)
+
+    return matched.sort((a, b) => {
+      switch (sort) {
+        case 'connected-desc':
+          return b.count - a.count || byName(a, b)
+        case 'connected-asc':
+          return a.count - b.count || byName(a, b)
+        case 'name-asc':
+          return byName(a, b)
+        case 'name-desc':
+          return byName(b, a)
+        case 'type': {
+          const label = (e: RailEntity) => typeLabels.get(e.entityType) ?? e.entityType
+          return label(a).localeCompare(label(b)) || b.count - a.count || byName(a, b)
+        }
+      }
+    })
+  }, [entities, find, type, sort, typeLabels])
 
   return (
     <aside className="sb-ent-rail">
@@ -81,7 +136,22 @@ export function EntityRail({
           ))}
       </div>
 
-      <div className="sb-ent-kicker">Most connected</div>
+      <div className="sb-ent-kicker sb-ent-sort-row">
+        <span>Entities</span>
+        <select
+          className="sb-ent-sort"
+          value={sort}
+          onChange={(e) => setSort(e.target.value as RailSort)}
+          aria-label="Order entities by"
+        >
+          {SORT_LABELS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div className="sb-ent-list">
         {shown.map((entity) => (
           <button

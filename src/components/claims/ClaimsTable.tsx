@@ -20,9 +20,15 @@ import { useWorldSelection } from '@/components/world/WorldSelection'
  *
  * The frame around it — pane, bar, view toggle — belongs to WorldCentre; the
  * table itself is the Library's, via RecordTable.
+ *
+ * Both entity columns name something the rail can also select, so they select
+ * it: reading "Acme employs Rowan" and wanting Rowan's claims should not mean
+ * finding Rowan again in a rail of hundreds. The name is the link and the rest
+ * of the row still opens the claim, which is why EntityName stops the click
+ * from reaching the row underneath.
  */
 export function ClaimsTable({ claims }: { claims: ClaimRow[] }) {
-  const { claimId, selectClaim } = useWorldSelection()
+  const { claimId, selectClaim, selectEntity } = useWorldSelection()
 
   const columns: Column<ClaimRow>[] = [
     {
@@ -30,7 +36,8 @@ export function ClaimsTable({ claims }: { claims: ClaimRow[] }) {
       header: 'Entity',
       cell: (claim) => (
         <>
-          {claim.subjectName} <span className="sb-claim-type">{claim.subjectType}</span>
+          <EntityName id={claim.subjectId} name={claim.subjectName} onSelect={selectEntity} />{' '}
+          <span className="sb-claim-type">{claim.subjectType}</span>
         </>
       ),
     },
@@ -47,7 +54,8 @@ export function ClaimsTable({ claims }: { claims: ClaimRow[] }) {
       cell: (claim) =>
         claim.objectName ? (
           <>
-            {claim.objectName} <span className="sb-claim-type">{claim.objectType}</span>
+            <EntityName id={claim.objectId} name={claim.objectName} onSelect={selectEntity} />{' '}
+            <span className="sb-claim-type">{claim.objectType}</span>
           </>
         ) : (
           <>
@@ -85,6 +93,41 @@ export function ClaimsTable({ claims }: { claims: ClaimRow[] }) {
         />
       }
     />
+  )
+}
+
+/**
+ * An entity name that filters the table to it.
+ *
+ * A button rather than a link, because the selection it makes is the same one
+ * the rail makes — client state first, with the URL catching up — and a real
+ * anchor here would navigate instead, which is the round trip WorldSelection
+ * exists to avoid.
+ */
+function EntityName({
+  id,
+  name,
+  onSelect,
+}: {
+  id: string | null
+  name: string
+  onSelect: (id: string) => void
+}) {
+  if (!id) return <>{name}</>
+
+  return (
+    <button
+      type="button"
+      className="sb-entity-link"
+      onClick={(event) => {
+        // Otherwise the row handler runs too and opens the claim over the
+        // entity we just asked for.
+        event.stopPropagation()
+        onSelect(id)
+      }}
+    >
+      {name}
+    </button>
   )
 }
 

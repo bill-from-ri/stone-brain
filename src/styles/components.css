@@ -1153,6 +1153,49 @@
   margin: 16px 0 8px;
 }
 
+/* The kicker doubles as the sort control's row: the ordering *is* the label
+   for the list under it, so a separate heading would say the same thing twice. */
+.sb-ent-sort-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sb-ent-sort {
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  padding: 2px 4px;
+  cursor: pointer;
+  max-width: 60%;
+}
+
+.sb-ent-sort:hover {
+  background: var(--panel);
+  color: var(--ink);
+}
+
+.sb-ent-sort:focus-visible {
+  outline: 1px solid var(--line);
+  outline-offset: 1px;
+}
+
+/* The options themselves are drawn by the OS, which will not take the rail's
+   colours — set them explicitly so the menu is not white-on-white in nocturne. */
+.sb-ent-sort option {
+  background: var(--panel);
+  color: var(--ink);
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 12px;
+}
+
 .sb-ent-tags {
   display: flex;
   flex-wrap: wrap;
@@ -1250,6 +1293,31 @@
 .sb-claim-type {
   color: var(--faint);
   font-size: 11px;
+}
+
+/* An entity name in the table is a way into that entity, and the colour shift
+   on hover is the whole of the affordance — an underline or a resting link
+   colour would make three of the five columns read as links and lose the
+   sentence. At rest it is body text; only the one under the cursor is gold. */
+.sb-entity-link {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sb-entity-link:hover {
+  color: var(--gold-lite);
+}
+
+.sb-entity-link:focus-visible {
+  color: var(--gold-lite);
+  outline: 1px solid var(--gold-line);
+  outline-offset: 2px;
+  border-radius: 3px;
 }
 
 /* ── the claim pane ── */
