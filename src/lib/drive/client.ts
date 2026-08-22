@@ -129,6 +129,43 @@ export class DriveClient {
     )
   }
 
+  /**
+   * The id of the document's newest revision, for pinning an extraction to what
+   * it actually read (ADR §6).
+   *
+   * §6 recorded that `files.get` has no `headRevisionId` for native Docs, and a
+   * probe over this corpus confirmed it — absent on every one. `revisions.list`
+   * does work on them, which is what this uses. Revisions come back oldest
+   * first, so the head is the last one.
+   *
+   * **Do not use this to detect staleness.** Drive keeps *checkpoint* revisions
+   * for a Doc, not one per edit: the largest document here is at `version=306`
+   * with 6 revisions, so an id that has not moved does not mean the document has
+   * not changed. `drive_version` is the staleness signal; this is provenance.
+   */
+  async getHeadRevisionId(fileId: string): Promise<string | null> {
+    let pageToken: string | undefined
+    let head: string | null = null
+
+    do {
+      const page = await driveGet<{
+        revisions?: { id: string }[]
+        nextPageToken?: string
+      }>(
+        this.userId,
+        `/files/${encodeURIComponent(fileId)}/revisions`,
+        { fields: 'nextPageToken,revisions(id)', pageSize: '1000', pageToken },
+        this.stats,
+      )
+
+      const revisions = page.revisions ?? []
+      if (revisions.length > 0) head = revisions[revisions.length - 1]!.id
+      pageToken = page.nextPageToken
+    } while (pageToken)
+
+    return head
+  }
+
   /** Immediate children of a folder that must itself already be in scope. */
   async listFolderChildren(
     folderId: string,

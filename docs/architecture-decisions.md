@@ -338,6 +338,31 @@ Confirmed empirically on the first real crawl: 46 of 46 native Docs returned a v
 extraction to pin it against*. The §3 staleness argument (`head` vs `extracted` diverging marks
 a document stale) is unchanged in substance; only the field it reads changed.
 
+### Second correction (2026-08-22): revision ids are provenance, not a staleness signal
+
+`revisions.list` **does** work on native Docs — confirmed on this corpus, where `files.get` still
+returned no `headRevisionId` for any of them — so `DriveClient.getHeadRevisionId` fills the
+column as planned. But the ids are far coarser than the sentence above assumed:
+
+| document | `files.version` | revisions |
+| --- | --- | --- |
+| High Level Campaign Ideas | 306 | 6 |
+| Town of Gabelford | 191 | 13 |
+| The Classical Church of Syrath | 57 | 4 |
+
+Drive keeps **checkpoint** revisions for a Doc, not one per edit. So a document can be edited
+substantially with its head revision id unchanged, and "`head` vs `extracted` diverging marks a
+document stale" would miss most real edits.
+
+**`drive_version` is the staleness signal** — it is monotonic, bumps on every server-side change,
+and is already promoted and populated. `head_revision_id` / `extracted_revision_id` stay as
+**provenance**: the answer to "which version of this document produced this claim", which is what
+they are actually good for.
+
+Consequence for Phase 2B §8: comparing `drive_version` against `extracted_revision_id` compares
+two different scales and cannot work. The write path (§3) should also record the `drive_version`
+it extracted at, and staleness is that column against the current `drive_version`.
+
 ---
 
 ## 7. Document types and parsing — Decided: native Google Docs only

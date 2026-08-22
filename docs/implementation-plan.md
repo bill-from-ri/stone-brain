@@ -69,10 +69,39 @@ component — and the client has no streaming, which nothing before Phase 4 need
 
 ### 2. Document text
 
-- [ ] `DriveClient.exportMarkdown()` — `files.export` to `text/markdown` (decisions §7)
-- [ ] Split into paragraphs on blank lines, so a claim can cite `¶ 4`
-- [ ] Record `head_revision_id` from `revisions.list` at extraction time (decisions §6)
-- [ ] Decide chunking for documents that will not fit a context window — measure before designing
+- [x] `DriveClient.exportMarkdown()` — `files.export` to `text/markdown` (decisions §7)
+- [x] Split into paragraphs on blank lines, so a claim can cite `¶ 4`
+- [x] Record `head_revision_id` from `revisions.list` at extraction time (decisions §6)
+- [x] Decide chunking for documents that will not fit a context window — measure before designing
+
+Done, and the measurements moved two of these. All 47 documents export without
+failure; `cleanExport` → `toParagraphs` was run over every one of them, and the
+round-trip check (every paragraph is a substring of the cleaned text, so a stored
+quote stays findable) passes on all of them.
+
+**Chunking: not needed, and not built.** 88% of the raw export bytes were base64
+image data — 99.1% of the largest document. Stripped, the biggest document is
+~20k tokens and the *entire library* is ~94k, so one document per request fits
+any usable model with an order of magnitude to spare. `fitsInContext` is the
+guard that says when that stops being true; a chunker would split the context a
+claim depends on, and this corpus does not ask for that trade.
+
+**A quarter of the library needed unpacking, not just splitting.** Twelve
+documents — the claim-dense ones: nations, cities, armies — are Google Docs
+wiki-layout tables with the whole article inside a single cell. Left alone they
+were *two* paragraphs for 8,700 characters, so every claim would have cited "¶ 1",
+meaning the whole document. `splitLayoutTable` recovers them (Andras 2 → 18 ¶,
+Kaldian Empire 2 → 24 ¶) using the two-space runs Docs leaves where paragraph
+breaks were, behind three guards derived from documents that would otherwise
+break: data tables (cells cap at 293 chars vs 692 for layout), many-rowed tables
+(`Rough Timeline` is a real 23-row table), and content made of spaces (the ASCII
+maps in `Basic City Maps`).
+
+**Also carried forward:** headings, lists and tables each stay one citable unit,
+and every paragraph carries its heading trail as section context for §4's prompt.
+`renderForPrompt` emits the `[¶n]` markers, since a model cannot cite an anchor it
+was never shown. Known limit: ASCII art inside a table cell arrives with its line
+breaks already flattened *by Google*, and no export-based approach can recover it.
 
 ### 3. The write path
 
@@ -82,6 +111,8 @@ The join between the validated claims Phase 2A produces and the tables. Deferred
 - [ ] Insert claims keyed on the generated `fingerprint` (`onConflictDoNothing`), so re-extracting a document is idempotent rather than duplicative
 - [ ] Write `claim_sources` rows with the quote, paragraph index and a snapshot of the document name (decisions §7a)
 - [ ] Stamp `extracted_by_model` on every row, and set `documents.extracted_revision_id`
+- [ ] Also record the `drive_version` extracted at — §2 found revision ids are checkpoints, not
+  per-edit, so they cannot carry staleness (decisions §6, second correction)
 
 ### 4. The extraction call
 
@@ -119,7 +150,8 @@ Since we do not control the model, the goal is not to pick one but to confirm th
 - [ ] Extract button on a document, with progress and result
 - [ ] Library shows Verified status and the number of claims per document
 - [ ] Flag claims whose source document has been removed from the Library, and surface them (decisions §7a). This is the replacement for Phase 1’s All/Removed toggle and needs no contradiction detection, so it lands here rather than in Phase 3
-- [ ] Re-extract prompt when `drive_version` has moved past `extracted_revision_id`
+- [ ] Re-extract prompt when `drive_version` has moved past the version last extracted at —
+  *not* against `extracted_revision_id`, which is a different scale (decisions §6)
 
 ### 9. Unattended runs
 
