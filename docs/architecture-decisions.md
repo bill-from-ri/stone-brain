@@ -605,6 +605,23 @@ any OpenAI-compatible endpoint is barely more work than hardcoding one provider 
 OpenRouter, most hosted providers, and local runtimes. Providers whose native request shape
 differs would need their own adapter — add only on request.
 
+### Gemini — no adapter needed (confirmed 2026-08-22)
+
+Google publishes an OpenAI-compatible surface at
+`https://generativelanguage.googleapis.com/v1beta/openai`, which takes an ordinary
+`Authorization: Bearer <GEMINI_API_KEY>` header and honours `response_format` with a JSON
+schema. So Gemini is a **preset in the base-URL field**, not an adapter — the case this
+decision was written to accommodate, landing exactly as intended. Note the path: the plain
+Gemini endpoint one level up speaks Google's own request shape, which our client does not.
+Unsupported OpenAI parameters are silently ignored there rather than rejected.
+
+One behaviour worth knowing before §4 sets `max_tokens`: **Gemini counts thinking tokens
+against that budget**, unlike OpenAI's o-series, which tracks them separately. A budget that
+looks generous for the answer alone returns HTTP 200 with `finish_reason: "MAX_TOKENS"` and an
+empty string. That is a valid empty completion, not an error, so the extraction path must
+treat an empty body as a failed run rather than as a document containing no claims — otherwise
+a token-budget mistake would look exactly like a document with nothing in it.
+
 Keys never reach the browser; all inference proxies through the server, same rule as Google
 tokens in §1.
 

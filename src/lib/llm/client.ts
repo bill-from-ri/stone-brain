@@ -29,6 +29,16 @@ export type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: stri
 
 export type ChatOptions = {
   messages: ChatMessage[]
+  /**
+   * Careful on reasoning models. Gemini counts thinking tokens *against* this
+   * budget rather than tracking them separately the way OpenAI's o-series does,
+   * so a value that looks generous for the answer alone comes back HTTP 200
+   * with `finish_reason: "MAX_TOKENS"` and an empty string. That is not an error
+   * anywhere in this module — it is a valid, empty completion — so §4's
+   * extraction must either leave this unset or set it well clear of the
+   * thinking budget, and treat an empty body as a failed extraction rather than
+   * as a document with no claims in it.
+   */
   maxTokens?: number
   temperature?: number
   /**
@@ -209,8 +219,10 @@ export async function probe(creds: ProviderCredentials): Promise<{ model: string
   const body = (await response.json().catch(() => null)) as ChatResponseBody | null
 
   // Deliberately not requiring content: `max_tokens: 1` legitimately returns an
-  // empty string on some providers. A 200 with a choices array is proof enough
-  // that the key and the model are both good.
+  // empty string on some providers — on Gemini's thinking models it always
+  // does, because the single token is spent before any answer is emitted. A 200
+  // with a choices array is proof enough that the key and the model are good,
+  // which is all this probe claims to establish.
   if (!Array.isArray(body?.choices)) {
     throw new ProviderError(
       'model_rejected',

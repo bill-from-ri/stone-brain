@@ -151,6 +151,69 @@ describe('probe', () => {
   })
 })
 
+/*
+ * Gemini reaches us through Google's OpenAI-compatible surface rather than an
+ * adapter, so what is worth testing is the two places its behaviour differs
+ * from a plain OpenAI response: an empty completion that is nonetheless a
+ * success, and Google's own error envelope.
+ */
+describe('gemini via the OpenAI-compatible surface', () => {
+  const gemini: ProviderCredentials = {
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+    apiKey: 'AIzaSy-not-a-real-key',
+    modelId: 'gemini-3.7-flash',
+  }
+
+  it('posts to the compat path with a bearer token', async () => {
+    const fetchMock = mockFetch(respond(200, { choices: [{}] }))
+    await probe(gemini)
+
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toBe('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions')
+    expect((init.headers as Record<string, string>).authorization).toBe(`Bearer ${gemini.apiKey}`)
+  })
+
+  it('counts a thinking model’s empty MAX_TOKENS reply as a healthy connection', async () => {
+    // What a Gemini 3.x model actually returns for `max_tokens: 1`: HTTP 200,
+    // with the single token spent on thinking before any answer is emitted.
+    mockFetch(
+      respond(200, {
+        model: 'gemini-3.7-flash',
+        choices: [{ finish_reason: 'MAX_TOKENS', message: { role: 'assistant', content: null } }],
+      }),
+    )
+
+    await expect(probe(gemini)).resolves.toEqual({ model: 'gemini-3.7-flash' })
+  })
+
+  it('reads a message out of Google’s error envelope', async () => {
+    mockFetch(
+      respond(429, {
+        error: {
+          code: 429,
+          message: 'Quota exceeded for quota metric.',
+          status: 'RESOURCE_EXHAUSTED',
+        },
+      }),
+    )
+
+    await expect(probe(gemini)).rejects.toMatchObject({
+      reason: 'rate_limited',
+      detail: 'Quota exceeded for quota metric.',
+    })
+  })
+
+  it('reads an unknown model as the model being wrong, not the key', async () => {
+    mockFetch(
+      respond(404, {
+        error: { code: 404, message: 'models/nope is not found.', status: 'NOT_FOUND' },
+      }),
+    )
+
+    await expect(probe(gemini)).rejects.toMatchObject({ reason: 'model_rejected' })
+  })
+})
+
 describe('chat', () => {
   it('returns the content and the model the provider actually ran', async () => {
     mockFetch(

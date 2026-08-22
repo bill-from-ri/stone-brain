@@ -22,12 +22,47 @@ import type { ProviderStatus } from '@/lib/llm/provider'
  * local runtime.
  */
 
-/** Filled into the base URL by one click; the field stays editable after. */
-const PRESETS: { label: string; url: string }[] = [
-  { label: 'OpenRouter', url: 'https://openrouter.ai/api/v1' },
-  { label: 'OpenAI', url: 'https://api.openai.com/v1' },
-  { label: 'Together', url: 'https://api.together.xyz/v1' },
-  { label: 'Ollama', url: 'http://localhost:11434/v1' },
+/**
+ * Filled into the base URL by one click; the field stays editable after.
+ *
+ * `hint` is the part that earns its keep. Model IDs are free text because they
+ * are provider-specific strings, but their *shape* differs enough between
+ * providers to be the likeliest thing to get wrong — OpenRouter namespaces
+ * them, Gemini and OpenAI do not — and the key comes from a different place for
+ * each. Both facts are stable even as individual model names churn.
+ */
+const PRESETS: { label: string; url: string; example: string; hint: string }[] = [
+  {
+    label: 'OpenRouter',
+    url: 'https://openrouter.ai/api/v1',
+    example: 'anthropic/claude-sonnet-5',
+    hint: 'Namespaced as vendor/model. Key from openrouter.ai/keys.',
+  },
+  {
+    /*
+     * Gemini needs no adapter: Google publishes an OpenAI-compatible surface at
+     * this path, taking the ordinary `Authorization: Bearer` header and
+     * honouring `response_format`. The `/v1beta/openai` suffix is not a typo —
+     * that whole path is the base URL, and the plain Gemini endpoint one level
+     * up speaks Google's own request shape, which this client does not.
+     */
+    label: 'Gemini',
+    url: 'https://generativelanguage.googleapis.com/v1beta/openai',
+    example: 'gemini-3.7-flash',
+    hint: 'Bare model names, no vendor prefix. Key from Google AI Studio — the Gemini API key, not your Google sign-in.',
+  },
+  {
+    label: 'OpenAI',
+    url: 'https://api.openai.com/v1',
+    example: 'gpt-4.1',
+    hint: 'Bare model names. Key from platform.openai.com.',
+  },
+  {
+    label: 'Ollama',
+    url: 'http://localhost:11434/v1',
+    example: 'llama3.1',
+    hint: 'Whatever `ollama list` shows. Ollama ignores the key, but this form still wants one — any placeholder will do.',
+  },
 ]
 
 const HEALTH_COPY: Record<ProviderHealth, { label: string; tone: 'ok' | 'bad' | 'warn' | 'idle' }> =
@@ -182,6 +217,13 @@ function ProviderForm({
 
   const trimmedUrl = baseUrl.trim()
   const trimmedModel = modelId.trim()
+
+  /*
+   * Matched on the normalised URL so a pasted trailing slash still lights the
+   * chip up — otherwise someone who pasted the URL from their provider's docs
+   * would see none of them selected and none of the guidance below.
+   */
+  const preset = PRESETS.find((p) => p.url === trimmedUrl.replace(/\/+$/, '')) ?? null
   const keyRequired = !status
   const canSave = trimmedUrl !== '' && trimmedModel !== '' && (!keyRequired || apiKey.trim() !== '')
 
@@ -241,14 +283,14 @@ function ProviderForm({
           required
         />
         <div className="sb-preset-row">
-          {PRESETS.map((preset) => (
+          {PRESETS.map((option) => (
             <button
-              key={preset.label}
+              key={option.label}
               type="button"
-              className={`sb-preset${trimmedUrl === preset.url ? ' sb-preset--on' : ''}`}
-              onClick={() => setBaseUrl(preset.url)}
+              className={`sb-preset${preset?.url === option.url ? ' sb-preset--on' : ''}`}
+              onClick={() => setBaseUrl(option.url)}
             >
-              {preset.label}
+              {option.label}
             </button>
           ))}
         </div>
@@ -293,14 +335,15 @@ function ProviderForm({
           className="input"
           value={modelId}
           onChange={(e) => setModelId(e.target.value)}
-          placeholder="anthropic/claude-sonnet-5"
+          placeholder={preset?.example ?? 'anthropic/claude-sonnet-5'}
           spellCheck={false}
           autoComplete="off"
           required
         />
         <p className="sb-field-hint">
-          Exactly as your provider spells it. Every claim records the model that produced it, so
-          changing this does not rewrite what has already been extracted.
+          {preset ? `${preset.hint} ` : ''}Exactly as your provider spells it. Every claim records
+          the model that produced it, so changing this does not rewrite what has already been
+          extracted.
         </p>
       </label>
 
