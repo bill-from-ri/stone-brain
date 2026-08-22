@@ -164,6 +164,10 @@ export function ProviderPanel({ initial }: { initial: ProviderStatus | null }) {
           onSaved={(next) => {
             setStatus(next)
             router.refresh()
+            // Closing is the confirmation. The panel underneath already shows
+            // the connected state, so a modal that stayed open would be asking
+            // for a dismissal it has no reason to need.
+            if (next.health === 'ok') setOpen(false)
           }}
           onRemoved={() => {
             setStatus(null)
@@ -252,8 +256,27 @@ function ProviderForm({
       return
     }
 
-    setApiKey('')
+    /*
+     * The save succeeded either way — verification is advisory, and the row is
+     * already written. What differs is whether there is anything left to say.
+     *
+     * A clean verify has no remaining message, so the modal gets out of the
+     * way and the panel behind it carries the result. A failed one keeps the
+     * form open with the reason attached, because the reason names which of
+     * the three fields to go and fix, and closing would hide it behind a
+     * second click.
+     */
     onSaved(body.status)
+
+    if (body.status.health !== 'ok') {
+      const { label } = HEALTH_COPY[body.status.health]
+      setError(body.status.healthDetail ? `${label} — ${body.status.healthDetail}` : label)
+      return
+    }
+
+    // Cleared only on success. After a failure the typed key stays put, so a
+    // one-character typo is one character to fix rather than a full re-paste.
+    setApiKey('')
   }
 
   const remove = async () => {
