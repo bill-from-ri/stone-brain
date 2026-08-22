@@ -1,8 +1,6 @@
-import { readdirSync, readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 import { PGlite } from '@electric-sql/pglite'
 import { beforeAll, describe, expect, it } from 'vitest'
-import { ENTITY_TYPES, deriveOntology } from './registry'
+import { applyMigrations, seedCatalog } from '@/test/catalog'
 
 /**
  * The ontology's guarantee is that an invalid claim *cannot be written* — not
@@ -18,8 +16,6 @@ import { ENTITY_TYPES, deriveOntology } from './registry'
  * If a constraint here starts failing, do not relax the test — the schema and
  * the registry have disagreed about something, and one of them is wrong.
  */
-
-const MIGRATIONS_DIR = fileURLToPath(new URL('../../../drizzle', import.meta.url))
 
 let db: PGlite
 let userId: string
@@ -54,14 +50,7 @@ const claim = (columns: string) => {
 beforeAll(async () => {
   db = new PGlite()
 
-  for (const file of readdirSync(MIGRATIONS_DIR)
-    .filter((f) => f.endsWith('.sql'))
-    .sort()) {
-    const sql = readFileSync(`${MIGRATIONS_DIR}/${file}`, 'utf8')
-    for (const statement of sql.split('--> statement-breakpoint')) {
-      if (statement.trim()) await db.exec(statement)
-    }
-  }
+  await applyMigrations(db)
 
   const users = await db.query<{ id: string }>(
     `insert into users (google_sub, email)
@@ -70,39 +59,8 @@ beforeAll(async () => {
   userId = users.rows[0]!.id
   otherUserId = users.rows[1]!.id
 
-  // Seeding mirrors src/lib/ontology/seed.ts. It is duplicated rather than
-  // imported because seed.ts binds to the Neon-backed `db` singleton. The
-  // vocabulary is global, so it is seeded once rather than per user.
-  const { predicates, signatures } = deriveOntology()
-
-  for (const [i, type] of ENTITY_TYPES.entries()) {
-    await db.query(
-      `insert into entity_types (name, label, plural_label, description, sort_order)
-       values ($1, $2, $3, $4, $5)`,
-      [type.name, type.label, type.pluralLabel, type.description, i],
-    )
-  }
-  for (const p of predicates) {
-    await db.query(
-      `insert into predicates
-         (name, kind, label, description, is_symmetric, is_temporal, is_functional,
-          value_type, value_enum, unit)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-      [p.name, p.kind, p.label, p.description, p.isSymmetric, p.isTemporal,
-       p.isFunctional, p.valueType, p.valueEnum ? JSON.stringify(p.valueEnum) : null, p.unit],
-    )
-  }
-  for (const p of predicates) {
-    if (!p.inverseName) continue
-    await db.query(`update predicates set inverse_name = $2 where name = $1`, [p.name, p.inverseName])
-  }
-  for (const s of signatures) {
-    await db.query(
-      `insert into predicate_signatures (predicate, subject_type, object_type, value_kind)
-       values ($1, $2, $3, $4)`,
-      [s.predicate, s.subjectType, s.objectType, s.valueKind],
-    )
-  }
+  // The vocabulary is global, so it is seeded once rather than per user.
+  await seedCatalog(db)
 
   ids.sera = await insertEntity('character', 'Sera')
   ids.kaine = await insertEntity('character', 'Kaine')

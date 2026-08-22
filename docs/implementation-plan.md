@@ -114,12 +114,38 @@ breaks already flattened *by Google*, and no export-based approach can recover i
 
 The join between the validated claims Phase 2A produces and the tables. Deferred from 2A because nothing generates claims yet; it is the first thing 2B needs.
 
-- [ ] Entity matcher resolves names to entity IDs, creating drafts on a miss
-- [ ] Insert claims keyed on the generated `fingerprint` (`onConflictDoNothing`), so re-extracting a document is idempotent rather than duplicative
-- [ ] Write `claim_sources` rows with the quote, paragraph index and a snapshot of the document name (decisions §7a)
-- [ ] Stamp `extracted_by_model` on every row, and set `documents.extracted_revision_id`
-- [ ] Also record the `drive_version` extracted at — §2 found revision ids are checkpoints, not
+- [x] Entity matcher resolves names to entity IDs; **a separate step** creates drafts on a miss —
+  the matcher itself never writes, and never did (ADR §15)
+- [x] Insert claims keyed on the generated `fingerprint`, so re-extracting a document is idempotent
+  rather than duplicative
+- [x] Write `claim_sources` rows with the quote, paragraph index and a snapshot of the document name (decisions §7a)
+- [x] Stamp `extracted_by_model` on every row, and set `documents.extracted_revision_id`
+- [x] Also record the `drive_version` extracted at — §2 found revision ids are checkpoints, not
   per-edit, so they cannot carry staleness (decisions §6, second correction)
+
+Done. `writeExtraction` is one transaction: a half-written run — entities minted,
+document stamped, claims missing — is worse than none, because nothing downstream
+could tell it from a real one.
+
+**Creation is its own step.** `createDraftEntities` lives in `entity-drafts.ts`
+and is called by the write path, never by the matcher. `resolve()` stays a pure
+lookup so that "I could not find this" can never quietly become "so I made one" —
+otherwise every caller that merely wanted to *check* a name (a search box, a
+duplicate warning) could grow the graph. What it mints is `canonicity: 'draft'`,
+`created_by: 'llm'`, with the source document and the model on the row.
+
+**Re-extraction is additive**, per the decision: new claims inserted, existing
+ones no-ops, nothing removed. A conflict action that provably changes nothing
+(`set subject_id = excluded.subject_id`, identical by definition under a
+fingerprint collision) returns ids for rows that already existed, so a claim a
+person promoted to canon keeps its canonicity and its authorship.
+
+**Two things are refused rather than guessed at**, and come back as `unwritten`
+for §6 to surface: a name matching two entities, and a type disagreement between
+the model and the graph. Both are real information; picking a side would destroy it.
+
+Not done here, deliberately: inverse claims are §5, and surfacing `unwritten` /
+rejections is §6. The result object already carries what §6 needs.
 
 ### 4. The extraction call
 

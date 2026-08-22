@@ -43,6 +43,13 @@
       "when": 1787416786525,
       "tag": "0005_marvelous_diamondback",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787420971216,
+      "tag": "0006_wandering_wolfsbane",
+      "breakpoints": true
     }
   ]
 }

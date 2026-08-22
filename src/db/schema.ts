@@ -347,6 +347,18 @@ export const documents = pgTable(
     headRevisionId: text('head_revision_id'),
     extractedRevisionId: text('extracted_revision_id'),
 
+    /**
+     * The `drive_version` the last extraction read, and the *only* staleness
+     * signal (decisions §6, second correction).
+     *
+     * `extracted_revision_id` cannot do this job: Drive keeps checkpoint
+     * revisions for a native Doc rather than one per edit — measured at 306
+     * versions against 6 revisions on this corpus — so a revision id that has
+     * not moved does not mean the document has not changed. That column is
+     * provenance: which version produced these claims. This one is freshness.
+     */
+    extractedDriveVersion: bigint('extracted_drive_version', { mode: 'number' }),
+
     modifiedTime: ts('modified_time'),
     createdTime: ts('created_time'),
     webViewLink: text('web_view_link'),

@@ -24,3 +24,22 @@ export function normalizeName(name: string): string {
     .replace(/[^a-z0-9]+/g, ' ')
     .trim()
 }
+
+const ARTICLES = /^(the|a|an) /
+
+/**
+ * A second key with a leading article dropped, so "the Veche" and "Veche" are
+ * one key.
+ *
+ * This is not a fuzzy guess — it is the same name — which is why the matcher
+ * treats a hit on it as a genuine match rather than a suggestion, and why the
+ * extraction write path uses it to decide that two names in one document
+ * describe one entity rather than two.
+ *
+ * Lives here beside `normalizeName` for the same reason it does: two callers
+ * disagreeing about what counts as the same name is a duplicate entity nobody
+ * can explain.
+ */
+export function looseNameKey(name: string): string {
+  return normalizeName(name).replace(ARTICLES, '')
+}

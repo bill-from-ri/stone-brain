@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import type { NeonDatabase } from 'drizzle-orm/neon-serverless'
 import type * as schema from '@/db/schema'
 import { type Canonicity, entities } from '@/db/schema'
-import { normalizeName } from './name-key'
+import { looseNameKey, normalizeName } from './name-key'
 
 /**
  * Resolving a surface string to an entity that already exists.
@@ -69,19 +69,15 @@ export type MatchResult =
  */
 export { normalizeName } from './name-key'
 
-const ARTICLES = /^(the|a|an) /
-
 /**
- * A second key with a leading article removed, so "the Dragon's Shroud" finds
- * an entity stored as "The Dragon's Shroud" and vice versa.
- *
- * Used only as a fallback after the strict key misses. Dropping an article is
- * not a guess about which entity was meant — it is the same name — so a hit
- * here is a genuine match, unlike the edit-distance suggestions below.
+ * The article-stripped key, used only as a fallback after the strict key
+ * misses. Defined in ./name-key beside `normalizeName`; re-exported here
+ * because this is where callers look for name comparison.
  */
-function looseKey(normalized: string): string {
-  return normalized.replace(ARTICLES, '')
-}
+export { looseNameKey } from './name-key'
+
+/** Already-normalised in, article-stripped out — the map keys are built this way. */
+const looseKey = (normalized: string) => normalized.replace(/^(the|a|an) /, '')
 
 /* ------------------------------------------------------------------ the index */
 
