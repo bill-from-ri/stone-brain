@@ -11,18 +11,18 @@ import { useWorldSelection } from '@/components/world/WorldSelection'
  */
 export function NewClaimButton({ disabled }: { disabled: boolean }) {
   const { composing, toggleComposing } = useWorldSelection()
-  const toggle = toggleComposing
+  const open = composing === 'claim'
 
   return (
     <button
       type="button"
-      className={`btn ${composing ? 'btn-secondary' : 'btn-primary'} sb-btn-sm`}
-      onClick={toggle}
+      className={`btn ${open ? 'btn-secondary' : 'btn-primary'} sb-btn-sm`}
+      onClick={() => toggleComposing('claim')}
       disabled={disabled}
       title={disabled ? 'Add an entity first' : undefined}
     >
-      <i className={`ph-bold ${composing ? 'ph-x' : 'ph-plus'}`} />
-      {composing ? 'Cancel' : 'New claim'}
+      <i className={`ph-bold ${open ? 'ph-x' : 'ph-plus'}`} />
+      {open ? 'Cancel' : 'New claim'}
     </button>
   )
 }

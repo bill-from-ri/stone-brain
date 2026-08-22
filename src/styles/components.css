@@ -1365,15 +1365,120 @@
   margin: 0;
 }
 
-.sb-claim-confirm {
+/* ── the destructive-action modal ──
+   Shared by claim and entity deletion. Both are irreversible, and an inline
+   confirmation in the pane made them look like ordinary buttons that happened
+   to ask twice. This one takes the focus and has to be answered. */
+
+.sb-modal-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(10, 12, 15, 0.62);
+  backdrop-filter: blur(2px);
+  animation: sb-modal-in 120ms ease-out;
+}
+
+.sb-modal {
+  width: min(400px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
+  padding: 18px 18px 15px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45);
   display: flex;
   flex-direction: column;
+  gap: 12px;
+}
+
+.sb-modal-head {
+  display: flex;
+  align-items: center;
   gap: 9px;
 }
 
-.sb-claim-confirm-row {
+.sb-modal-head > i {
+  font-size: 17px;
+  color: #d98a80;
+}
+
+.sb-modal-head h2 {
+  margin: 0;
+  font-size: 15px;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+}
+
+.sb-modal-body {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.sb-modal-body p {
+  margin: 0;
+}
+
+.sb-modal-body strong {
+  color: var(--ink);
+}
+
+/* The one line every destructive dialog says, so it is styled once too. */
+.sb-modal-warning {
+  margin-top: 8px !important;
+  color: #d98a80;
+}
+
+.sb-modal-extra {
+  padding-top: 2px;
+}
+
+.sb-modal-actions {
   display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Red rather than the accent gold: the confirm button in this dialog is the
+   only control in the product that destroys something on one click. */
+.sb-btn-danger {
+  color: #e08c86;
+  border-color: rgba(224, 140, 134, 0.55);
+}
+
+.sb-btn-danger:hover {
+  background: rgba(224, 140, 134, 0.12);
+}
+
+.sb-btn-danger:active {
+  background: rgba(224, 140, 134, 0.2);
+}
+
+@keyframes sb-modal-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sb-modal-scrim {
+    animation: none;
+  }
+}
+
+/* The name the new-entity form thinks you may already have. */
+.sb-entity-dupe {
+  display: flex;
+  align-items: center;
   gap: 7px;
+  font-size: 12.5px;
+  color: var(--gold-pale);
 }
 
 /* ── the editor ── */

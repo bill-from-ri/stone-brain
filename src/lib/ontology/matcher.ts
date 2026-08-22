@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm'
 import type { NeonDatabase } from 'drizzle-orm/neon-serverless'
 import type * as schema from '@/db/schema'
 import { type Canonicity, entities } from '@/db/schema'
+import { normalizeName } from './name-key'
 
 /**
  * Resolving a surface string to an entity that already exists.
@@ -61,24 +62,12 @@ export type MatchResult =
 /* --------------------------------------------------------------- normalising */
 
 /**
- * The form stored in `entities.normalized_name`.
- *
- * Diacritics are folded so "Akál" and "Akal" are one key, and every run of
- * punctuation or whitespace becomes a single space — which also means an
- * extractor's "Sera." and "sera" land on the same string.
- *
- * This is the *only* normaliser. Anything else that needs to compare names
- * imports it rather than writing its own, because two normalisers disagreeing
- * is a duplicate entity nobody can explain.
+ * Re-exported, not defined here: it moved to ./name-key so that a client
+ * component can import it without dragging this file's drizzle and schema
+ * imports into the browser bundle. Every existing caller still reads it from
+ * the matcher, which is where it belongs conceptually.
  */
-export function normalizeName(name: string): string {
-  return name
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim()
-}
+export { normalizeName } from './name-key'
 
 const ARTICLES = /^(the|a|an) /
 

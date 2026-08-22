@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 
 /**
  * Delete, with the inverse offered rather than assumed.
@@ -10,6 +11,14 @@ import { useState } from 'react'
  * independently or carry its own sources. Silently deleting a sourced claim as
  * a side effect of deleting a different one is exactly the kind of quiet loss
  * this project exists to prevent.
+ *
+ * The confirmation used to be an inline "Delete this claim? / Keep" row that
+ * replaced the button. It now uses the shared ConfirmDialog, the same one
+ * guarding entity deletion — a modal that takes the focus and says outright
+ * that there is no undo. Two different weights of warning for two irreversible
+ * deletions taught the wrong lesson about which one to read. The inverse
+ * checkbox moves inside it, where it belongs: it is a choice about the
+ * deletion, so it should be answered as part of agreeing to it.
  */
 export function ClaimActions({
   claimId,
@@ -32,14 +41,15 @@ export function ClaimActions({
       method: 'DELETE',
     })
     setBusy(false)
+    setConfirming(false)
     // Order matters: drop the selection first, so the pane is not briefly
     // rendering a deleted claim while the refreshed table arrives.
     onDeleted?.()
     router.refresh()
   }
 
-  if (!confirming) {
-    return (
+  return (
+    <>
       <button
         type="button"
         className="btn btn-secondary sb-btn-sm"
@@ -48,34 +58,31 @@ export function ClaimActions({
         <i className="ph ph-trash" />
         Delete claim
       </button>
-    )
-  }
 
-  return (
-    <div className="sb-claim-confirm">
-      <p className="sb-claim-note">Delete this claim?</p>
-      {hasInverse && (
-        <label className="sb-check">
-          <input
-            type="checkbox"
-            checked={alsoInverse}
-            onChange={(e) => setAlsoInverse(e.target.checked)}
-          />
-          Also delete the reverse direction
-        </label>
-      )}
-      <div className="sb-claim-confirm-row">
-        <button type="button" className="btn btn-primary sb-btn-sm" onClick={remove} disabled={busy}>
-          {busy ? 'Deleting…' : 'Delete'}
-        </button>
-        <button
-          type="button"
-          className="btn btn-secondary sb-btn-sm"
-          onClick={() => setConfirming(false)}
-        >
-          Keep
-        </button>
-      </div>
-    </div>
+      <ConfirmDialog
+        open={confirming}
+        title="Delete this claim?"
+        confirmLabel="Delete claim"
+        busy={busy}
+        onConfirm={remove}
+        onCancel={() => setConfirming(false)}
+        body={
+          <p>
+            This claim and any passages cited for it will be removed from your world.
+          </p>
+        }
+      >
+        {hasInverse && (
+          <label className="sb-check">
+            <input
+              type="checkbox"
+              checked={alsoInverse}
+              onChange={(e) => setAlsoInverse(e.target.checked)}
+            />
+            Also delete the reverse direction
+          </label>
+        )}
+      </ConfirmDialog>
+    </>
   )
 }

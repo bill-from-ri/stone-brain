@@ -34,10 +34,20 @@ import type { Route } from 'next'
  * transition being in flight — the pane opening is the feedback.
  */
 
+/**
+ * What the pane is composing, if anything.
+ *
+ * A boolean when a claim was the only thing you could write by hand. Entities
+ * had to exist already — seeded, or extracted — which made "add a claim about
+ * something new" a dead end, so the bar now offers both and the pane has to
+ * know which was asked for.
+ */
+export type ComposeTarget = 'claim' | 'entity' | null
+
 export type Selection = {
   entityId: string | null
   claimId: string | null
-  composing: boolean
+  composing: ComposeTarget
   /** Whether the pane is open over `entityId`. Independent of the filter. */
   inspecting: boolean
 }
@@ -45,7 +55,8 @@ export type Selection = {
 type SelectionApi = Selection & {
   selectEntity: (id: string | null) => void
   selectClaim: (id: string | null) => void
-  toggleComposing: () => void
+  /** Opens the editor for `target`, or shuts it if it is already open. */
+  toggleComposing: (target: Exclude<ComposeTarget, null>) => void
   /** Opens or closes the pane over the focused entity, leaving the filter be. */
   toggleInspecting: () => void
   /** Closes the pane, whatever it is about. The entity filter survives. */
@@ -116,7 +127,7 @@ export function WorldSelectionProvider({
       else query.delete('entity')
       if (next.claimId) query.set('claim', next.claimId)
       else query.delete('claim')
-      if (next.composing) query.set('new', '1')
+      if (next.composing) query.set('new', next.composing)
       else query.delete('new')
       if (next.inspecting && next.entityId) query.set('detail', '1')
       else query.delete('detail')
@@ -138,7 +149,7 @@ export function WorldSelectionProvider({
     // by it — which the close button and the bar's toggle can then undo.
     selectEntity: useCallback(
       (id: string | null) =>
-        commit({ entityId: id, claimId: null, composing: false, inspecting: id !== null }),
+        commit({ entityId: id, claimId: null, composing: null, inspecting: id !== null }),
       [commit],
     ),
 
@@ -147,18 +158,20 @@ export function WorldSelectionProvider({
         commit({
           entityId: latest.current.entityId,
           claimId: id,
-          composing: false,
+          composing: null,
           inspecting: latest.current.inspecting,
         }),
       [commit],
     ),
 
     toggleComposing: useCallback(
-      () =>
+      (target: Exclude<ComposeTarget, null>) =>
         commit({
           entityId: latest.current.entityId,
           claimId: null,
-          composing: !latest.current.composing,
+          // Asking for the other editor switches to it rather than closing:
+          // only the same button twice means "never mind".
+          composing: latest.current.composing === target ? null : target,
           inspecting: latest.current.inspecting,
         }),
       [commit],
@@ -169,7 +182,7 @@ export function WorldSelectionProvider({
         commit({
           entityId: latest.current.entityId,
           claimId: null,
-          composing: false,
+          composing: null,
           inspecting: !latest.current.inspecting,
         }),
       [commit],
@@ -190,7 +203,7 @@ export function WorldSelectionProvider({
       commit({
         entityId: latest.current.entityId,
         claimId: null,
-        composing: false,
+        composing: null,
         inspecting: false,
       })
     }, [commit]),

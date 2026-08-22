@@ -92,7 +92,13 @@ export default async function WorldPage({
         initial={{
           entityId: params.entity ?? null,
           claimId: params.claim ?? null,
-          composing: params.new === '1',
+          /*
+           * `?new=claim` / `?new=entity`. `?new=1` is the spelling from when a
+           * claim was the only thing you could compose, and still opens the
+           * claim editor so older links and bookmarks land where they meant to.
+           */
+          composing:
+            params.new === 'entity' ? 'entity' : params.new ? 'claim' : null,
           /*
            * Absent on a bare `?entity=` link — including the ones /claims and
            * /graph still redirect here — so such a link lands on the entity's
@@ -113,7 +119,7 @@ export default async function WorldPage({
             claims={claimRows}
             entities={entityRows}
             graph={graph}
-            canCreate={entityRows.length > 0}
+            canCreateClaim={entityRows.length > 0}
           />
 
           <WorldDetail

@@ -1,5 +1,5 @@
 import 'server-only'
-import { and, eq } from 'drizzle-orm'
+import { and, count, eq, or } from 'drizzle-orm'
 import { db } from '@/db'
 import { claims, entities } from '@/db/schema'
 import { ordinalFor } from './calendar'
@@ -267,6 +267,49 @@ export async function createEntity(
     .returning({ id: entities.id })
 
   return row ? { ok: true, id: row.id } : { ok: false, error: 'Could not create that entity.' }
+}
+
+/**
+ * Deletes an entity, and reports how many claims went with it.
+ *
+ * The claims are not deleted here: both of `claims`' entity foreign keys are
+ * ON DELETE CASCADE, so removing the row removes every claim it is either end
+ * of, in the same statement. That is the right behaviour — a claim whose
+ * subject no longer exists is not a claim about anything — but it makes this
+ * the most destructive action in the product, so the count is returned *first*
+ * and separately by `entityClaimCount` below, for the confirmation to name
+ * before the user agrees to it.
+ *
+ * Returns `deleted: 0` for an id that is not this user's, on the same rule as
+ * every query in db/queries: an unscoped write is a scope-check bypass.
+ */
+export async function deleteEntity(
+  userId: string,
+  entityId: string,
+): Promise<{ deleted: number; claimsDeleted: number }> {
+  const claimsDeleted = await entityClaimCount(userId, entityId)
+
+  const removed = await db
+    .delete(entities)
+    .where(and(eq(entities.userId, userId), eq(entities.id, entityId)))
+    .returning({ id: entities.id })
+
+  return { deleted: removed.length, claimsDeleted: removed.length ? claimsDeleted : 0 }
+}
+
+/** Claims with this entity at either end — what a deletion would cascade to. */
+export async function entityClaimCount(userId: string, entityId: string): Promise<number> {
+  const [row] = await db
+    .select({ n: count() })
+    .from(claims)
+    .where(
+      and(
+        eq(claims.userId, userId),
+        or(eq(claims.subjectId, entityId), eq(claims.objectId, entityId)),
+      ),
+    )
+
+  return row?.n ?? 0
 }
 
 async function loadEntity(userId: string, id: string) {

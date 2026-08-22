@@ -1,5 +1,6 @@
 import type { EntityRow, EntityTypeOption } from '@/db/queries/claims'
 import { entityIcon } from '@/components/shared/entity-icon'
+import { EntityActions } from './EntityActions'
 
 /**
  * What the right pane says when an entity is selected but no claim is.
@@ -9,20 +10,28 @@ import { entityIcon } from '@/components/shared/entity-icon'
  * its type, the spellings the matcher will accept for it, how much rests on it.
  * That is the gap this fills.
  *
- * Read-only for now, deliberately. Rename, merge and retype are the operations
- * that actually repair a mismatched entity, and each rewrites claims underneath
- * it; they need their own endpoints and their own confirmations rather than a
- * pencil icon bolted onto a summary.
+ * Rename, merge and retype are still absent, deliberately: each rewrites the
+ * claims underneath the entity, and they need their own endpoints and their own
+ * confirmations rather than a pencil icon bolted onto a summary.
+ *
+ * Delete is here, though, because its absence was worse than its danger. An
+ * entity typed by mistake — wrong type, wrong spelling, wrong thing entirely —
+ * could not be removed from the product at all, which made the "New entity"
+ * button a one-way door. It is guarded by the shared confirmation, which names
+ * the claims the cascade will take with it.
  */
 export function EntityDetail({
   entity,
   entityTypes,
   relationshipCount,
+  onDeleted,
 }: {
   entity: EntityRow
   entityTypes: EntityTypeOption[]
   /** Claims linking it to another entity, as opposed to attributes of it. */
   relationshipCount: number
+  /** Clears the selection once the entity is gone. */
+  onDeleted?: () => void
 }) {
   const typeLabel = entityTypes.find((t) => t.name === entity.entityType)?.label ?? entity.entityType
 
@@ -72,6 +81,15 @@ export function EntityDetail({
           ))}
         </div>
       )}
+
+      <div className="sb-tree-divider" style={{ margin: '16px 0' }} />
+
+      <EntityActions
+        entityId={entity.id}
+        entityName={entity.name}
+        claimCount={entity.claimCount}
+        onDeleted={onDeleted}
+      />
     </>
   )
 }

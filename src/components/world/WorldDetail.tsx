@@ -13,6 +13,7 @@ import { DetailPaneShell } from '@/components/shared/DetailPaneShell'
 import { ClaimDetail } from '@/components/claims/ClaimDetail'
 import { ClaimEditor } from '@/components/claims/ClaimEditor'
 import { EntityDetail } from './EntityDetail'
+import { EntityEditor } from './EntityEditor'
 import { useWorldSelection } from './WorldSelection'
 
 /**
@@ -49,7 +50,8 @@ export function WorldDetail({
   predicates: PredicateOption[]
   signatures: SignatureRow[]
 }) {
-  const { entityId, claimId, composing, inspecting, closeDetail, selectClaim } = useWorldSelection()
+  const { entityId, claimId, composing, inspecting, closeDetail, selectClaim, selectEntity } =
+    useWorldSelection()
 
   const localClaim = claimId ? (claims.find((c) => c.id === claimId) ?? null) : null
   const { claim, sources, loading } = useClaimDetail(claimId, localClaim)
@@ -69,32 +71,52 @@ export function WorldDetail({
       ).length
     : 0
 
-  const body = composing ? (
-    <ClaimEditor
-      entities={entities.map((e) => ({ id: e.id, name: e.name, entityType: e.entityType }))}
-      entityTypes={entityTypes}
-      predicates={predicates}
-      signatures={signatures}
-    />
-  ) : claim ? (
-    <ClaimDetail
-      claim={claim}
-      sources={sources}
-      sourcesLoading={loading}
-      onDeleted={() => selectClaim(null)}
-    />
-  ) : shownEntity ? (
-    <EntityDetail
-      entity={shownEntity}
-      entityTypes={entityTypes}
-      relationshipCount={relationshipCount}
-    />
-  ) : null
+  const entityOptions = entities.map((e) => ({
+    id: e.id,
+    name: e.name,
+    entityType: e.entityType,
+  }))
+
+  const body =
+    composing === 'entity' ? (
+      <EntityEditor
+        entities={entityOptions}
+        entityTypes={entityTypes}
+        /* Straight into the pane over what was just made: the entity is now the
+           thing you are working on, and a form that clears itself and says
+           nothing is no answer to "did that work?". */
+        onCreated={selectEntity}
+      />
+    ) : composing === 'claim' ? (
+      <ClaimEditor
+        entities={entityOptions}
+        entityTypes={entityTypes}
+        predicates={predicates}
+        signatures={signatures}
+      />
+    ) : claim ? (
+      <ClaimDetail
+        claim={claim}
+        sources={sources}
+        sourcesLoading={loading}
+        onDeleted={() => selectClaim(null)}
+      />
+    ) : shownEntity ? (
+      <EntityDetail
+        entity={shownEntity}
+        entityTypes={entityTypes}
+        relationshipCount={relationshipCount}
+        /* Deleting takes the entity itself, so the filter it was narrowing the
+           table by goes too — anything else leaves the World filtered to
+           something that no longer exists. */
+        onDeleted={() => selectEntity(null)}
+      />
+    ) : null
 
   // Open the moment something is picked, not when its sources arrive: the claim
   // itself is already known, and holding the pane shut for the fetch would put
   // back exactly the delay this removed.
-  const open = composing || Boolean(claimId) || Boolean(shownEntity)
+  const open = composing !== null || Boolean(claimId) || Boolean(shownEntity)
 
   /*
    * Escape closes the pane, except over the editor, where the pane holds a

@@ -3,6 +3,7 @@
 import type { ClaimRow, EntityRow, Graph } from '@/db/queries/claims'
 import { ClaimsTable } from '@/components/claims/ClaimsTable'
 import { NewClaimButton } from '@/components/claims/NewClaimButton'
+import { NewEntityButton } from './NewEntityButton'
 import { PaneBarSpacer, RecordPane } from '@/components/shared/RecordTable'
 import { GraphView } from './GraphView'
 import { ViewToggle, type WorldViewMode } from './ViewToggle'
@@ -22,7 +23,7 @@ export function WorldCentre({
   claims,
   entities,
   graph,
-  canCreate,
+  canCreateClaim,
 }: {
   view: WorldViewMode
   claims: ClaimRow[]
@@ -30,11 +31,15 @@ export function WorldCentre({
   entities: EntityRow[]
   graph: Graph
   /**
+   * Whether there is anything to make a claim *about*. Only the claim button
+   * is gated on it — `New entity` is the way out of an empty world, so gating
+   * that one on the world being non-empty would close the only door.
+   *
    * Elements are deliberately not passed down from the page: a server-created
    * element handed to a client component as a prop trips React's key validation
    * when it lands inside a list, and plain props say more anyway.
    */
-  canCreate: boolean
+  canCreateClaim: boolean
 }) {
   const { entityId, inspecting, selectEntity, toggleInspecting } = useWorldSelection()
 
@@ -80,7 +85,8 @@ export function WorldCentre({
             </>
           )}
           <PaneBarSpacer />
-          <NewClaimButton disabled={!canCreate} />
+          <NewEntityButton />
+          <NewClaimButton disabled={!canCreateClaim} />
           <ViewToggle view={view} />
         </>
       }
