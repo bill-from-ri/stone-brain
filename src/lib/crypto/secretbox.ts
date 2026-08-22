@@ -21,7 +21,7 @@ const IV_BYTES = 12
 const TAG_BYTES = 16
 
 /** What a secret is for. Bound into the AAD so envelopes cannot be swapped between columns. */
-export type SecretPurpose = 'google_refresh_token' | 'google_access_token'
+export type SecretPurpose = 'google_refresh_token' | 'google_access_token' | 'llm_api_key'
 
 export class SecretDecryptError extends Error {
   override readonly name = 'SecretDecryptError'

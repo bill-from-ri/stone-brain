@@ -134,6 +134,66 @@ export const sessions = pgTable(
   ],
 )
 
+/**
+ * What the last probe of the user's provider found. Stored rather than computed
+ * so the Settings page, and later the extract button, can render a connection
+ * state without making the page load wait on someone else's API.
+ */
+export type ProviderHealth =
+  | 'unknown'
+  | 'ok'
+  | 'unauthorized'
+  | 'payment_required'
+  | 'rate_limited'
+  | 'model_rejected'
+  | 'unreachable'
+
+/* ---------------------------------------------------------- inference provider */
+
+/**
+ * Users bring their own inference credentials (decisions §11), so this is the
+ * second per-user secret store — deliberately the same shape as
+ * `google_accounts`, and reading its ciphertext goes through the same
+ * secretbox module. One secrets module, not two.
+ *
+ * One row per user, and only once they have configured something: absence *is*
+ * the "no provider" state, so nothing has to invent a null baseUrl.
+ *
+ * The key never leaves the server. `api_key_last4` exists so the UI can show
+ * which key is on file without the plaintext ever being sent to the browser —
+ * there is no read path that returns the key itself.
+ */
+export const providerSettings = pgTable('provider_settings', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  workspaceId: uuid('workspace_id'),
+
+  /** Any OpenAI-compatible endpoint, stored without a trailing slash. */
+  baseUrl: text('base_url').notNull(),
+
+  /** AES-256-GCM envelope. Only src/lib/crypto/secretbox.ts may read this. */
+  apiKeyEnc: text('api_key_enc').notNull(),
+  /** Display only. Never enough to reconstruct the key. */
+  apiKeyLast4: text('api_key_last4').notNull(),
+
+  modelId: text('model_id').notNull(),
+
+  /**
+   * The last probe's verdict. A designed UI state rather than an error path,
+   * exactly like `google_accounts.token_status` — the four states §11 names
+   * (missing, revoked, out of credit, rate limited) are all here, with
+   * "missing" represented by the absence of the row.
+   */
+  health: text('health').$type<ProviderHealth>().notNull().default('unknown'),
+  /** A short, already-safe sentence. Never a raw provider body, never the key. */
+  healthDetail: text('health_detail'),
+  healthCheckedAt: ts('health_checked_at'),
+
+  createdAt: ts('created_at').notNull().defaultNow(),
+  updatedAt: ts('updated_at').notNull().defaultNow(),
+})
+
 /* ---------------------------------------------------------------- sync state */
 
 /** Persisted BFS position, so an interrupted initial crawl resumes instead of restarting. */
@@ -837,6 +897,8 @@ export const claimSources = pgTable(
 export type User = typeof users.$inferSelect
 export type NewUser = typeof users.$inferInsert
 export type GoogleAccount = typeof googleAccounts.$inferSelect
+export type ProviderSettings = typeof providerSettings.$inferSelect
+export type NewProviderSettings = typeof providerSettings.$inferInsert
 export type Session = typeof sessions.$inferSelect
 export type SyncState = typeof syncState.$inferSelect
 export type Folder = typeof folders.$inferSelect

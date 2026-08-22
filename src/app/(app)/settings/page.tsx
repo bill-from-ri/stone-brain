@@ -1,10 +1,16 @@
 import { requireUser } from '@/lib/auth/guard'
 import { AppHeader } from '@/components/shell/AppHeader'
+import { ProviderPanel } from '@/components/settings/ProviderPanel'
+import { getProviderStatus } from '@/lib/llm/provider'
 
 export const dynamic = 'force-dynamic'
 
 export default async function SettingsPage() {
   const session = await requireUser()
+  // Read on the server so the key's ciphertext has no path to the browser —
+  // getProviderStatus is the display-safe half of the read split (see
+  // src/lib/llm/provider.ts).
+  const provider = await getProviderStatus(session.user.id)
 
   return (
     <>
@@ -37,6 +43,8 @@ export default async function SettingsPage() {
             </div>
           </div>
         </div>
+
+        <ProviderPanel initial={provider} />
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <form action="/api/auth/signout" method="post">

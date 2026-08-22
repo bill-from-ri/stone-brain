@@ -1612,6 +1612,97 @@
   font-size: 12px;
 }
 
+/* ── the inference provider ── */
+
+/* Shortcuts into the base URL field, not a list of supported providers — the
+   field below them stays free text, because decisions §11 chose "any
+   OpenAI-compatible endpoint" over "these four". */
+.sb-preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 1px;
+}
+
+.sb-preset {
+  height: 22px;
+  padding: 0 9px;
+  font-size: 11px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.sb-preset:hover {
+  color: var(--text);
+  border-color: var(--gold-line);
+}
+
+.sb-preset--on {
+  color: var(--gold-pale);
+  border-color: var(--gold-line);
+  background: var(--gold-dim);
+}
+
+.sb-key-row {
+  display: flex;
+  gap: 7px;
+}
+
+.sb-key-row .input {
+  flex: 1;
+  min-width: 0;
+  font-family: ui-monospace, Menlo, monospace;
+}
+
+.sb-key-row .btn {
+  flex: none;
+  width: 32px;
+  padding: 0;
+  height: 32px;
+}
+
+/* The connection state from decisions §11. A dot rather than an icon: it sits
+   under a line of prose, and four states need to be told apart at a glance. */
+.sb-provider-health {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  margin-top: 7px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.sb-provider-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--faint);
+  transform: translateY(-1px);
+}
+
+.sb-provider-health[data-tone='ok'] .sb-provider-dot {
+  background: var(--ok);
+}
+
+.sb-provider-health[data-tone='bad'] .sb-provider-dot {
+  background: var(--bad);
+}
+
+.sb-provider-health[data-tone='warn'] .sb-provider-dot {
+  background: var(--warn);
+}
+
+.sb-provider-url {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 11.5px;
+  overflow-wrap: anywhere;
+}
+
 /* ── the graph ── */
 
 /* Rendered in world units inside a viewBox the component pans and zooms, so

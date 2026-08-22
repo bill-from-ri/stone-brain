@@ -46,9 +46,26 @@ Broken into small pieces, roughly in dependency order. Each one is independently
 
 Users bring their own inference credentials (decisions §11), so nothing can run until a key can be stored and used.
 
-- [ ] Settings UI for base URL + API key + model ID, with the key encrypted at rest like the Google refresh token
-- [ ] A thin OpenAI-compatible client, server-side only
-- [ ] Connection-health states: missing key, revoked (401), out of credit (402), rate limited (429)
+- [x] Settings UI for base URL + API key + model ID, with the key encrypted at rest like the Google refresh token
+- [x] A thin OpenAI-compatible client, server-side only
+- [x] Connection-health states: missing key, revoked (401), out of credit (402), rate limited (429)
+
+Done, as a modal off the Settings page. `provider_settings` is a second per-user
+secret store in the same shape as `google_accounts`, reading through the same
+secretbox with its own AAD purpose; `src/lib/llm/provider.ts` is the only module
+that touches it, and it splits the read in two so a display caller structurally
+cannot obtain the key.
+
+The health check is one capped chat completion rather than `GET /models`,
+because that is the only request that tests all three fields at once — several
+OpenAI-compatible servers do not implement `/models`, so a 404 there would be
+indistinguishable from a bad URL. Verification is advisory: the row is written
+first and stays written when the probe fails, so a provider that is merely down
+cannot stop someone saving a key they know is good.
+
+Two things deliberately left for later: the modal is reachable only from
+Settings — the document detail pane and the Assistant will open the same
+component — and the client has no streaming, which nothing before Phase 4 needs.
 
 ### 2. Document text
 
