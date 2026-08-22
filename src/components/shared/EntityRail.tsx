@@ -136,8 +136,10 @@ export function EntityRail({
           ))}
       </div>
 
+      {/* No heading beside it: the chosen ordering names the list as well as
+          "Entities" would, and the two together left the chevron crowding the
+          label. The select sits where the kicker used to. */}
       <div className="sb-ent-kicker sb-ent-sort-row">
-        <span>Entities</span>
         <select
           className="sb-ent-sort"
           value={sort}
