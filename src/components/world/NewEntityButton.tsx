@@ -3,28 +3,28 @@
 import { useWorldSelection } from './WorldSelection'
 
 /**
- * Opens the entity editor in the right pane.
+ * Opens the entity editor.
  *
- * The sibling of NewClaimButton, and the reason it can stop being disabled on
- * an empty world: `New claim` has always had to tell you to "add an entity
- * first", with no way in the product to do that. This is the way.
+ * The sibling of NewClaimButton, and the reason that one can stop telling you
+ * to "add an entity first" with no way in the product to do it. Styled
+ * identically, because they are the same kind of thing: the two nouns this
+ * screen can create, offered side by side.
  *
- * Secondary next to the claim's primary, because a claim is the thing this
- * screen is for and an entity is the noun you need before you can write one.
+ * It does not become `Cancel` while the form is open. The form is a modal over
+ * the whole screen, so this button is not visible to be misread, and there is
+ * no state in which it says something it will not do.
  */
 export function NewEntityButton() {
-  const { composing, toggleComposing } = useWorldSelection()
-  const open = composing === 'entity'
+  const { toggleComposing } = useWorldSelection()
 
   return (
     <button
       type="button"
-      className="btn btn-secondary sb-btn-sm"
+      className="btn btn-primary sb-btn-sm"
       onClick={() => toggleComposing('entity')}
-      aria-pressed={open}
     >
-      <i className={`ph-bold ${open ? 'ph-x' : 'ph-plus'}`} />
-      {open ? 'Cancel' : 'New entity'}
+      <i className="ph-bold ph-plus" />
+      New entity
     </button>
   )
 }

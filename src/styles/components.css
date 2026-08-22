@@ -1365,10 +1365,10 @@
   margin: 0;
 }
 
-/* ── the destructive-action modal ──
-   Shared by claim and entity deletion. Both are irreversible, and an inline
-   confirmation in the pane made them look like ordinary buttons that happened
-   to ask twice. This one takes the focus and has to be answered. */
+/* ── modals ──
+   Two of them, on one frame: the destructive confirmation, and the composer
+   that holds the new-claim and new-entity forms. Both take the focus; the
+   confirmation is sized for a sentence, the composer (--wide) for a form. */
 
 .sb-modal-scrim {
   position: fixed;
@@ -1384,6 +1384,8 @@
 
 .sb-modal {
   width: min(400px, 100%);
+  max-height: min(680px, 100%);
+  overflow: auto;
   background: var(--surface);
   border: 1px solid var(--line-2);
   border-radius: 12px;
@@ -1394,10 +1396,47 @@
   gap: 12px;
 }
 
+/* Wide enough that the bar it covers — and the buttons that opened it — are not
+   visible behind its edges, which is the point: the button never has to become
+   a `Cancel` to give the form a way of being closed. */
+.sb-modal--wide {
+  width: min(520px, 100%);
+  padding: 20px 22px 18px;
+  gap: 15px;
+}
+
+.sb-modal:focus-visible {
+  outline: none;
+}
+
 .sb-modal-head {
   display: flex;
   align-items: center;
   gap: 9px;
+}
+
+.sb-modal--wide .sb-modal-head {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+/* Pushed to the far end by the h2 below, which takes the slack. */
+.sb-modal-close {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.sb-modal-close:hover {
+  background: var(--panel);
+  color: var(--ink);
 }
 
 .sb-modal-head > i {
@@ -1407,9 +1446,15 @@
 
 .sb-modal-head h2 {
   margin: 0;
+  flex: 1;
   font-size: 15px;
   font-family: var(--font-heading);
   font-weight: var(--font-heading-weight);
+}
+
+.sb-modal--wide .sb-modal-head > i {
+  color: var(--gold-lite);
+  font-size: 14px;
 }
 
 .sb-modal-body {
@@ -1424,6 +1469,10 @@
 
 .sb-modal-body strong {
   color: var(--ink);
+}
+
+.sb-modal-body-more {
+  margin-top: 7px !important;
 }
 
 /* The one line every destructive dialog says, so it is styled once too. */

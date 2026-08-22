@@ -1,6 +1,7 @@
 import { AppHeader } from '@/components/shell/AppHeader'
 import { EntityFilter } from '@/components/claims/EntityFilter'
 import { WorldCentre } from '@/components/world/WorldCentre'
+import { WorldComposer } from '@/components/world/WorldComposer'
 import { WorldDetail } from '@/components/world/WorldDetail'
 import { WorldSelectionProvider } from '@/components/world/WorldSelection'
 import type { WorldViewMode } from '@/components/world/ViewToggle'
@@ -122,8 +123,12 @@ export default async function WorldPage({
             canCreateClaim={entityRows.length > 0}
           />
 
-          <WorldDetail
-            claims={claimRows}
+          <WorldDetail claims={claimRows} entities={entityRows} entityTypes={entityTypes} />
+
+          {/* Outside the three panes, because it is over all of them. Mounted
+              unconditionally and drawing nothing until asked, so opening it
+              costs no round trip — the same rule the rest of the screen keeps. */}
+          <WorldComposer
             entities={entityRows}
             entityTypes={entityTypes}
             predicates={predicates}

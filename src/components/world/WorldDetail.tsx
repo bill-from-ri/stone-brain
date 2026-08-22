@@ -6,14 +6,10 @@ import type {
   ClaimSourceRow,
   EntityRow,
   EntityTypeOption,
-  PredicateOption,
-  SignatureRow,
 } from '@/db/queries/claims'
 import { DetailPaneShell } from '@/components/shared/DetailPaneShell'
 import { ClaimDetail } from '@/components/claims/ClaimDetail'
-import { ClaimEditor } from '@/components/claims/ClaimEditor'
 import { EntityDetail } from './EntityDetail'
-import { EntityEditor } from './EntityEditor'
 import { useWorldSelection } from './WorldSelection'
 
 /**
@@ -23,6 +19,12 @@ import { useWorldSelection } from './WorldSelection'
  * a claim you clicked, else the entity you are looking through *if you asked to
  * see it*, else nothing — in which case the pane closes and the table takes the
  * width, the same rule the Library follows.
+ *
+ * Composing is no longer one of the cases. Both editors moved to WorldComposer,
+ * which is a modal: a form that only ever had 320px to live in could not grow,
+ * and the pane's editors made the bar's buttons flip to `Cancel` to have a way
+ * of being closed. This pane is for what is *selected*, which is a different
+ * question from what is being written.
  *
  * That middle clause is the whole of `inspecting`. An entity being selected
  * means the claims are filtered to it, which is a question about the table and
@@ -40,17 +42,13 @@ export function WorldDetail({
   claims,
   entities,
   entityTypes,
-  predicates,
-  signatures,
 }: {
   /** The rows the table is showing — the pool a claim selection resolves in. */
   claims: ClaimRow[]
   entities: EntityRow[]
   entityTypes: EntityTypeOption[]
-  predicates: PredicateOption[]
-  signatures: SignatureRow[]
 }) {
-  const { entityId, claimId, composing, inspecting, closeDetail, selectClaim, selectEntity } =
+  const { entityId, claimId, inspecting, closeDetail, selectClaim, selectEntity } =
     useWorldSelection()
 
   const localClaim = claimId ? (claims.find((c) => c.id === claimId) ?? null) : null
@@ -71,30 +69,7 @@ export function WorldDetail({
       ).length
     : 0
 
-  const entityOptions = entities.map((e) => ({
-    id: e.id,
-    name: e.name,
-    entityType: e.entityType,
-  }))
-
-  const body =
-    composing === 'entity' ? (
-      <EntityEditor
-        entities={entityOptions}
-        entityTypes={entityTypes}
-        /* Straight into the pane over what was just made: the entity is now the
-           thing you are working on, and a form that clears itself and says
-           nothing is no answer to "did that work?". */
-        onCreated={selectEntity}
-      />
-    ) : composing === 'claim' ? (
-      <ClaimEditor
-        entities={entityOptions}
-        entityTypes={entityTypes}
-        predicates={predicates}
-        signatures={signatures}
-      />
-    ) : claim ? (
+  const body = claim ? (
       <ClaimDetail
         claim={claim}
         sources={sources}
@@ -116,20 +91,21 @@ export function WorldDetail({
   // Open the moment something is picked, not when its sources arrive: the claim
   // itself is already known, and holding the pane shut for the fetch would put
   // back exactly the delay this removed.
-  const open = composing !== null || Boolean(claimId) || Boolean(shownEntity)
+  const open = Boolean(claimId) || Boolean(shownEntity)
 
   /*
-   * Escape closes the pane, except over the editor, where the pane holds a
-   * half-typed claim and a stray keystroke should not throw it away.
+   * Escape closes the pane. The composer's modal stops the key at itself, so a
+   * press with a half-typed claim on screen answers the modal and leaves this
+   * pane where it was.
    */
   useEffect(() => {
-    if (!open || composing) return
+    if (!open) return
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') closeDetail()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, composing, closeDetail])
+  }, [open, closeDetail])
 
   return (
     <DetailPaneShell open={open} onClose={closeDetail} width={320}>

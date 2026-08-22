@@ -93,15 +93,13 @@ export function EntityEditor({
 
   return (
     <form className="sb-claim-form" onSubmit={submit}>
-      <div className="sb-detail-kicker">New entity</div>
-
       <label className="sb-field">
         <span>Name</span>
         <input
           className="input"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Ashfall"
+          placeholder="Entity name"
           autoFocus
           required
         />

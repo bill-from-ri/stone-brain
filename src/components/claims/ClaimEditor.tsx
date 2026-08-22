@@ -26,11 +26,14 @@ export function ClaimEditor({
   entityTypes,
   predicates,
   signatures,
+  onSaved,
 }: {
   entities: EntityOption[]
   entityTypes: EntityTypeOption[]
   predicates: PredicateOption[]
   signatures: SignatureRow[]
+  /** Called once the claim is written — the modal closes on it. */
+  onSaved?: () => void
 }) {
   const router = useRouter()
 
@@ -110,12 +113,12 @@ export function ClaimEditor({
     setValue('')
     setStartTime('')
     setEndTime('')
+    onSaved?.()
     router.refresh()
   }
 
   return (
     <form className="sb-claim-form" onSubmit={submit}>
-      <div className="sb-detail-kicker">New claim</div>
 
       <label className="sb-field">
         <span>Subject</span>
@@ -183,7 +186,7 @@ export function ClaimEditor({
               className="input"
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              placeholder={chosen.valueType === 'date' ? 'e.g. AD 412' : ''}
+              placeholder={chosen.valueType === 'date' ? 'Date' : ''}
               required
             />
           )}
@@ -221,7 +224,7 @@ export function ClaimEditor({
             className="input"
             value={startTime}
             onChange={(e) => setStartTime(e.target.value)}
-            placeholder="AD 412"
+            placeholder="Start date"
           />
         </label>
         <label className="sb-field">
@@ -230,7 +233,7 @@ export function ClaimEditor({
             className="input"
             value={endTime}
             onChange={(e) => setEndTime(e.target.value)}
-            placeholder="AD 430"
+            placeholder="End date"
           />
         </label>
       </div>

@@ -64,13 +64,25 @@ export function EntityActions({
         onConfirm={remove}
         onCancel={() => setConfirming(false)}
         body={
-          <p>
-            <strong>{entityName}</strong>
-            {claimCount === 0
-              ? ' will be removed from your world.'
-              : ` and the ${claimCount} ${claimCount === 1 ? 'claim' : 'claims'} about it will be
-                 removed from your world, along with the passages cited for them.`}
-          </p>
+          <>
+            <p>
+              The entity <strong>{entityName}</strong> will be deleted.
+            </p>
+            {claimCount > 0 ? (
+              <p className="sb-modal-body-more">
+                Every claim it appears in goes with it —{' '}
+                <strong>
+                  {claimCount} {claimCount === 1 ? 'claim' : 'claims'}
+                </strong>
+                , whether {entityName} is the subject or the thing being pointed at, along with the
+                passages cited for them.
+              </p>
+            ) : (
+              <p className="sb-modal-body-more">
+                No claim mentions it yet, so nothing else is affected.
+              </p>
+            )}
+          </>
         }
       />
     </>
