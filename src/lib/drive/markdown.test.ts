@@ -25,8 +25,31 @@ describe('cleanExport', () => {
 
   it('drops the image reference at the point of use as well as its definition', () => {
     expect(cleanExport('Coat of arms: ![][image1] and ![alt](http://x/y.png) end')).toBe(
-      'Coat of arms:  and  end',
+      'Coat of arms: and end',
     )
+  })
+
+  it('closes the gap to a single space, rather than leaving a run behind', () => {
+    // Real: `Gabelford Town ![][image1] ![][image2] Coat of Arms`. A run of
+    // spaces is what splitLayoutTable reads as a paragraph break, so removing
+    // an image must not create one — see the layout-table test below.
+    expect(cleanExport('Gabelford Town ![][image1] ![][image2] Coat of Arms')).toBe(
+      'Gabelford Town Coat of Arms',
+    )
+  })
+
+  it('leaves nothing image-shaped behind at all', () => {
+    const raw = [
+      'Before ![][image1] after.',
+      '',
+      '[image1]: <data:image/png;base64,iVBORw0KGgoAAAANSUhEUg>',
+    ].join('\n')
+
+    const clean = cleanExport(raw)
+    for (const pattern of [/data:/, /;base64,/, /!\[/, /^\[image\d+\]:/m]) {
+      expect(clean).not.toMatch(pattern)
+    }
+    expect(clean).toBe('Before after.')
   })
 
   it('removes Google’s bare empty headings', () => {
@@ -205,6 +228,21 @@ describe('layout tables', () => {
     )
     const table = ['| Year | Event |', '| ----: | :---- |', ...rows].join('\n')
     expect(toParagraphs(table)).toHaveLength(1)
+  })
+
+  it('does not invent a paragraph break where an image was removed', () => {
+    // Images are out of scope and dropped, but a long cell is split on runs of
+    // spaces — so a naive deletion would turn every removed image into a
+    // paragraph boundary that was never in the document.
+    const body = longBody.split('  ')
+    const withImage = [body[0], '![][image1]', body[1], body[2], body[3], body[4]].join(' ')
+
+    const paragraphs = toParagraphs(article(withImage))
+    expect(paragraphs.map((p) => p.text)).not.toContain('')
+    // The sentence the image sat inside stays one paragraph.
+    expect(paragraphs.some((p) => p.text.startsWith(body[0]!) && p.text.includes(body[1]!))).toBe(
+      true,
+    )
   })
 
   it('refuses to split content that is made of spaces', () => {

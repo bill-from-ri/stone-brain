@@ -79,6 +79,13 @@ failure; `cleanExport` → `toParagraphs` was run over every one of them, and th
 round-trip check (every paragraph is a substring of the cleaned text, so a stored
 quote stays findable) passes on all of them.
 
+**Images are dropped entirely**, per scope: non-text input waits until the project
+is ready to digest it. Both halves go — the base64 `data:` payload and the
+`![][image1]` marker referring to it — so nothing image-shaped reaches the prompt
+or the database, and no alt text is kept either. `DocumentText.strippedBytes`
+records what each document shed. `cleanExport` is the single place that changes
+if images ever come into scope.
+
 **Chunking: not needed, and not built.** 88% of the raw export bytes were base64
 image data — 99.1% of the largest document. Stripped, the biggest document is
 ~20k tokens and the *entire library* is ~94k, so one document per request fits

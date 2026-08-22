@@ -25,10 +25,15 @@
  * - **Tables** are pipe tables with no internal blank lines, so a table is also
  *   one block. Two kinds arrive, and they need opposite treatment — see
  *   `splitLayoutTable` below.
- * - **Images** are the thing that matters. Google inlines every image as a
- *   base64 `data:` URI in a link-reference definition at the end of the file.
- *   In this corpus that was **88% of all exported bytes**, and 99% of the
- *   largest document. Sent to a model it would be pure cost for zero meaning.
+ * - **Images** are the thing that matters, and are **dropped entirely** —
+ *   non-text input is out of scope until the project is ready to digest it.
+ *   Google inlines every image as a base64 `data:` URI in a link-reference
+ *   definition at the end of the file; in this corpus that was **88% of all
+ *   exported bytes**, and 99% of the largest document. Both halves go: the
+ *   definition carrying the payload, and the `![][image1]` marker referring to
+ *   it. Nothing image-shaped reaches the prompt or the database, and
+ *   `DocumentText.strippedBytes` records what each document shed. If images
+ *   ever come into scope, `cleanExport` is the only place that changes.
  * - **Punctuation is backslash-escaped** (`\.`, `\_`, `\-`, `\#`) far more
  *   eagerly than markdown requires, because Google escapes defensively rather
  *   than contextually.
@@ -65,8 +70,18 @@ const ESCAPED = /\\([\\`*_{}[\]()#+\-.!~<>"'$%&,/:;=?@^])/g
 /** `[image1]: <data:image/png;base64,…>` — one line, however many megabytes. */
 const IMAGE_DEFINITION = /^\[[^\]]*\]:\s*<data:[^>]*>\s*$/gm
 
-/** `![][image1]` and `![alt](url)` — the reference at the point of use. */
-const INLINE_IMAGE = /!\[[^\]]*\]\((?:[^()]*)\)|!\[[^\]]*\]\[[^\]]*\]/g
+/**
+ * `![][image1]` and `![alt](url)` — the reference at the point of use.
+ *
+ * The leading `[ \t]*` is load-bearing. Twelve table rows in the corpus hold
+ * images inline (`Gabelford Town ![][image1] ![][image2] Coat of Arms`), and
+ * deleting them without their preceding space would leave a *run* of spaces —
+ * which is precisely the signal `splitLayoutTable` reads as a paragraph break.
+ * Removing an image would then manufacture a paragraph boundary that was never
+ * in the document. Consuming the space before, and keeping the one after,
+ * closes the gap to a single space instead.
+ */
+const INLINE_IMAGE = /[ \t]*!\[[^\]]*\](?:\((?:[^()]*)\)|\[[^\]]*\])/g
 
 /** A heading with no text: `#`, `## `, and so on. */
 const EMPTY_HEADING = /^#{1,6}[ \t]*$/gm
