@@ -149,10 +149,50 @@ rejections is §6. The result object already carries what §6 needs.
 
 ### 4. The extraction call
 
-- [ ] Assemble the prompt from `describeVocabulary()` plus the document text
-- [ ] Request structured output against `extractionJsonSchema()`
-- [ ] Validate with `parseExtraction()`; feed rejections back for one retry before giving up
-- [ ] One document per invocation, comfortably inside the 300s function limit (decisions §8)
+- [x] Assemble the prompt from `describeVocabulary()` plus the document text
+- [x] Request structured output against `extractionJsonSchema()`
+- [x] Validate with `parseExtraction()`; feed rejections back for one retry before giving up
+- [x] One document per invocation, comfortably inside the 300s function limit (decisions §8)
+
+Done. `prompt.ts` is the string assembly and `extract.ts` is the call, split so
+the part a person tunes can be printed without a provider configured.
+`npm run extract -- "<name>" [--write] [--model=<id>]` is the harness both were
+verified with, and the one §7 will drive.
+
+**Structured output could not be assumed, and the reason was measured, not
+guessed.** On Google's OpenAI-compatible endpoint, `gemini-3.7-flash` — the
+model currently configured — returns HTTP 503 to *every* `json_schema` request,
+7 out of 7, with a one-property schema as reliably as with the real one, while
+answering a `json_object` or plain call on the same key in the same minute in
+one to three seconds. `gemini-2.5-flash` and `gemini-3-flash-preview` take the
+real schema happily. So `negotiateRequest` walks a ladder — schema, then
+`json_object`, then free text — and only an *articulated* refusal (a status code)
+moves it down: 401, 402 and 429 are true of every rung, so retrying them would
+turn one honest error into six. The accepted rung is memoised per endpoint+model.
+
+**Reasoning effort is the difference between fitting in 300s and not.** On
+`gemini-3-flash-preview` over an 8-paragraph document, default effort spent
+~63,000 thinking tokens and 195 seconds; `reasoning_effort: 'low'` spent none,
+took 7 seconds, and returned *more* claims. Extraction is a reading task, so low
+is the right default — but OpenAI rejects the parameter outright on a
+non-reasoning model, so it is the ladder's other axis, dropped when the provider
+names it in its complaint.
+
+**Two things are deliberately not conflated.** `max_tokens` is left unset (ADR
+§11: Gemini bills thinking against it), and an empty completion is an
+`ExtractionError`, never a document with no claims in it — otherwise a token
+budget mistake would stamp a document extracted and record that it says nothing.
+
+Verified end to end against the live corpus and the real provider: *Village of
+Nephten* (8 ¶) gave 21 claims and *The Republic of Andras* (18 ¶) gave 25, both
+with zero surviving rejections after one repair, in 7–8s. Handing those exact
+claims to §3 wrote 25 claims, 25 sources and 21 draft entities with nothing
+unwritten, and a second run of the same output created nothing — idempotency
+holding on real model output, not just on fixtures.
+
+**Operational note for §9:** the free tier on `gemini-3.7-flash` is **20
+requests per day, per model**. A document costs one request, or two when a
+repair is spent. The queue drain has to treat that as the binding limit.
 
 ### 5. Inverse claims
 

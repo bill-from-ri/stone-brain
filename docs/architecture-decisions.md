@@ -640,12 +640,32 @@ decision was written to accommodate, landing exactly as intended. Note the path:
 Gemini endpoint one level up speaks Google's own request shape, which our client does not.
 Unsupported OpenAI parameters are silently ignored there rather than rejected.
 
-One behaviour worth knowing before §4 sets `max_tokens`: **Gemini counts thinking tokens
+**Correction (2026-08-22, from §4's first real runs): "honours `response_format`" is true of
+the endpoint, not of every model behind it.** `gemini-3.7-flash` returns HTTP 503 "experiencing
+high demand" to every `json_schema` request — 7 out of 7, with a one-property schema as
+reliably as with the real 70-predicate one — while answering `json_object` and plain calls on
+the same key in the same minute in one to three seconds. `gemini-2.5-flash` and
+`gemini-3-flash-preview` accept the same schema without complaint. The 503 is therefore a
+capability gap wearing a capacity error's clothes, and it is indistinguishable from the real
+thing at the status code. This is the strongest possible argument for what §4 does anyway:
+request the schema, validate as though it were never sent, and step down to a weaker
+`response_format` when the provider says no. It also means the free-tier request budget is
+real — that model allows **20 requests per day**, which is the binding constraint on §9's
+unattended drain, not the rate limit.
+
+Two behaviours worth knowing before §4 sets any budget. **Gemini counts thinking tokens
 against that budget**, unlike OpenAI's o-series, which tracks them separately. A budget that
 looks generous for the answer alone returns HTTP 200 with `finish_reason: "MAX_TOKENS"` and an
 empty string. That is a valid empty completion, not an error, so the extraction path must
 treat an empty body as a failed run rather than as a document containing no claims — otherwise
 a token-budget mistake would look exactly like a document with nothing in it.
+
+And **thinking is not free of the clock either**. On `gemini-3-flash-preview` over an
+8-paragraph document, an unset reasoning effort spent ~63,000 thinking tokens and 195 seconds
+against §8's 300-second invocation limit; `reasoning_effort: 'low'` spent none, took 7 seconds,
+and returned *more* claims. Extraction is a reading task, so §4 asks for low effort by default
+— while being ready to withdraw the parameter, since OpenAI rejects it outright on a
+non-reasoning model.
 
 Keys never reach the browser; all inference proxies through the server, same rule as Google
 tokens in §1.

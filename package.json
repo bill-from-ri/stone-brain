@@ -19,7 +19,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx --tsconfig tsconfig.json scripts/seed-ontology.ts",
     "db:seed:world": "tsx --tsconfig tsconfig.json scripts/seed-world.ts",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "extract": "tsx --conditions=react-server --tsconfig tsconfig.json scripts/extract-document.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

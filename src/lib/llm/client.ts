@@ -42,14 +42,34 @@ export type ChatOptions = {
   maxTokens?: number
   temperature?: number
   /**
-   * A JSON Schema to constrain the reply. Sent as OpenAI's `response_format`,
-   * which most compatible servers honour and the rest ignore — which is why
-   * §4's plan validates and retries rather than trusting it. Phase 2B §4 will
-   * pass `extractionJsonSchema()` here.
+   * How hard to constrain the reply. Omitted means free text.
+   *
+   * Sent verbatim as OpenAI's `response_format`. Support is genuinely uneven —
+   * some servers honour the schema, some ignore the field, and some reject the
+   * request — which is why §4 validates every reply regardless and walks down
+   * this list when a provider refuses the strongest form. See
+   * `negotiateFormat()` in extract.ts.
    */
-  jsonSchema?: { name: string; schema: unknown }
+  responseFormat?: ResponseFormat
+  /**
+   * How much thinking to buy on a reasoning model.
+   *
+   * Worth setting, and worth being able to withdraw. Measured 2026-08-22 on
+   * `gemini-3-flash-preview` over an 8-paragraph document: unset spent ~63,000
+   * thinking tokens and 195s, `'low'` spent none and 7s — and returned *more*
+   * claims. But the parameter is not universally accepted: OpenAI rejects it
+   * outright on a non-reasoning model, so a caller that sets it must be
+   * prepared to drop it (see `negotiateRequest` in extract.ts).
+   */
+  reasoningEffort?: 'low' | 'medium' | 'high'
   signal?: AbortSignal
 }
+
+export type ResponseFormat =
+  /** Constrained decoding against a schema. Best when available. */
+  | { type: 'json_schema'; name: string; schema: unknown }
+  /** Valid JSON, shape unconstrained. Widely supported where the schema is not. */
+  | { type: 'json_object' }
 
 export type ChatResult = {
   text: string
@@ -140,6 +160,19 @@ async function throwForStatus(response: Response, creds: ProviderCredentials): P
   )
 }
 
+/**
+ * `response_format` as OpenAI spells it. The nesting under `json_schema` and
+ * the `strict` flag are the vendor's shape, so they live here rather than in
+ * every caller.
+ */
+function wireFormat(format: ResponseFormat): unknown {
+  if (format.type === 'json_object') return { type: 'json_object' }
+  return {
+    type: 'json_schema',
+    json_schema: { name: format.name, schema: format.schema, strict: true },
+  }
+}
+
 /** One chat completion. Throws ProviderError for anything the caller can render. */
 export async function chat(creds: ProviderCredentials, options: ChatOptions): Promise<ChatResult> {
   const response = await post(
@@ -149,18 +182,8 @@ export async function chat(creds: ProviderCredentials, options: ChatOptions): Pr
       messages: options.messages,
       ...(options.maxTokens !== undefined ? { max_tokens: options.maxTokens } : {}),
       ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
-      ...(options.jsonSchema
-        ? {
-            response_format: {
-              type: 'json_schema',
-              json_schema: {
-                name: options.jsonSchema.name,
-                schema: options.jsonSchema.schema,
-                strict: true,
-              },
-            },
-          }
-        : {}),
+      ...(options.responseFormat ? { response_format: wireFormat(options.responseFormat) } : {}),
+      ...(options.reasoningEffort ? { reasoning_effort: options.reasoningEffort } : {}),
     },
     REQUEST_TIMEOUT_MS,
     options.signal,

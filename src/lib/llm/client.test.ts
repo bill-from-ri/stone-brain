@@ -236,7 +236,7 @@ describe('chat', () => {
 
     await chat(creds, {
       messages: [{ role: 'user', content: 'hi' }],
-      jsonSchema: { name: 'extraction', schema: { type: 'object' } },
+      responseFormat: { type: 'json_schema', name: 'extraction', schema: { type: 'object' } },
     })
 
     expect(JSON.parse((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body as string))
@@ -248,7 +248,19 @@ describe('chat', () => {
       })
   })
 
-  it('omits response_format entirely when no schema is given', async () => {
+  it('sends json_object as response_format when that is the format asked for', async () => {
+    const fetchMock = mockFetch(respond(200, { choices: [{ message: { content: '{}' } }] }))
+
+    await chat(creds, {
+      messages: [{ role: 'user', content: 'hi' }],
+      responseFormat: { type: 'json_object' },
+    })
+
+    expect(JSON.parse((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body as string))
+      .toMatchObject({ response_format: { type: 'json_object' } })
+  })
+
+  it('omits response_format entirely when no format is given', async () => {
     const fetchMock = mockFetch(respond(200, { choices: [{ message: { content: 'x' } }] }))
     await chat(creds, { messages: [{ role: 'user', content: 'hi' }] })
     const body = JSON.parse(
