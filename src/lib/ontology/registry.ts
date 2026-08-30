@@ -12,10 +12,10 @@
  *
  * ## Sizing
  *
- * 26 relationship *concepts* and 22 attributes — 70 predicate rows and 254
- * signatures, over 10 entity types. Relationships are directional (ontology
+ * 27 relationship *concepts* and 23 attributes — 73 predicate rows and 263
+ * signatures, over 11 entity types. Relationships are directional (ontology
  * design: "symmetric relationships will therefore have 2 claims each"), so the
- * 26 concepts expand to 48 rows: `RELATIONSHIPS` declares one direction and
+ * 27 concepts expand to 50 rows: `RELATIONSHIPS` declares one direction and
  * `deriveOntology()` generates the other, which is why a signature cannot be
  * mirrored incorrectly.
  *
@@ -42,6 +42,7 @@ export const ENTITY_TYPES = [
   { name: 'artifact', label: 'Artifact', pluralLabel: 'Artifacts', description: 'A specific notable object or created thing — a weapon, relic, text, regalia, or a made phenomenon such as a magical barrier.' },
   { name: 'event', label: 'Event', pluralLabel: 'Events', description: 'A bounded happening: a battle, treaty, disaster, coronation, or discovery.' },
   { name: 'commodity', label: 'Commodity', pluralLabel: 'Commodities', description: 'A class of traded or produced good — grain, salt, iron, silk. A kind of thing, not a particular object; a specific named object is an artifact.' },
+  { name: 'deity', label: 'Deity', pluralLabel: 'Deities', description: 'A worshipped being — a god, saint, spirit, or venerated figure. May be the deified form of a real character (`incarnation_of`), or exist purely in belief.' },
 ] as const satisfies readonly EntityTypeDef[]
 
 export type EntityTypeName = (typeof ENTITY_TYPES)[number]['name']
@@ -349,12 +350,18 @@ export const RELATIONSHIPS = [
     description: 'The subject took over the office, title, or role previously held by the object.',
     inverse: { name: 'predecessor_of', label: 'Predecessor of', description: 'The subject previously held the office, title, or role the object took over.' },
     /**
-     * Characters only. Where dates exist, succession is derivable from two
-     * `rules` claims and does not need saying — but prose gives succession far
-     * more often than it gives years, and that is the case this exists for.
-     * "Successor state" was dropped as too vague to be worth a predicate.
+     * Characters and factions. Where dates exist, succession is derivable from
+     * two `rules` claims and does not need saying — but prose gives succession
+     * far more often than it gives years, and that is the case this exists for.
+     * `faction → faction` covers dynastic succession (a ruling house following
+     * the one it replaced) with no regnal dates — the Kaldian Empire's
+     * Kalduin/Skrimir chain is the seed that reopened it. "Successor state" is
+     * still out: society → society was too vague to be worth a predicate.
      */
-    pairs: [['character', 'character']],
+    pairs: [
+      ['character', 'character'],
+      ['faction', 'faction'],
+    ],
   },
   {
     name: 'produces',
@@ -400,13 +407,25 @@ export const RELATIONSHIPS = [
     description: 'The subject is sworn, bound, or employed in the service of the object.',
     inverse: { name: 'served_by', label: 'Served by', description: 'The object is in the service of the subject.' },
     temporal: true,
+    // `society → society` carries both true vassalage (a kingdom under the aegis
+    // of an empire) and a constituent subdivision serving the state it belongs
+    // to — the Kaldian duchies and provinces are modelled as their own
+    // societies within the Empire.
     pairs: [
       ['character', 'character'],
       ['character', 'faction'],
       ['character', 'society'],
       ['faction', 'society'],
       ['faction', 'character'],
+      ['society', 'society'],
     ],
+  },
+  {
+    name: 'incarnation_of',
+    label: 'Incarnation of',
+    description: 'The subject deity is the deified form of the object character. Omit for a deity born purely of belief, which corresponds to no real being.',
+    inverse: { name: 'deified_as', label: 'Deified as', description: 'The object deity is the worshipped form of the subject character.' },
+    pairs: [['deity', 'character']],
   },
 ] as const satisfies readonly RelationshipDef[]
 
@@ -445,6 +464,7 @@ export const ATTRIBUTES = [
   { name: 'population', label: 'Population', description: 'Number of inhabitants or members.', valueType: 'int', temporal: true, subjects: ['settlement', 'region', 'society', 'faction', 'culture', 'religion'] },
   { name: 'government_type', label: 'Government type', description: 'The form of rule: monarchy, council, theocracy, and so on.', valueType: 'string', temporal: true, functional: true, subjects: ['society', 'settlement', 'region', 'faction'] },
   { name: 'motto', label: 'Motto', description: 'A words-of-the-house style phrase.', valueType: 'string', subjects: ['faction', 'society', 'settlement', 'religion'] },
+  { name: 'language', label: 'Language', description: 'A language spoken officially or in common use. Not attached to regions — land has no tongue; the people on it do.', valueType: 'string', temporal: true, subjects: ['society', 'culture'] },
   /**
    * `climate` and `landform` replace a single free-text `terrain`, which
    * conflated two independent facts — the Great Steppe is a *plateau* whose

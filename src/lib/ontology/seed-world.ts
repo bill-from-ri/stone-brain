@@ -21,14 +21,14 @@ import { deriveOntology } from './registry'
 
 type Db = NeonDatabase<typeof schema>
 
-type SeedEntity = {
+export type SeedEntity = {
   name: string
   type: string
   variants?: string[]
   summary?: string
 }
 
-type SeedClaim = {
+export type SeedClaim = {
   subject: string
   predicate: string
   /** Relationship claims. */
@@ -251,10 +251,30 @@ export type WorldSeedReport = {
 }
 
 export async function seedWorld(db: Db, userId: string): Promise<WorldSeedReport> {
+  return loadSeed(db, userId, SEED_DOCUMENT, SEED_ENTITIES, SEED_CLAIMS)
+}
+
+/**
+ * The reusable loader behind every hand-seeded document.
+ *
+ * `seedWorld` (Written Map) and `seedKaldia` (The Kaldian Empire) are the same
+ * insert logic over different data, so it lives here once: entities match on
+ * `(user, type, normalized name)` and are reused across documents — which is
+ * how "Elduin" and "Grain", first seeded from Written Map, are found rather than
+ * duplicated when a second document names them. Claims match on the generated
+ * `fingerprint`. Re-running any seed is a no-op.
+ */
+export async function loadSeed(
+  db: Db,
+  userId: string,
+  source: { name: string; driveFileId: string },
+  seedEntities: SeedEntity[],
+  seedClaims: SeedClaim[],
+): Promise<WorldSeedReport> {
   const [doc] = await db
     .select({ id: documents.id })
     .from(documents)
-    .where(and(eq(documents.userId, userId), eq(documents.driveFileId, SEED_DOCUMENT.driveFileId)))
+    .where(and(eq(documents.userId, userId), eq(documents.driveFileId, source.driveFileId)))
     .limit(1)
 
   const documentId = doc?.id ?? null
@@ -269,7 +289,7 @@ export async function seedWorld(db: Db, userId: string): Promise<WorldSeedReport
 
   const idByName = new Map<string, { id: string; type: string }>()
 
-  for (const entity of SEED_ENTITIES) {
+  for (const entity of seedEntities) {
     const normalized = normalizeName(entity.name)
 
     const [existing] = await db
@@ -309,13 +329,13 @@ export async function seedWorld(db: Db, userId: string): Promise<WorldSeedReport
     report.entitiesCreated++
   }
 
-  for (const claim of SEED_CLAIMS) {
+  for (const claim of seedClaims) {
     const subject = idByName.get(claim.subject)
-    if (!subject) throw new Error(`Seed claim names an entity that is not in SEED_ENTITIES: ${claim.subject}`)
+    if (!subject) throw new Error(`Seed claim names an entity not in the entity list: ${claim.subject}`)
 
     const object = claim.object ? idByName.get(claim.object) : undefined
     if (claim.object && !object) {
-      throw new Error(`Seed claim names an object that is not in SEED_ENTITIES: ${claim.object}`)
+      throw new Error(`Seed claim names an object not in the entity list: ${claim.object}`)
     }
 
     const [inserted] = await db
@@ -355,7 +375,7 @@ export async function seedWorld(db: Db, userId: string): Promise<WorldSeedReport
         userId,
         claimId: inserted.id,
         documentId,
-        documentName: SEED_DOCUMENT.name,
+        documentName: source.name,
         quote: claim.quote,
         paragraphIndex: claim.paragraph,
       })

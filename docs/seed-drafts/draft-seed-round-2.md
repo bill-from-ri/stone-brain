@@ -14,10 +14,12 @@ is the mirror image: it exercises the **80% of the vocabulary built for people, 
 events, and trade** that round 1 seeded largely unused. Between the two documents the ground-truth
 set now spans both halves of the ontology.
 
-> **Status: decisions ratified 2026-08-30; catalog not yet loaded.** §1's decisions are approved.
-> Nothing here is in `registry.ts` or the database yet — the registry changes in §6 must land first,
-> because they change how several claims below are labelled. This is the hand-label for the extraction
-> agents to be scored against.
+> **Status: written 2026-08-30.** The §6 registry changes are in `registry.ts` and the reference
+> tables (`npm run db:seed` → 11 entity types, 73 predicates, 263 signatures). The catalog is loaded —
+> **43 entities (41 new + Elduin and Grain reused from round 1), 60 claims, 60 sourced quotes** — via
+> `npm run db:seed:kaldia`. The data lives in `src/lib/ontology/seed-kaldia.ts`; re-running is a no-op.
+> The claim count is 60 rather than the ~55 sketched below because grouped rows (e.g. "produces
+> hide / wool / milk") expand to one claim each. This is the hand-label the extraction agents are scored against.
 
 ---
 
