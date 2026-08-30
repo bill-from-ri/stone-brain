@@ -279,6 +279,15 @@ export async function loadSeed(
 
   const documentId = doc?.id ?? null
 
+  // A hand-seeded document is ground truth a person read and labelled, so it is
+  // Verified by definition — the one place `verified` is set from code rather
+  // than by a user click, and legitimately so (contrast the extraction path,
+  // which may only ever reach `extracted`). Idempotent; skipped when the
+  // document has not synced yet.
+  if (documentId !== null) {
+    await db.update(documents).set({ status: 'verified' }).where(eq(documents.id, documentId))
+  }
+
   const report: WorldSeedReport = {
     entitiesCreated: 0,
     entitiesExisting: 0,
