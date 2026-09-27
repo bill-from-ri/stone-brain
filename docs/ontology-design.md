@@ -469,20 +469,9 @@ Closed at write time, open over the life of the project.
 - **Agent-proposed entities.** The matcher deliberately never creates one (see below), so a name
   it cannot resolve waits for 2B's proposal step, which decides deliberately and records why.
 
-# Deferred vocabulary
+# Deferred proposals
 
-Raised by a seeded document, acknowledged, and deliberately not modelled yet:
-
-- **Currency and coinage.** No coin entities or currency attribute; a claim like "Swadia adopted
-  imperial currency" is dropped rather than forced into `imports`.
-- **`economy` enum breadth** — whether *industrial*, *extractive*, *raiding*, *subsistence*, or
-  *hunter-gatherer* belong in the enum. Two documents now argue for it (*The Kaldian Empire*,
-  *The Runar*); worth settling with the rest of the economy.
-- **The final name of `incarnation_of` / `deified_as`.**
-- **Trade and other economic relationships between peoples** (`trades_with` and kin). Named,
-  bilateral trade is stated in *The Runar*; modelled together with the rest of the economy later.
-- **Named customs and rites** (e.g. the Giving Ceremonies) — neither `culture` nor `event` fits.
-- **`influenced_by`** between cultures or societies — vague, and prone to false positives.
-- **`descended_from`** between peoples or cultures.
-- **Belief-only places and concepts** (the Three Worlds of Runar cosmology). Close kin to
-  deities; likely a unified belief-concept type later rather than a flag on `region`.
+Vocabulary changes that were proposed, judged worth having, and deferred — trade, currency, the
+`economy` enum's breadth, named customs, `influenced_by`, `descended_from`, belief-only places —
+live in [deferred-proposals.md](deferred-proposals.md), each with its evidence and the claims it
+would unlock. That file is the one to read before proposing anything.

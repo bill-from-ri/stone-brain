@@ -12,7 +12,7 @@ import { loadSeed, type SeedClaim, type SeedEntity, type WorldSeedReport } from 
  * culture and belief — and roughly half of it (cosmology, the Giving
  * Ceremonies, trade, influence, descent) has no home in the vocabulary yet, so
  * it is thin in claims by design; see the draft's "What the vocabulary cannot
- * say" and ontology-design.md's *Deferred vocabulary*.
+ * say" and docs/deferred-proposals.md.
  *
  * Depends on the round-3 registry change (the `species` entity type); run
  * `npm run db:seed` before this. Runara, Elduin, and Enua are reused from

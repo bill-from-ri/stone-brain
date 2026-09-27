@@ -22,9 +22,11 @@ Read before starting:
 - `examples/kaldian-empire-draft.md` (in this skill's folder) — the structural
   template for a draft, frozen as it stood at seeding. Its data is in
   `src/lib/ontology/seed-kaldia.ts`.
-- `docs/ontology-design.md` → *Modelling conventions* and *Deferred vocabulary* —
-  every modelling ruling from past rounds. Where the example and this disagree,
-  this wins.
+- `docs/ontology-design.md` → *Modelling conventions* (every settled modelling
+  ruling) and *Deliberately not modelled* (out of scope — never proposed). Where
+  the example and this disagree, this wins.
+- `docs/deferred-proposals.md` — every ontology change already proposed and
+  deferred. **Never propose one of these again** (see step 5).
 
 ## The five things that matter most
 
@@ -99,27 +101,50 @@ filter to check near-clashes (`list-entities.ts enu` → Enua, Enuarak, …).
 ### 4. Catalog into a draft
 Create `docs/seed-drafts/draft-seed-round-N.md`, where N is one more than the
 highest round seeded so far (the Kaldian Empire was round 2, the Runar round 3).
-Follow `examples/kaldian-empire-draft.md`: source line, decisions, open questions,
-ontology-change sections, a registry-changes table, then the catalog — entities
-grouped by type with counts, proposed summaries, claims in a `¶ | claim |
-quote/note` table, and a *Deliberately not claimed* list. Apply
-[Conventions](#conventions).
+Follow the structure of `examples/kaldian-empire-draft.md`, in this order: source
+line, decisions, open questions, **Proposals**, then the catalog — entities grouped
+by type with counts, proposed summaries, claims in a `¶ | claim | quote/note` table,
+and a *Deliberately not claimed* list. Apply [Conventions](#conventions).
 
-Two tables every draft with proposals needs:
-- **Proposals** — one numbered entry per registry change (`P1`, `P2`, …) with:
-  the change (type/predicate, signatures, temporal or not); the evidence
-  (¶ + verbatim quote); the claims it would unlock; any past ruling it reopens
-  (cite the round and decision number); and your recommendation (approve / defer /
-  reject, with a one-line reason). The user rules on each one individually.
-- **Conditional claims** — claims that are only expressible if a proposal is
-  approved, tagged with that proposal's number. They are **not** counted in the
-  catalog totals. On approval, move them into the main claims table; on deferral,
-  keep them here so the evidence is not lost.
+**The `## Proposals` section** holds every ontology change you propose, and nothing
+else about the ontology. It is omitted when you have none — which should be common
+(see step 5 for the bar). For each proposal, numbered `P1`, `P2`, …:
 
-### 5. Propose ontology changes — then STOP
-Present the proposals and open questions to the user and wait for rulings. Only
-spurious inference should be dropped; real facts the vocabulary can't express are
-logged as gaps, not forced into wrong predicates.
+- **Change** — the type or predicate, its signatures, temporal or functional.
+- **What would be lost without it** — the important information, in one sentence.
+- **Evidence** — ¶ and verbatim quote for each supporting passage.
+- **Reopens** — any past ruling it revisits (round and decision number), or "none".
+- **Recommendation** — approve / defer / reject, with a one-line reason.
+- **Conditional claims** — a `¶ | claim | quote` table of the claims it would
+  unlock. They are **not** counted in the catalog totals. On approval they move into
+  the main claims table; on deferral they go to `docs/deferred-proposals.md` in
+  step 10, so the evidence outlives the draft.
+
+End the section with a one-line-per-proposal summary table the user can rule from.
+
+### 5. Propose ontology changes — sparingly — then STOP
+**Propose a change only if it would capture important information that would
+otherwise be lost.** Important means the information is central to what the
+document is about, or a fact about the world someone would reasonably ask the graph
+for — who rules, who fights whom, what a people practises, where something is. It
+does not mean anything the vocabulary happens not to cover: an aside, a flourish, a
+detail mentioned once in passing is tangential, and tangential information is not
+worth changing the ontology for. "Otherwise lost" means no existing predicate or type
+can hold it honestly; description that fits in an entity's `summary` is not lost.
+
+Before proposing, check:
+- **`docs/deferred-proposals.md`.** If the change is already there, do **not**
+  propose it. If this document adds evidence for it, note that under open questions;
+  in step 10 you append the evidence and any new conditional claims to that entry.
+- **`docs/ontology-design.md` → *Deliberately not modelled*.** Out of scope; never
+  propose these.
+- **The registry.** A near-synonym that already exists is not a gap — use it.
+
+Anything that fails the bar is not proposed: list it under *Deliberately not claimed*
+with a few words on why. Never force a fact into a wrong predicate to avoid losing it.
+
+Then present the proposals and open questions to the user and **stop** for rulings.
+The user rules on each proposal individually: approve, defer, or reject.
 
 ### 6. Land ratified changes
 Only after approval: edit `registry.ts` (add the pair/type/attribute), then
@@ -162,7 +187,15 @@ Create `src/lib/ontology/seed-<name>.ts` exporting `SEED_DOCUMENT_*`, `*_ENTITIE
 ### 10. Fold the draft back, then delete it
 The draft is scratch space, not a design record. Once seeded and verified:
 - Add each newly ratified modelling ruling to `docs/ontology-design.md` →
-  *Modelling conventions*, and each deferred item to *Deferred vocabulary*.
+  *Modelling conventions*.
+- Add each **deferred** proposal to `docs/deferred-proposals.md` as a new `D<n>`
+  entry — proposed round and date, change, why deferred, evidence, and its
+  conditional claims as *Parked claims*. Append new evidence to existing entries the
+  same way. Check every quote you copy there against `render-paras.ts`.
+- Move each **rejected** proposal to *Deliberately not modelled* in
+  `ontology-design.md`.
+- If an approved proposal was an existing `D<n>` entry, delete that entry once its
+  change has landed and its parked claims are seeded.
 - Update the entity-type list and vocabulary counts in `ontology-design.md` if the
   registry changed.
 - Add any new labelling convention to [Conventions](#conventions) below.
@@ -244,6 +277,7 @@ When several agents seed different documents at once:
   ratify the union, land the changes and `npm run db:seed` **once**, then let agents
   write their seed modules. Concurrent registry edits conflict and concurrent
   `db:seed` runs race.
+- `docs/deferred-proposals.md` is shared too: the same owner appends to it in step 10.
 - Seed modules and draft files are per-document and don't collide. `loadSeed` is
   concurrency-safe at the row level (idempotent upserts), but give each document its
   own `driveFileId` and normalized-name space; cross-document reuse is a feature, not
