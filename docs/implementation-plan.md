@@ -194,6 +194,43 @@ holding on real model output, not just on fixtures.
 requests per day, per model**. A document costs one request, or two when a
 repair is spent. The queue drain has to treat that as the binding limit.
 
+**Ground truth, extended (2026-08-30 → 2026-09-27).** Phase 2A's single seeded
+document is now three, chosen to cover different halves of the vocabulary:
+*Written Map (1012)* (geography), *The Kaldian Empire* (politics, people,
+trade) and *The Runar* (peoples, culture, belief) — 90 entities, 114 claims, 115
+cited quotes, every document Verified. Each round is hand-labelled with the
+`seed-ground-truth` skill (`.claude/skills/seed-ground-truth/SKILL.md`), which
+also governs how a document's evidence may change the ontology. Changes that
+came out of it:
+
+- **Ontology:** `deity` and `species` entity types; `successor_of` for
+  dynasties, `serves` between societies, `language`, and `of_species`
+  (replacing a free-text `species` attribute). The `description` attribute is
+  gone — an entity's description is `entities.summary`, shown on its detail
+  card. Now 12 types, 73 predicates, 255 signatures.
+- **Settled rulings** live in `ontology-design.md` (*Modelling conventions*,
+  *Deliberately not modelled*); proposals deferred along the way, with their
+  evidence and the claims they would unlock, in `deferred-proposals.md`.
+- **Export cleaning** strips bold and italic markers, which had split quotes
+  across emphasised words. `scripts/check-seed-quotes.ts` re-checks every
+  seeded quote against the live documents.
+- **`loadSeed`** cites a claim from every document that states it, fills
+  missing entity summaries without overwriting, and supports hand-entered
+  claims (`created_by = 'user'`, no source).
+
+### 4b. Extraction scoring
+
+The reason the ground truth exists: measure how well the configured model
+(Gemini, for now) extracts, against claims a person read out of the same
+documents. Independent of §7 — it needs one model, not several.
+
+- [ ] Decide what counts as a match (same subject, predicate and object/value;
+  whether a paraphrased quote or neighbouring paragraph still counts)
+- [ ] Run extraction over the three seeded documents without writing, and score
+  precision and recall per document and per predicate
+- [ ] Record the baseline before §5 changes what extraction writes
+- [ ] Budget: 3–6 requests of the 20/day free tier per full run
+
 ### 5. Inverse claims
 
 Relationships are directional, and `predicates.inverse_name` is already populated. Rather than asking the model for both directions, we generate the reverse claim ourselves.
@@ -201,6 +238,8 @@ Relationships are directional, and `predicates.inverse_name` is already populate
 - [ ] Materialise the inverse of every relationship claim on write
 - [ ] Dedupe against the fingerprint index so a symmetric pair does not double up
 - [ ] Decide whether editing or deleting one direction in the UI carries the other with it
+- [ ] Bring the ground truth along: `loadSeed` writes only the labelled direction, so either
+  materialise inverses for seeds too, or have §4b's scoring compare one canonical direction
 
 ### 6. Surfacing what was rejected
 
@@ -217,7 +256,7 @@ Relationships are directional, and `predicates.inverse_name` is already populate
 Since we do not control the model, the goal is not to pick one but to confirm the prompt holds across several and publish a recommended default (decisions §11).
 
 - [ ] Evaluate candidates on long documents: claims per document, rejection rate, hallucinated entities
-- [ ] Compare against the hand-seeded claims from Phase 2A as ground truth
+- [ ] Compare each candidate's §4b score against the hand-seeded ground truth
 - [ ] Write up the results as a docs page rather than a hardcoded constant
 
 ### 8. Frontend wiring
