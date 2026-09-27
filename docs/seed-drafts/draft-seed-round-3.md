@@ -1,6 +1,12 @@
 # DRAFT — Seed round 3: "The Runar"
 
-> **Working document — all rulings received 2026-09-27; ready to seed.** §5's proposals are ruled
+> **Status: seeded 2026-09-27** via `npm run db:seed:runar` (`src/lib/ontology/seed-runar.ts`):
+> 21 entities (18 new; Runara, Elduin, Enua reused), 27 sourced claims + 1 hand-entered
+> (`Enuarak —located_in→ Enua`), 27 citations; the document is Verified. Since the rulings below,
+> the character `species` attribute was replaced by the `species` entity type via `of_species`.
+> **Awaiting human review** before step 10 (fold into `ontology-design.md`, delete this draft).
+>
+> **Working document — all rulings received 2026-09-27.** §5's proposals are ruled
 > on: only P3 (`species`) is approved, and it is in `registry.ts` and the reference tables. The
 > `description` attribute has since been removed (decision 12), so the tables stand at 12 entity
 > types, 72 predicates, 254 signatures. The `loadSeed` fix (open question f) has landed. One

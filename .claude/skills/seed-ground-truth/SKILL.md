@@ -149,8 +149,9 @@ Create `src/lib/ontology/seed-<name>.ts` exporting `SEED_DOCUMENT_*`, `*_ENTITIE
   document **Verified** (a hand-seed is ground truth by definition).
 - **Verify:**
   - `check-seed-quotes.ts <name>` — every quote found in its cited paragraph.
-  - The run's `sources` count equals the number of claims in the seed (every
-    claim cited from this document, including ones that already existed).
+  - The run's `sources` count equals the number of *sourced* claims in the seed
+    (every claim cited from this document, including ones that already existed;
+    hand-entered claims have no source).
   - Re-run the seed: `0 created`, `0 citations written`.
   - Cross-document entities were reused, not duplicated (`list-entities.ts <name>`
     shows one row, citing 2+ documents).
@@ -200,7 +201,8 @@ The draft is scratch space, not a design record. Once seeded and verified:
   - Sub-polities (a duchy within an empire) → `society`, `serves` the parent.
   - Land features → `region`; the enums `climate` (biome) and `landform`
     (geomorphology) are independent.
-  - Kinds of living thing → `species`; a named individual creature → `character`.
+  - Kinds of living being → `species`, named in the singular (`Dragon`, `Tvarid
+    Spruce`); a named individual → `character`, linked by `of_species`.
 - **Political control of a region → `rules`** (a region cannot be `located_in` a
   society). Geographic containment or habitation → `located_in`.
 
@@ -216,6 +218,10 @@ The draft is scratch space, not a design record. Once seeded and verified:
 - **Quotes:** verbatim substring of the cited paragraph, copied from
   `render-paras.ts`. Documents mix curly (`’`) and straight (`'`) apostrophes, even
   within one paragraph — copy, never retype. `paragraph` is the `[¶n]` index.
+- **Hand-entered claims:** a link the user rules true but no single document states
+  (Enuarak `located_in` Enua) goes in the seed with `handEntered: '<why>'` and no
+  quote. It is written as `created_by: 'user'` with no citation, so it is never part
+  of any document's ground truth. Only on the user's ruling — never your own.
 - **`inferred`:** set it on any claim that is a reading rather than a direct quote,
   with a one-line reason. If a claim needs a predicate the vocabulary lacks, drop it
   and log the gap — never substitute a near-synonym.

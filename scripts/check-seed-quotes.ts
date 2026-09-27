@@ -22,16 +22,18 @@ const { DriveClient } = await import('@/lib/drive/client')
 const { readDocumentText } = await import('@/lib/documents/text')
 const world = await import('@/lib/ontology/seed-world')
 const kaldia = await import('@/lib/ontology/seed-kaldia')
+const runar = await import('@/lib/ontology/seed-runar')
 
 type Seed = {
   document: { name: string; driveFileId: string }
-  claims: { subject: string; predicate: string; quote: string; paragraph: number }[]
+  claims: { subject: string; predicate: string; quote?: string; paragraph?: number }[]
 }
 
 /** Every hand-seeded document. Add a line here when a new seed module lands. */
 const SEEDS: Record<string, Seed> = {
   world: { document: world.SEED_DOCUMENT, claims: world.SEED_CLAIMS },
   kaldia: { document: kaldia.SEED_DOCUMENT_KALDIA, claims: kaldia.KALDIA_CLAIMS },
+  runar: { document: runar.SEED_DOCUMENT_RUNAR, claims: runar.RUNAR_CLAIMS },
 }
 
 const wanted = process.argv.slice(2)
@@ -46,9 +48,13 @@ let failures = 0
 for (const name of wanted.length > 0 ? wanted : Object.keys(SEEDS)) {
   const seed = SEEDS[name]!
   const { paragraphs } = await readDocumentText(client, seed.document.driveFileId)
-  const bad = seed.claims.filter((c) => !paragraphs[c.paragraph]?.text.includes(c.quote))
+  // Hand-entered claims have no document behind them, so nothing to check.
+  const sourced = seed.claims.flatMap((c) =>
+    c.quote !== undefined && c.paragraph !== undefined ? [{ ...c, quote: c.quote, paragraph: c.paragraph }] : [],
+  )
+  const bad = sourced.filter((c) => !paragraphs[c.paragraph]?.text.includes(c.quote))
 
-  console.log(`${name}: ${seed.claims.length - bad.length}/${seed.claims.length} quotes found in their cited paragraph (${seed.document.name}, ${paragraphs.length} ¶)`)
+  console.log(`${name}: ${sourced.length - bad.length}/${sourced.length} quotes found in their cited paragraph (${seed.document.name}, ${paragraphs.length} ¶)`)
   for (const c of bad) {
     const foundIn = paragraphs.filter((p) => p.text.includes(c.quote)).map((p) => `¶${p.index}`)
     console.log(`  ✗ ¶${c.paragraph} ${c.subject} ${c.predicate}: "${c.quote}" — ${foundIn.length > 0 ? `found in ${foundIn.join(', ')}` : 'not found anywhere'}`)

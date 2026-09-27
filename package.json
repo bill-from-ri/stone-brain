@@ -20,6 +20,7 @@
     "db:seed": "tsx --tsconfig tsconfig.json scripts/seed-ontology.ts",
     "db:seed:world": "tsx --tsconfig tsconfig.json scripts/seed-world.ts",
     "db:seed:kaldia": "tsx --tsconfig tsconfig.json scripts/seed-kaldia.ts",
+    "db:seed:runar": "tsx --tsconfig tsconfig.json scripts/seed-runar.ts",
     "db:studio": "drizzle-kit studio",
     "extract": "tsx --conditions=react-server --tsconfig tsconfig.json scripts/extract-document.ts"
   },
