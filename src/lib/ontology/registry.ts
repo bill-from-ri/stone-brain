@@ -12,12 +12,12 @@
  *
  * ## Sizing
  *
- * 27 relationship *concepts* and 22 attributes — 72 predicate rows and 254
+ * 28 relationship *concepts* and 21 attributes — 73 predicate rows and 255
  * signatures, over 12 entity types. There is deliberately no `description`
  * attribute: an entity's prose description is `entities.summary`, one curated
  * line per entity rather than one competing claim per document. Relationships are directional (ontology
  * design: "symmetric relationships will therefore have 2 claims each"), so the
- * 27 concepts expand to 50 rows: `RELATIONSHIPS` declares one direction and
+ * 28 concepts expand to 52 rows: `RELATIONSHIPS` declares one direction and
  * `deriveOntology()` generates the other, which is why a signature cannot be
  * mirrored incorrectly.
  *
@@ -45,7 +45,7 @@ export const ENTITY_TYPES = [
   { name: 'event', label: 'Event', pluralLabel: 'Events', description: 'A bounded happening: a battle, treaty, disaster, coronation, or discovery.' },
   { name: 'commodity', label: 'Commodity', pluralLabel: 'Commodities', description: 'A class of traded or produced good — grain, salt, iron, silk. A kind of thing, not a particular object; a specific named object is an artifact.' },
   { name: 'deity', label: 'Deity', pluralLabel: 'Deities', description: 'A worshipped being — a god, saint, spirit, or venerated figure. May be the deified form of a real character (`incarnation_of`), or exist purely in belief.' },
-  { name: 'species', label: 'Species', pluralLabel: 'Species', description: 'A kind of living thing — a plant, animal, or monster — rather than an individual. A named individual creature is a character.' },
+  { name: 'species', label: 'Species', pluralLabel: 'Species', description: 'A kind of living being — a race such as humans, giants, or dragons, or a plant, animal, or monster — rather than an individual. A named individual is a character, linked to its species by `of_species`.' },
 ] as const satisfies readonly EntityTypeDef[]
 
 export type EntityTypeName = (typeof ENTITY_TYPES)[number]['name']
@@ -432,6 +432,16 @@ export const RELATIONSHIPS = [
     inverse: { name: 'deified_as', label: 'Deified as', description: 'The object deity is the worshipped form of the subject character.' },
     pairs: [['deity', 'character']],
   },
+  {
+    // Replaces the old free-text `species` attribute: the kind of being is an
+    // entity, so every dragon points at one `Dragon` rather than spelling it.
+    name: 'of_species',
+    label: 'Of species',
+    description: 'The subject character is an individual of the object species — a dragon, a giant, a human.',
+    inverse: { name: 'has_individual', label: 'Has individual', description: 'The object character is an individual of the subject species.' },
+    functional: true,
+    pairs: [['character', 'species']],
+  },
 ] as const satisfies readonly RelationshipDef[]
 
 /* ----------------------------------------------------------------- attributes */
@@ -451,7 +461,6 @@ type AttributeDef = {
 
 export const ATTRIBUTES = [
   { name: 'title', label: 'Title', description: 'A formal title or office held: "Queen of Ashfall", "High Cantor".', valueType: 'string', temporal: true, subjects: ['character'] },
-  { name: 'species', label: 'Species', description: 'The kind of being the character is, in the world\'s own terms.', valueType: 'string', functional: true, subjects: ['character'] },
   { name: 'gender', label: 'Gender', description: 'The character\'s gender as the source material states it.', valueType: 'string', subjects: ['character'] },
   { name: 'occupation', label: 'Occupation', description: 'Trade, profession, or vocation.', valueType: 'string', temporal: true, subjects: ['character'] },
   { name: 'rank', label: 'Rank', description: 'Position within a hierarchy: military, clerical, or noble.', valueType: 'string', temporal: true, subjects: ['character'] },

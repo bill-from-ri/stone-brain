@@ -135,8 +135,8 @@ truth — so the legal *combination* is the row.
 
 ### The starting vocabulary
 
-Defined in [`src/lib/ontology/registry.ts`](../src/lib/ontology/registry.ts): **27 relationship
-concepts and 22 attributes**, expanding to 72 predicate rows and 254 signatures. Only one
+Defined in [`src/lib/ontology/registry.ts`](../src/lib/ontology/registry.ts): **28 relationship
+concepts and 21 attributes**, expanding to 73 predicate rows and 255 signatures. Only one
 direction of each relationship is written by hand; the inverse predicate and its mirrored
 signatures are generated, so the two directions cannot disagree about which types they accept.
 
@@ -400,8 +400,11 @@ round-2 rulings; the other rounds' drafts are in git history.
 
 - **Artifacts include created phenomena**, not only portable objects — the Dragon's Shroud, a
   wall of magical fog, is an `artifact` `created_by` Syrath.
-- **Kinds of living thing are `species`** — the Tvarid Spruce, not one tree. A species' habitat
-  is `located_in` a region. A named individual creature is a `character`.
+- **Kinds of living being are `species`** — the Tvarid Spruce, not one tree; dragons and giants,
+  not Syrath and Vaski. A named individual is a `character`, joined to its kind by `of_species`
+  (functional: one kind per character). This replaced a free-text `species` attribute, so every
+  dragon points at one `Dragon` entity rather than spelling it. Species names are singular. A
+  species' habitat is `located_in` a region.
 - **Aliases are `name_variants`, not claims.** A variant may also be the name of a different
   entity; that is allowed and is what makes the matcher return the ambiguity (see *The entity
   matcher*).

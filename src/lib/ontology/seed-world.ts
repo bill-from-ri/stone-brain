@@ -28,7 +28,7 @@ export type SeedEntity = {
   summary?: string
 }
 
-export type SeedClaim = {
+type SeedClaimBase = {
   subject: string
   predicate: string
   /** Relationship claims. */
@@ -37,11 +37,32 @@ export type SeedClaim = {
   value?: string | number
   startTime?: string
   endTime?: string
+}
+
+/** A claim read from the seed's document, cited by quote and paragraph. */
+export type SourcedSeedClaim = SeedClaimBase & {
   quote: string
   paragraph: number
   /** Why this is a reading rather than a quote. Recorded, not enforced. */
   inferred?: string
+  handEntered?: undefined
 }
+
+/**
+ * A claim a person asserted with no document behind it — typically a
+ * cross-document link no single document states (Enuarak lies in Enua).
+ * Written as `created_by: 'user'` with no `claim_sources` row, so it is part of
+ * the world but never part of any document's ground truth.
+ */
+export type HandEnteredSeedClaim = SeedClaimBase & {
+  /** Why it was entered by hand. Recorded, not stored. */
+  handEntered: string
+  quote?: undefined
+  paragraph?: undefined
+  inferred?: undefined
+}
+
+export type SeedClaim = SourcedSeedClaim | HandEnteredSeedClaim
 
 /* --------------------------------------------------------------- the source */
 
@@ -107,6 +128,10 @@ export const SEED_ENTITIES: SeedEntity[] = [
   },
 
   { name: 'Grain', type: 'commodity', summary: 'The staple crop of breadbaskets such as the Lagetan Basin and the Kaldian Vale.' },
+
+  // Species. Syrath's and Vaski's kinds, once free-text attributes.
+  { name: 'Dragon', type: 'species', summary: 'The kind of being Syrath was.' },
+  { name: 'Giant', type: 'species', summary: 'The kind of being Vaski is, the last of them.' },
 ]
 
 /* ---------------------------------------------------------------- the claims */
@@ -156,7 +181,7 @@ export const SEED_CLAIMS: SeedClaim[] = [
     inferred: '"centered on" is approximated as containment; there is no spatial predicate for it',
   },
   { subject: 'Elduin', predicate: 'landform', value: 'island', quote: Q.shroud, paragraph: 3 },
-  { subject: 'Syrath', predicate: 'species', value: 'dragon', quote: Q.shroud, paragraph: 3 },
+  { subject: 'Syrath', predicate: 'of_species', object: 'Dragon', quote: Q.shroud, paragraph: 3 },
   {
     subject: 'Syrath',
     predicate: 'vital_status',
@@ -165,7 +190,7 @@ export const SEED_CLAIMS: SeedClaim[] = [
     paragraph: 3,
     inferred: '"during the dragon’s final moments" implies but does not state death',
   },
-  { subject: 'Vaski', predicate: 'species', value: 'giant', quote: Q.shroud, paragraph: 3 },
+  { subject: 'Vaski', predicate: 'of_species', object: 'Giant', quote: Q.shroud, paragraph: 3 },
 
   /* ¶5 — the Frost Gulf and Runara. No climate on the water. */
   { subject: 'Frost Gulf', predicate: 'landform', value: 'gulf', quote: Q.gulf, paragraph: 5 },
@@ -385,7 +410,7 @@ export async function loadSeed(
           ...withOrder('endOrder', claim.endTime),
         }),
         canonicity: 'canon',
-        createdBy: 'seed',
+        createdBy: claim.handEntered === undefined ? 'seed' : 'user',
       })
       // The fingerprint index is what makes re-running this a no-op rather than
       // a duplicate. The conflict action is a DO UPDATE that changes nothing, as
@@ -399,6 +424,8 @@ export async function loadSeed(
 
     if (written!.inserted) report.claimsCreated++
     else report.claimsExisting++
+
+    if (claim.handEntered !== undefined) continue
 
     const [cited] = await db
       .insert(claimSources)
