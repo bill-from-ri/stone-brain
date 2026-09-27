@@ -50,8 +50,15 @@ describe('matching', () => {
   })
 
   it('resolves across a dropped leading article', () => {
-    // The document writes "the Dragon's Shroud"; the entity is stored with it.
-    expect(resolve(seededIndex, "Dragon's Shroud")).toMatchObject({
+    // Seeds store names without "The" (the naming convention), and documents
+    // write "the Dragon's Shroud" — that must still find the stored entity.
+    expect(resolve(seededIndex, "the Dragon's Shroud")).toMatchObject({
+      status: 'matched',
+      entity: { name: "Dragon's Shroud" },
+    })
+    // The other direction: a hand-entered name that kept its article.
+    const withArticle = buildEntityIndex([row("The Dragon's Shroud", 'artifact', [])])
+    expect(resolve(withArticle, "Dragon's Shroud")).toMatchObject({
       status: 'matched',
       entity: { name: "The Dragon's Shroud" },
     })

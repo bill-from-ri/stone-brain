@@ -1,6 +1,9 @@
 /**
  * Read-only: show a document's paragraphs exactly as the model is shown them,
- * with [¶n] markers. Throwaway helper for judging ground-truth citability.
+ * with [¶n] markers. Used by the seed-ground-truth skill to judge citability and
+ * copy quotes.
+ *
+ *   npx tsx --conditions=react-server --tsconfig tsconfig.json scripts/render-paras.ts "<document name>"
  */
 import { config as loadEnv } from 'dotenv'
 

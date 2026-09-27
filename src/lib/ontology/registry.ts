@@ -12,8 +12,8 @@
  *
  * ## Sizing
  *
- * 27 relationship *concepts* and 23 attributes — 73 predicate rows and 263
- * signatures, over 11 entity types. Relationships are directional (ontology
+ * 27 relationship *concepts* and 23 attributes — 73 predicate rows and 266
+ * signatures, over 12 entity types. Relationships are directional (ontology
  * design: "symmetric relationships will therefore have 2 claims each"), so the
  * 27 concepts expand to 50 rows: `RELATIONSHIPS` declares one direction and
  * `deriveOntology()` generates the other, which is why a signature cannot be
@@ -43,6 +43,7 @@ export const ENTITY_TYPES = [
   { name: 'event', label: 'Event', pluralLabel: 'Events', description: 'A bounded happening: a battle, treaty, disaster, coronation, or discovery.' },
   { name: 'commodity', label: 'Commodity', pluralLabel: 'Commodities', description: 'A class of traded or produced good — grain, salt, iron, silk. A kind of thing, not a particular object; a specific named object is an artifact.' },
   { name: 'deity', label: 'Deity', pluralLabel: 'Deities', description: 'A worshipped being — a god, saint, spirit, or venerated figure. May be the deified form of a real character (`incarnation_of`), or exist purely in belief.' },
+  { name: 'species', label: 'Species', pluralLabel: 'Species', description: 'A kind of living thing — a plant, animal, or monster — rather than an individual. A named individual creature is a character.' },
 ] as const satisfies readonly EntityTypeDef[]
 
 export type EntityTypeName = (typeof ENTITY_TYPES)[number]['name']
@@ -191,6 +192,8 @@ export const RELATIONSHIPS = [
       ['religion', 'region'],
       ['culture', 'region'],
       ['society', 'region'],
+      // A species' habitat: where it lives, not a single location.
+      ['species', 'region'],
     ],
   },
   {

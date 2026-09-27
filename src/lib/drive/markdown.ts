@@ -37,6 +37,8 @@
  * - **Punctuation is backslash-escaped** (`\.`, `\_`, `\-`, `\#`) far more
  *   eagerly than markdown requires, because Google escapes defensively rather
  *   than contextually.
+ * - **Bold and italic** arrive as `**…**` / `*…*`. They are stripped: they are
+ *   invisible to a reader and break quotes that cross them (see `EMPHASIS`).
  */
 
 /** A blank-line-separated block of the document, and its place in it. */
@@ -87,6 +89,22 @@ const INLINE_IMAGE = /[ \t]*!\[[^\]]*\](?:\((?:[^()]*)\)|\[[^\]]*\])/g
 const EMPTY_HEADING = /^#{1,6}[ \t]*$/gm
 
 /**
+ * Bold and italic delimiters: `**Eldi**`, `*aside*`, `__x__`, `_x_`.
+ *
+ * Emphasis is invisible in the document a person reads, but left in it splits
+ * the text a quote is taken from — "the **Eldi** of the Amber Coast" does not
+ * contain "the Eldi of the Amber Coast", so a faithful quote fails to match and
+ * the natural one is marked up. Google escapes every *literal* `*` and `_`
+ * (`\*`, `\_`), so an unescaped one is always markup; the lookbehind leaves the
+ * escaped ones for `ESCAPED` to restore.
+ *
+ * An opening delimiter must touch the word after it and a closing one the word
+ * before it, which is what keeps a `* item` list bullet — followed by a space,
+ * and at the start of a line — out of it.
+ */
+const EMPHASIS = /(?<!\\)(?:\*{1,3}|_{1,3})(?=[^\s*_])|(?<=[^\s*_\\])(?:\*{1,3}|_{1,3})/g
+
+/**
  * Strip an export down to what a reader would actually see.
  *
  * Everything removed here is either invisible in the document (escapes, hard-
@@ -104,6 +122,8 @@ export function cleanExport(markdown: string): string {
       .replace(IMAGE_DEFINITION, '')
       .replace(INLINE_IMAGE, '')
       .replace(EMPTY_HEADING, '')
+      // Before unescaping, while a literal `\*` is still distinguishable from markup.
+      .replace(EMPHASIS, '')
       .replace(ESCAPED, '$1')
       // Trailing spaces are markdown's hard-break marker, which has no meaning
       // once the text is prose in a prompt. Stripping them also stops a line of

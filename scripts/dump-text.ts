@@ -1,6 +1,6 @@
 /**
  * Read-only: export cleaned text for a set of documents to files, print stats.
- * Throwaway helper for choosing ground-truth documents. No LLM, no writes.
+ * Used by the seed-ground-truth skill to choose documents. No LLM, no writes.
  *
  *   npx tsx --conditions=react-server --tsconfig tsconfig.json scripts/dump-text.ts <outDir> "name a" "name b" ...
  */

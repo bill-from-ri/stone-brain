@@ -54,6 +54,7 @@ try {
   console.log(
     `entities: ${report.entitiesCreated} created, ${report.entitiesExisting} already present\n` +
       `claims:   ${report.claimsCreated} created, ${report.claimsExisting} already present\n` +
+      `sources:  ${report.sourcesCreated} citations written\n` +
       `document: ${report.documentId ?? 'NOT FOUND — claim sources have no document link'}`,
   )
 } finally {

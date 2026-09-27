@@ -83,8 +83,28 @@ describe('cleanExport', () => {
   })
 
   it('leaves ordinary prose byte-for-byte alone', () => {
-    const prose = 'The **Central Empire** is an absolute monarchy in eastern Zhusan.'
+    const prose = 'The Central Empire is an absolute monarchy in eastern Zhusan.'
     expect(cleanExport(prose)).toBe(prose)
+  })
+
+  it('strips bold and italic, so a quote across them still matches', () => {
+    // Real: The Runar ¶5 and The Kaldian Empire ¶12.
+    expect(cleanExport('the **Eldi** of the Amber Coast, the **Suedi** of the Blighted Shore')).toBe(
+      'the Eldi of the Amber Coast, the Suedi of the Blighted Shore',
+    )
+    expect(cleanExport('after Count **Aldo Demard** was made Imperial Margrave.')).toBe(
+      'after Count Aldo Demard was made Imperial Margrave.',
+    )
+    expect(cleanExport('an *aside*, a __strong__ word, and _one_ more')).toBe(
+      'an aside, a strong word, and one more',
+    )
+  })
+
+  it('keeps list bullets and escaped asterisks while stripping emphasis', () => {
+    expect(cleanExport('* **The Kazavs**, hunter-gatherers  \n* **Enuarak**, beyond the mountains')).toBe(
+      '* The Kazavs, hunter-gatherers\n* Enuarak, beyond the mountains',
+    )
+    expect(cleanExport('rated \\*\\*\\* by **critics**')).toBe('rated *** by critics')
   })
 })
 

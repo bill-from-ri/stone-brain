@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import type { NeonDatabase } from 'drizzle-orm/neon-serverless'
 import type * as schema from '@/db/schema'
 import { claimSources, claims, documents, entities } from '@/db/schema'
@@ -92,14 +92,14 @@ export const SEED_ENTITIES: SeedEntity[] = [
   { name: 'Vaski', type: 'character', summary: 'The last of the giants.' },
 
   {
-    name: 'The Doom',
+    name: 'Doom',
     type: 'event',
     summary: 'The event the world dates itself from. Not described here beyond its use as an epoch.',
   },
-  { name: 'The Enu Conquests', type: 'event' },
+  { name: 'Enu Conquests', type: 'event' },
 
   {
-    name: "The Dragon's Shroud",
+    name: "Dragon's Shroud",
     type: 'artifact',
     summary:
       'A colossal circular wall of dense magical fog, created by Syrath in the dragon’s final ' +
@@ -139,16 +139,16 @@ const Q = {
   central:
     'Dominating the eastern seaboard of the continent, the Central Empire is a multi-cultural ' +
     'hegemony spanning from the Yeosin Frontier in the north to the Sea of Akál in the south. ' +
-    'Centered on a highly productive river basin called the Central Plain.',
+    'Centered on a highly productive river basin called the Central Plain',
   steppe:
     'At the center of the continent is a massive, grassy plateau known as the Great Steppe.',
 } as const
 
 export const SEED_CLAIMS: SeedClaim[] = [
   /* ¶3 — the Dragon's Shroud */
-  { subject: "The Dragon's Shroud", predicate: 'created_by', object: 'Syrath', quote: Q.shroud, paragraph: 3 },
+  { subject: "Dragon's Shroud", predicate: 'created_by', object: 'Syrath', quote: Q.shroud, paragraph: 3 },
   {
-    subject: "The Dragon's Shroud",
+    subject: "Dragon's Shroud",
     predicate: 'located_in',
     object: 'Elduin',
     quote: Q.shroud,
@@ -188,7 +188,7 @@ export const SEED_CLAIMS: SeedClaim[] = [
     inferred: '"a bread basket" implies grain without naming it',
   },
   {
-    subject: 'The Enu Conquests',
+    subject: 'Enu Conquests',
     predicate: 'occurred_on',
     // The label the document used, verbatim. The parser resolves it to AD 201,
     // the earliest year the century contains — see docs/calendar.md.
@@ -247,6 +247,12 @@ export type WorldSeedReport = {
   entitiesExisting: number
   claimsCreated: number
   claimsExisting: number
+  /**
+   * Citations written this run. Normally equals `claimsCreated`; it runs higher
+   * when a claim already existed from another document and this one is added as
+   * a second source for it.
+   */
+  sourcesCreated: number
   documentId: string | null
 }
 
@@ -263,6 +269,10 @@ export async function seedWorld(db: Db, userId: string): Promise<WorldSeedReport
  * how "Elduin" and "Grain", first seeded from Written Map, are found rather than
  * duplicated when a second document names them. Claims match on the generated
  * `fingerprint`. Re-running any seed is a no-op.
+ *
+ * A fact stated in two documents is one claim with two `claim_sources` rows: if
+ * a claim already exists — seeded from an earlier document — this document is
+ * still recorded as a source for it, so its ground truth is complete.
  */
 export async function loadSeed(
   db: Db,
@@ -293,6 +303,7 @@ export async function loadSeed(
     entitiesExisting: 0,
     claimsCreated: 0,
     claimsExisting: 0,
+    sourcesCreated: 0,
     documentId,
   }
 
@@ -347,7 +358,7 @@ export async function loadSeed(
       throw new Error(`Seed claim names an object not in the entity list: ${claim.object}`)
     }
 
-    const [inserted] = await db
+    const [written] = await db
       .insert(claims)
       .values({
         userId,
@@ -368,27 +379,32 @@ export async function loadSeed(
         createdBy: 'seed',
       })
       // The fingerprint index is what makes re-running this a no-op rather than
-      // a duplicate. Nothing here needs updating on a second run.
-      .onConflictDoNothing()
-      .returning({ id: claims.id })
+      // a duplicate. The conflict action is a DO UPDATE that changes nothing, as
+      // in `extraction-write.ts`, because DO NOTHING returns no id — and an
+      // existing claim still needs this document's citation.
+      .onConflictDoUpdate({
+        target: [claims.userId, claims.fingerprint],
+        set: { subjectId: sql`excluded.subject_id` },
+      })
+      .returning({ id: claims.id, inserted: sql<boolean>`(xmax = 0)` })
 
-    if (!inserted) {
-      report.claimsExisting++
-      continue
-    }
-    report.claimsCreated++
+    if (written!.inserted) report.claimsCreated++
+    else report.claimsExisting++
 
-    await db
+    const [cited] = await db
       .insert(claimSources)
       .values({
         userId,
-        claimId: inserted.id,
+        claimId: written!.id,
         documentId,
         documentName: source.name,
         quote: claim.quote,
         paragraphIndex: claim.paragraph,
       })
       .onConflictDoNothing()
+      .returning({ id: claimSources.id })
+
+    if (cited) report.sourcesCreated++
   }
 
   return report

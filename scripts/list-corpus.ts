@@ -1,6 +1,8 @@
 /**
  * Read-only: list the live corpus with size + whether it already has claims.
- * Throwaway helper for choosing ground-truth documents. No LLM, no writes.
+ * Used by the seed-ground-truth skill to choose documents. No LLM, no writes.
+ *
+ *   npx tsx --conditions=react-server --tsconfig tsconfig.json scripts/list-corpus.ts
  */
 import { config as loadEnv } from 'dotenv'
 

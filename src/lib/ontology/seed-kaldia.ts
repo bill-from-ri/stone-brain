@@ -33,7 +33,7 @@ export const KALDIA_ENTITIES: SeedEntity[] = [
   {
     name: 'Kaldian Empire',
     type: 'society',
-    variants: ['Imperial Kaldia', 'Kaldia', 'the Empire', 'Kalduin Dynasty'],
+    variants: ['Imperial Kaldia', 'Kaldia', 'Empire', 'Kalduin Dynasty'],
     summary: 'The largest nation on Elduin, covering the island’s western half.',
   },
   { name: 'Kingdom of Swadia', type: 'society', summary: 'A defeated kingdom, now a vassal under the aegis of the Empire.' },
@@ -44,8 +44,8 @@ export const KALDIA_ENTITIES: SeedEntity[] = [
   { name: 'Elduin', type: 'region' },
   { name: 'Kaldian Vale', type: 'region', summary: 'The Empire’s heartland and breadbasket.' },
   { name: 'Thalgia', type: 'region' },
-  { name: 'The Interior', type: 'region', summary: 'A monster-haunted interior region, home to Riftwald Forest.' },
-  { name: 'The Pale', type: 'region' },
+  { name: 'Interior', type: 'region', summary: 'A monster-haunted interior region, home to Riftwald Forest.' },
+  { name: 'Pale', type: 'region' },
   { name: 'Hinter Coast', type: 'region' },
   { name: 'Riftwald Forest', type: 'region' },
   { name: 'Breakback Cliffs', type: 'region' },
@@ -75,12 +75,12 @@ export const KALDIA_ENTITIES: SeedEntity[] = [
   { name: 'Classical Syrathism', type: 'religion' },
 
   // Culture.
-  { name: 'Kaldian culture', type: 'culture', summary: 'The culture of the Kaldian people — unity, martial valour, and patriotism.' },
+  { name: 'Kaldian Culture', type: 'culture', summary: 'The culture of the Kaldian people — unity, martial valour, and patriotism.' },
 
   // Events. The Dark Age is an era modelled as an event (decision 14); the
   // document gives it no dates, so it carries only a summary and no claim.
-  { name: 'The Pale War', type: 'event', summary: 'The 992 war in which the Empire defeated Swadia.' },
-  { name: 'The Dark Age', type: 'event', summary: 'A period the Kaldians regard as the lowest point in human history. No dates are given.' },
+  { name: 'Pale War', type: 'event', summary: 'The 992 war in which the Empire defeated Swadia.' },
+  { name: 'Dark Age', type: 'event', summary: 'A period the Kaldians regard as the lowest point in human history. No dates are given.' },
 
   // Commodities. Grain already exists from Written Map and is matched, not created.
   { name: 'Grain', type: 'commodity' },
@@ -95,8 +95,8 @@ export const KALDIA_ENTITIES: SeedEntity[] = [
   { name: 'Tools', type: 'commodity' },
 
   // Artifacts.
-  { name: 'The Coat of Arms', type: 'artifact', summary: 'The national coat of arms of the Kaldian Empire.' },
-  { name: 'The Imperial Charter', type: 'artifact', summary: 'The Empire’s foremost legal document.' },
+  { name: 'Coat of Arms', type: 'artifact', summary: 'The national coat of arms of the Kaldian Empire.' },
+  { name: 'Imperial Charter', type: 'artifact', summary: 'The Empire’s foremost legal document.' },
 ]
 
 /* ---------------------------------------------------------------- the claims */
@@ -145,8 +145,8 @@ export const KALDIA_CLAIMS: SeedClaim[] = [
   /* ¶1 — the Empire and its territories */
   { subject: 'Kaldian Empire', predicate: 'located_in', object: 'Elduin', quote: Q.nation, paragraph: 1 },
   { subject: 'Kaldian Empire', predicate: 'rules', object: 'Kaldian Vale', quote: Q.covers, paragraph: 1, inferred: '"covers … including" read as sovereign control (§1.3)' },
-  { subject: 'Kaldian Empire', predicate: 'rules', object: 'The Interior', quote: Q.covers, paragraph: 1, inferred: '"covers … including" read as sovereign control (§1.3)' },
-  { subject: 'Kaldian Empire', predicate: 'rules', object: 'The Pale', quote: Q.covers, paragraph: 1, inferred: '"covers … including" read as sovereign control (§1.3)' },
+  { subject: 'Kaldian Empire', predicate: 'rules', object: 'Interior', quote: Q.covers, paragraph: 1, inferred: '"covers … including" read as sovereign control (§1.3)' },
+  { subject: 'Kaldian Empire', predicate: 'rules', object: 'Pale', quote: Q.covers, paragraph: 1, inferred: '"covers … including" read as sovereign control (§1.3)' },
   { subject: 'Kaldian Empire', predicate: 'rules', object: 'Hinter Coast', quote: Q.covers, paragraph: 1, inferred: '"covers … including" read as sovereign control (§1.3)' },
 
   /* ¶2 — founding */
@@ -167,10 +167,10 @@ export const KALDIA_CLAIMS: SeedClaim[] = [
   { subject: 'Kaldian Empire', predicate: 'rules', object: 'Thalgia', startTime: '935', quote: Q.addedThalgia, paragraph: 4 },
 
   /* ¶5 — the Pale War, 992 */
-  { subject: 'The Pale War', predicate: 'occurred_on', value: '992', quote: Q.paleWar, paragraph: 5 },
-  { subject: 'Kaldian Empire', predicate: 'participated_in', object: 'The Pale War', quote: Q.paleWar, paragraph: 5 },
-  { subject: 'Kingdom of Swadia', predicate: 'participated_in', object: 'The Pale War', quote: Q.paleWar, paragraph: 5 },
-  { subject: 'The Pale War', predicate: 'outcome', value: 'The Empire won; Swadia ceded much of its territory to Kaldia.', quote: Q.ceded, paragraph: 5 },
+  { subject: 'Pale War', predicate: 'occurred_on', value: '992', quote: Q.paleWar, paragraph: 5 },
+  { subject: 'Kaldian Empire', predicate: 'participated_in', object: 'Pale War', quote: Q.paleWar, paragraph: 5 },
+  { subject: 'Kingdom of Swadia', predicate: 'participated_in', object: 'Pale War', quote: Q.paleWar, paragraph: 5 },
+  { subject: 'Pale War', predicate: 'outcome', value: 'The Empire won; Swadia ceded much of its territory to Kaldia.', quote: Q.ceded, paragraph: 5 },
   { subject: 'Kingdom of Swadia', predicate: 'serves', object: 'Kaldian Empire', quote: Q.aegis, paragraph: 5, inferred: '"under the aegis of the Empire" read as vassalage (§5a)' },
 
   /* ¶7 — the infobox */
@@ -184,10 +184,10 @@ export const KALDIA_CLAIMS: SeedClaim[] = [
   { subject: 'Ludwig II Kalduin', predicate: 'title', value: 'Emperor', quote: Q.infobox, paragraph: 7, inferred: 'infobox positional alignment (§1.8)' },
   { subject: 'Ludwig II Kalduin', predicate: 'rules', object: 'Kaldian Empire', quote: Q.infobox, paragraph: 7, inferred: 'Emperor is head of state (§1.8)' },
   { subject: 'Wilhelm Baelestir', predicate: 'title', value: 'Prime Minister', quote: Q.infobox, paragraph: 7, inferred: 'infobox positional alignment (§1.8)' },
-  { subject: 'Kaldian Empire', predicate: 'owns', object: 'The Coat of Arms', quote: Q.coat, paragraph: 7, inferred: 'the nation bears its own arms' },
+  { subject: 'Kaldian Empire', predicate: 'owns', object: 'Coat of Arms', quote: Q.coat, paragraph: 7, inferred: 'the nation bears its own arms' },
 
   /* ¶8 — the Charter */
-  { subject: 'Kaldian Empire', predicate: 'owns', object: 'The Imperial Charter', quote: Q.charter, paragraph: 8 },
+  { subject: 'Kaldian Empire', predicate: 'owns', object: 'Imperial Charter', quote: Q.charter, paragraph: 8 },
 
   /* ¶9 — who leads the Assembly */
   { subject: 'Wilhelm Baelestir', predicate: 'leads', object: 'Imperial Assembly', quote: Q.assemblyLed, paragraph: 9, inferred: 'the Prime Minister leads it; the PM is Wilhelm (§1.8)' },
@@ -202,7 +202,7 @@ export const KALDIA_CLAIMS: SeedClaim[] = [
   { subject: 'Aldo Demard', predicate: 'member_of', object: 'Iconoclasts', quote: Q.iconoMil, paragraph: 12, inferred: 'associated with the Iconoclasts, not stated as a member' },
 
   /* ¶13 — culture */
-  { subject: 'Kaldian Empire', predicate: 'practices', object: 'Kaldian culture', quote: Q.festivals, paragraph: 13, inferred: 'the Empire celebrates its own culture' },
+  { subject: 'Kaldian Empire', predicate: 'practices', object: 'Kaldian Culture', quote: Q.festivals, paragraph: 13, inferred: 'the Empire celebrates its own culture' },
 
   /* ¶16 — the agrarian and extractive economy */
   { subject: 'Kaldian Vale', predicate: 'produces', object: 'Grain', quote: Q.breadbasket, paragraph: 16 },
@@ -219,17 +219,17 @@ export const KALDIA_CLAIMS: SeedClaim[] = [
   { subject: 'Farrock Hills', predicate: 'landform', value: 'hills', quote: Q.ores, paragraph: 16, inferred: 'named "Hills"' },
 
   /* ¶17 — the monster-part trade */
-  { subject: 'The Interior', predicate: 'produces', object: 'Monster Parts', quote: Q.monsters, paragraph: 17 },
+  { subject: 'Interior', predicate: 'produces', object: 'Monster Parts', quote: Q.monsters, paragraph: 17 },
   { subject: 'Kaldian Empire', predicate: 'exports', object: 'Monster Parts', quote: Q.abroad, paragraph: 17, inferred: '"markets … abroad" read as export' },
 
   /* ¶18 — industry and the Interior */
   { subject: 'Kaldian Empire', predicate: 'produces', object: 'Weapons', quote: Q.smithing, paragraph: 18, inferred: 'the smithing industry produces them' },
   { subject: 'Kaldian Empire', predicate: 'produces', object: 'Tools', quote: Q.smithing, paragraph: 18, inferred: 'the smithing industry produces them' },
-  { subject: 'Riftwald Forest', predicate: 'located_in', object: 'The Interior', quote: Q.riftwald, paragraph: 18, inferred: 'named in the Interior context' },
+  { subject: 'Riftwald Forest', predicate: 'located_in', object: 'Interior', quote: Q.riftwald, paragraph: 18, inferred: 'named in the Interior context' },
   { subject: 'Riftwald Forest', predicate: 'climate', value: 'temperate_forest', quote: Q.riftwald, paragraph: 18, inferred: 'a named forest' },
 
   /* ¶19 — Innenbeck */
-  { subject: 'Province of Innenbeck', predicate: 'located_in', object: 'The Interior', quote: Q.innenbeck, paragraph: 19, inferred: 'the monster-hunting Interior' },
+  { subject: 'Province of Innenbeck', predicate: 'located_in', object: 'Interior', quote: Q.innenbeck, paragraph: 19, inferred: 'the monster-hunting Interior' },
   { subject: 'Province of Innenbeck', predicate: 'serves', object: 'Kaldian Empire', quote: Q.innenbeck, paragraph: 19, inferred: 'a province is a subdivision of the Empire (§5a)' },
 ]
 

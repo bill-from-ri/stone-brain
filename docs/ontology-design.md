@@ -6,7 +6,7 @@ the reasoning behind the constraint layer lives in [architecture-decisions.md §
 
 ## Entities
 
-We have eleven entity types:
+We have twelve entity types:
 
 * Characters
 * Factions
@@ -19,6 +19,7 @@ We have eleven entity types:
 * Events
 * Commodities — classes of traded or produced good, not particular objects
 * Deities — worshipped beings; may be the deified form of a real character, or exist purely in belief
+* Species — kinds of living thing (plant, animal, monster), as opposed to an individual
 
 **These live in one `entities` table with an `entity_type` column, not a table per type.** The note
 at the bottom of the original draft was right, and it turns out to be forced rather than merely
@@ -128,7 +129,7 @@ truth — so the legal *combination* is the row.
 ### The starting vocabulary
 
 Defined in [`src/lib/ontology/registry.ts`](../src/lib/ontology/registry.ts): **27 relationship
-concepts and 23 attributes**, expanding to 73 predicate rows and 263 signatures. Only one
+concepts and 23 attributes**, expanding to 73 predicate rows and 266 signatures. Only one
 direction of each relationship is written by hand; the inverse predicate and its mirrored
 signatures are generated, so the two directions cannot disagree about which types they accept.
 
@@ -315,7 +316,7 @@ The asymmetry is deliberate: a duplicate entity is visible and fixable, a wrong 
   and `akal.` are one key.
 - **A declared variant** — `Nethros` resolves to Enua, and the result says `via: 'variant'` so a
   UI can show why.
-- **A dropped leading article** — `Dragon's Shroud` finds `The Dragon's Shroud`. Not a guess about
+- **A dropped leading article** — `the Dragon's Shroud` finds `Dragon's Shroud`, and the reverse. Not a guess about
   which entity was meant; it is the same name.
 
 Everything else is a suggestion, with a reason: `other_type` when the name exists but under a type
@@ -371,7 +372,16 @@ example at `.claude/skills/seed-ground-truth/examples/kaldian-empire-draft.md`.
   predicate's name is provisional until a document that names a deity exercises it.
 - **An enum value the document does not state is left unset.** A society that is agrarian,
   industrial, and extractive at once gets no `economy` claim rather than a forced pick.
-- **Bare years are AD**, via the calendar's default era — see [calendar.md](calendar.md).
+- **Kinds of living thing are `species`** — the Tvarid Spruce, not one tree. A species' habitat
+  is `located_in` a region. A named individual creature is a `character`.
+- **A people that is not a state is still a `society`.** `society` covers any people considered as
+  a whole — kingdom, empire, tribe, nation — so the four Runar tribes are societies even with no
+  government. The umbrella they share is a `culture`, linked by `practices`, and a tribe is not
+  given a culture of its own unless the world treats it as distinct.
+- **A year with no era is AD** unless the document's context clearly says otherwise, via the
+  calendar's default era — see [calendar.md](calendar.md).
+- **`located_in` carries no start or end date.** It is not a temporal predicate; a migration
+  date belongs to the event, not the location claim.
 
 # How the vocabulary grows
 
@@ -405,3 +415,10 @@ Raised by a seeded document, acknowledged, and deliberately not modelled yet:
 - **`economy` enum breadth** — whether *industrial* and *extractive* belong in the enum. Wants a
   second, corroborating document.
 - **The final name of `incarnation_of` / `deified_as`.**
+- **Trade and other economic relationships between peoples** (`trades_with` and kin). Named,
+  bilateral trade is stated in *The Runar*; modelled together with the rest of the economy later.
+- **Named customs and rites** (e.g. the Giving Ceremonies) — neither `culture` nor `event` fits.
+- **`influenced_by`** between cultures or societies — vague, and prone to false positives.
+- **`descended_from`** between peoples or cultures.
+- **Belief-only places and concepts** (the Three Worlds of Runar cosmology). Close kin to
+  deities; likely a unified belief-concept type later rather than a flag on `region`.
