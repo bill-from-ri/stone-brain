@@ -43,13 +43,13 @@ export const KALDIA_ENTITIES: SeedEntity[] = [
   // Regions. Elduin already exists from Written Map and is matched, not created.
   { name: 'Elduin', type: 'region' },
   { name: 'Kaldian Vale', type: 'region', summary: 'The Empire’s heartland and breadbasket.' },
-  { name: 'Thalgia', type: 'region' },
+  { name: 'Thalgia', type: 'region', summary: 'A region joined to the Kaldian Empire by the marriage alliance of 935; its lords keep more autonomy and elect a Prince of Thalgia to the Imperial Assembly.' },
   { name: 'Interior', type: 'region', summary: 'A monster-haunted interior region, home to Riftwald Forest.' },
-  { name: 'Pale', type: 'region' },
-  { name: 'Hinter Coast', type: 'region' },
-  { name: 'Riftwald Forest', type: 'region' },
-  { name: 'Breakback Cliffs', type: 'region' },
-  { name: 'Farrock Hills', type: 'region' },
+  { name: 'Pale', type: 'region', summary: 'A region of the Kaldian Empire in western Elduin.' },
+  { name: 'Hinter Coast', type: 'region', summary: 'A coastal region of western Elduin, much of it ruled by the Kaldian Empire.' },
+  { name: 'Riftwald Forest', type: 'region', summary: 'A beast-haunted forest in the Interior, against which its smiths and citizens arm themselves.' },
+  { name: 'Breakback Cliffs', type: 'region', summary: 'Cliffs that are a main source of the Empire’s ore and quarried stone.' },
+  { name: 'Farrock Hills', type: 'region', summary: 'Hills that are a main source of the Empire’s ore and quarried stone.' },
 
   // Settlements.
   { name: 'Hrimfall', type: 'settlement', summary: 'Capital of the Kaldian Empire.' },
@@ -57,8 +57,8 @@ export const KALDIA_ENTITIES: SeedEntity[] = [
   // Characters. Titles (Prince, Emperor, …) are claims, not part of the name.
   { name: 'Ludwig I Kalduin', type: 'character', summary: 'Founder of the Kaldian Empire and the Kalduin Dynasty.' },
   { name: 'Ludwig II Kalduin', type: 'character', summary: 'The reigning Emperor.' },
-  { name: 'Lukas Kalduin', type: 'character' },
-  { name: 'Edith Akadon', type: 'character' },
+  { name: 'Lukas Kalduin', type: 'character', summary: 'A Kalduin prince whose marriage to Edith Akadon in 935 brought Thalgia into the Empire.' },
+  { name: 'Edith Akadon', type: 'character', summary: 'A princess whose marriage to Lukas Kalduin in 935 brought Thalgia into the Empire.' },
   { name: 'Wilhelm Baelestir', type: 'character', summary: 'The Prime Minister, who leads the Imperial Assembly.' },
   { name: 'Aldo Demard', type: 'character', summary: 'Raised from Count to Imperial Margrave during the Pale War.' },
 
@@ -71,8 +71,8 @@ export const KALDIA_ENTITIES: SeedEntity[] = [
   { name: 'Elduin Dynasty', type: 'faction', summary: 'An earlier ruling house of the Kaldian Vale.' },
 
   // Religions.
-  { name: 'Western Syrathism', type: 'religion' },
-  { name: 'Classical Syrathism', type: 'religion' },
+  { name: 'Western Syrathism', type: 'religion', summary: 'One of the two state religions of the Kaldian Empire.' },
+  { name: 'Classical Syrathism', type: 'religion', summary: 'One of the two state religions of the Kaldian Empire.' },
 
   // Culture.
   { name: 'Kaldian Culture', type: 'culture', summary: 'The culture of the Kaldian people — unity, martial valour, and patriotism.' },
@@ -84,15 +84,15 @@ export const KALDIA_ENTITIES: SeedEntity[] = [
 
   // Commodities. Grain already exists from Written Map and is matched, not created.
   { name: 'Grain', type: 'commodity' },
-  { name: 'Hide', type: 'commodity' },
-  { name: 'Wool', type: 'commodity' },
-  { name: 'Milk', type: 'commodity' },
-  { name: 'Lumber', type: 'commodity' },
-  { name: 'Ore', type: 'commodity' },
-  { name: 'Quarried Stone', type: 'commodity' },
-  { name: 'Monster Parts', type: 'commodity' },
-  { name: 'Weapons', type: 'commodity' },
-  { name: 'Tools', type: 'commodity' },
+  { name: 'Hide', type: 'commodity', summary: 'Produce of the cattle and sheep herds of the Kaldian Vale.' },
+  { name: 'Wool', type: 'commodity', summary: 'Produce of the sheep herds of the Kaldian Vale.' },
+  { name: 'Milk', type: 'commodity', summary: 'Produce of the cattle and sheep herds of the Kaldian Vale.' },
+  { name: 'Lumber', type: 'commodity', summary: 'Timber; most of the Kaldian Empire’s comes from the Duchy of Korsburg.' },
+  { name: 'Ore', type: 'commodity', summary: 'Metal ore, mined chiefly in the Breakback Cliffs and Farrock Hills.' },
+  { name: 'Quarried Stone', type: 'commodity', summary: 'Building stone, quarried chiefly in the Breakback Cliffs and Farrock Hills.' },
+  { name: 'Monster Parts', type: 'commodity', summary: 'Exotic body parts of monsters from the Interior, selling at high prices within the Empire and abroad.' },
+  { name: 'Weapons', type: 'commodity', summary: 'Arms made in the forges found in almost every Kaldian settlement.' },
+  { name: 'Tools', type: 'commodity', summary: 'Tools made in the forges found in almost every Kaldian settlement.' },
 
   // Artifacts.
   { name: 'Coat of Arms', type: 'artifact', summary: 'The national coat of arms of the Kaldian Empire.' },

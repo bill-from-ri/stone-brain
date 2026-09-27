@@ -56,7 +56,7 @@ export const SEED_ENTITIES: SeedEntity[] = [
   // Regions. Nevlos is the world itself; the west/central/east subregions that
   // will give this a hierarchy do not exist yet, so nothing is located_in it.
   { name: 'Nevlos', type: 'region', summary: 'The known world.' },
-  { name: 'Elduin', type: 'region' },
+  { name: 'Elduin', type: 'region', summary: 'An island at the centre of the Dragon’s Shroud; home to the Kaldian Empire, its largest nation.' },
   { name: 'Frost Gulf', type: 'region', summary: 'The bay itself. The forested land around it is Runara.' },
   {
     name: 'Runara',
@@ -67,28 +67,28 @@ export const SEED_ENTITIES: SeedEntity[] = [
     variants: ['Frost Gulf'],
     summary: 'The forested land around the Frost Gulf.',
   },
-  { name: 'Enua', type: 'region', variants: ['Nethros'] },
-  { name: 'Zada Mountains', type: 'region' },
-  { name: 'Orosh Mountains', type: 'region' },
-  { name: 'Lagetan Basin', type: 'region' },
-  { name: 'Ipherian Sea', type: 'region' },
-  { name: 'Ipheria', type: 'region' },
-  { name: 'Merovia', type: 'region' },
-  { name: 'Agyros', type: 'region' },
-  { name: 'Ephria', type: 'region' },
-  { name: 'Southern Ephria', type: 'region' },
-  { name: 'Kovnia', type: 'region' },
-  { name: 'Akál', type: 'region', variants: ['Akali Archipelago'] },
-  { name: 'Sea of Akál', type: 'region' },
+  { name: 'Enua', type: 'region', variants: ['Nethros'], summary: 'A peninsula, known as Nethros before the Enu Conquests of the 3rd century.' },
+  { name: 'Zada Mountains', type: 'region', summary: 'The western of Enua’s two parallel mountain ranges, draining meltwater into the Lagetan Basin.' },
+  { name: 'Orosh Mountains', type: 'region', summary: 'The northeastern of Enua’s two parallel mountain ranges, draining meltwater into the Lagetan Basin.' },
+  { name: 'Lagetan Basin', type: 'region', summary: 'A basin in Enua fed by meltwater from the Zada and Orosh Mountains; a breadbasket since long before the Doom.' },
+  { name: 'Ipherian Sea', type: 'region', summary: 'A sea once united by the Ipherian Empire, splintered into successor states after the Doom; cosmopolitan, on key trade routes.' },
+  { name: 'Ipheria', type: 'region', summary: 'A maritime trading sphere to the west of Kovnia.' },
+  { name: 'Merovia', type: 'region', summary: 'A cosmopolitan eastern coast of the Ipherian Sea region.' },
+  { name: 'Agyros', type: 'region', summary: 'A cosmopolitan eastern coast of the Ipherian Sea region, alongside Merovia.' },
+  { name: 'Ephria', type: 'region', summary: 'The second and smaller of Nevlos’ continents.' },
+  { name: 'Southern Ephria', type: 'region', summary: 'The historically isolated south of Ephria: tropical rainforest and savannah, largely undeveloped, and a refuge for some of Nevlos’ last great megafauna.' },
+  { name: 'Kovnia', type: 'region', summary: 'A dry, rocky region whose people depend on trade, set between the Ipherian and Akali maritime trading spheres.' },
+  { name: 'Akál', type: 'region', variants: ['Akali Archipelago'], summary: 'A large archipelago off the continent’s southeastern coast, home to seafaring peoples once united by Tavilaga.' },
+  { name: 'Sea of Akál', type: 'region', summary: 'The sea at the southern edge of the Central Empire.' },
   { name: 'Yeosin Frontier', type: 'region', summary: 'A political march rather than a landform.' },
-  { name: 'Central Plain', type: 'region' },
-  { name: 'Great Steppe', type: 'region' },
+  { name: 'Central Plain', type: 'region', summary: 'A highly productive river basin at the heart of the Central Empire, historically one of the most densely populated places in the world.' },
+  { name: 'Great Steppe', type: 'region', summary: 'A vast grassy plateau at the centre of the continent; long home to nomadic hunters and herders, now dotted with trading towns linking East and West.' },
 
-  { name: 'Ipherian Empire', type: 'society' },
-  { name: 'Tavilaga', type: 'society' },
-  { name: 'Central Empire', type: 'society' },
+  { name: 'Ipherian Empire', type: 'society', summary: 'The empire that once united the Ipherian Sea, and splintered into successor states after the Doom.' },
+  { name: 'Tavilaga', type: 'society', summary: 'A mighty seafaring empire that once united the Akali Archipelago.' },
+  { name: 'Central Empire', type: 'society', summary: 'A multi-cultural hegemony dominating the continent’s eastern seaboard, from the Yeosin Frontier to the Sea of Akál.' },
 
-  { name: 'Syrath', type: 'character' },
+  { name: 'Syrath', type: 'character', summary: 'The dragon who, in its final moments, created the Dragon’s Shroud to trap Vaski. The Syrathist religions bear its name.' },
   { name: 'Vaski', type: 'character', summary: 'The last of the giants.' },
 
   {
@@ -96,7 +96,7 @@ export const SEED_ENTITIES: SeedEntity[] = [
     type: 'event',
     summary: 'The event the world dates itself from. Not described here beyond its use as an epoch.',
   },
-  { name: 'Enu Conquests', type: 'event' },
+  { name: 'Enu Conquests', type: 'event', summary: 'The 3rd-century conquests after which the peninsula of Nethros became Enua.' },
 
   {
     name: "Dragon's Shroud",
@@ -106,7 +106,7 @@ export const SEED_ENTITIES: SeedEntity[] = [
       'moments with the intention of trapping Vaski within it.',
   },
 
-  { name: 'Grain', type: 'commodity' },
+  { name: 'Grain', type: 'commodity', summary: 'The staple crop of breadbaskets such as the Lagetan Basin and the Kaldian Vale.' },
 ]
 
 /* ---------------------------------------------------------------- the claims */
@@ -245,6 +245,8 @@ export const SEED_CLAIMS: SeedClaim[] = [
 export type WorldSeedReport = {
   entitiesCreated: number
   entitiesExisting: number
+  /** Existing entities that had no summary and were given the seed's. */
+  summariesFilled: number
   claimsCreated: number
   claimsExisting: number
   /**
@@ -301,6 +303,7 @@ export async function loadSeed(
   const report: WorldSeedReport = {
     entitiesCreated: 0,
     entitiesExisting: 0,
+    summariesFilled: 0,
     claimsCreated: 0,
     claimsExisting: 0,
     sourcesCreated: 0,
@@ -313,7 +316,7 @@ export async function loadSeed(
     const normalized = normalizeName(entity.name)
 
     const [existing] = await db
-      .select({ id: entities.id })
+      .select({ id: entities.id, summary: entities.summary })
       .from(entities)
       .where(
         and(
@@ -327,6 +330,12 @@ export async function loadSeed(
     if (existing) {
       idByName.set(entity.name, { id: existing.id, type: entity.type })
       report.entitiesExisting++
+      // Fill a missing summary, never replace one: a summary already there may
+      // have been written or edited by hand, and the seed is not its owner.
+      if (entity.summary !== undefined && existing.summary === null) {
+        await db.update(entities).set({ summary: entity.summary }).where(eq(entities.id, existing.id))
+        report.summariesFilled++
+      }
       continue
     }
 

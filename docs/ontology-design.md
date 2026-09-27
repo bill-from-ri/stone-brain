@@ -25,8 +25,15 @@ We have twelve entity types:
 at the bottom of the original draft was right, and it turns out to be forced rather than merely
 tidy: claims need a single foreign-key target, and Postgres has no polymorphic foreign key.
 
-An entity row carries only `name`, `name_variants`, `normalized_name`, its type, canonicity, and
-an optional source document. **Every other fact about an entity is a claim.**
+An entity row carries only `name`, `name_variants`, `normalized_name`, its type, canonicity, a
+`summary`, and an optional source document. **Every other fact about an entity is a claim.**
+
+**`summary` is the entity's one description**, and there is deliberately no `description`
+claim. A description is a synthesis across every document that mentions the entity, not a fact
+one document asserts: as a claim it would pile up one competing paraphrase per document, each a
+spurious "conflict" for Phase 3, and a paraphrase cannot be scored against ground truth. So it is
+a single curated line on the row, shown on the entity's detail card, and prose a claim cannot
+hold — a byname like "the last of the giants", a purpose like "to trap Vaski" — goes here.
 
 `normalized_name` — case-folded and punctuation-stripped — is the entity matcher's lookup key.
 It is **deliberately not unique**: two distinct entities of one type may legitimately share a
@@ -129,7 +136,7 @@ truth — so the legal *combination* is the row.
 ### The starting vocabulary
 
 Defined in [`src/lib/ontology/registry.ts`](../src/lib/ontology/registry.ts): **27 relationship
-concepts and 23 attributes**, expanding to 73 predicate rows and 266 signatures. Only one
+concepts and 22 attributes**, expanding to 72 predicate rows and 254 signatures. Only one
 direction of each relationship is written by hand; the inverse predicate and its mirrored
 signatures are generated, so the two directions cannot disagree about which types they accept.
 
@@ -347,8 +354,23 @@ reused by exact name rather than minted again.
 # Modelling conventions
 
 How recurring real-world shapes map onto the vocabulary. Each was ratified while hand-labelling a
-document, and holds for extraction as much as for labelling — the full evidence is in the worked
-example at `.claude/skills/seed-ground-truth/examples/kaldian-empire-draft.md`.
+document, and holds for extraction as much as for labelling. The worked example at
+`.claude/skills/seed-ground-truth/examples/kaldian-empire-draft.md` shows the evidence for the
+round-2 rulings; the other rounds' drafts are in git history.
+
+**Places**
+
+- **`climate` and `landform` are independent enums, both optional.** `climate` is the biome,
+  `landform` the shape of the ground, and neither uses the other's terms — the Great Steppe is
+  landform `plateau`, climate `steppe`. Water gets a landform and no climate. A region spanning
+  several biomes gets no `climate` at all; an absent claim is not a gap to fill.
+- **The same name for water and the land around it splits into two entities.** `Frost Gulf` is
+  the bay; `Runara` is the forested land, carrying `Frost Gulf` as a variant — see *The case that
+  proves it*.
+- **World-level containment is not claimed.** Everything is in Nevlos; saying so for each region
+  adds nothing and pre-empts the continental subregions that will be the real parents.
+
+**Peoples and polities**
 
 - **Dynasties and houses are `faction`s.** They `rules` land and succeed one another; for that,
   `successor_of` / `predecessor_of` accept `faction → faction`. Succession is often stated with no
@@ -361,8 +383,25 @@ example at `.claude/skills/seed-ground-truth/examples/kaldian-empire-draft.md`.
   the same `society → society` signature.
 - **Political alliances inside a state are `faction`s**, joined by `member_of` (faction →
   society). Open to revision if a document shows alliances spanning states.
-- **A people's shared customs are a `culture`**, linked by `practices`. `language` is an
-  attribute of `society` and `culture` only — land has no tongue; the people on it do.
+- **A people that is not a state is still a `society`.** `society` covers any people considered as
+  a whole — kingdom, empire, tribe, nation — so the four Runar tribes are societies even with no
+  government. The umbrella they share is a `culture`, linked by `practices`, and a tribe is not
+  given a culture of its own unless the world treats it as distinct. The test: a group that
+  **acts as a unit** — wars, trades, migrates, is ruled, can be allied or hostile — is a
+  `society`; a **shared way of life** across several such groups is a `culture`. A people
+  scattered across several states (the Runyar under the Kaldian Empire) is held together by
+  its culture.
+- **A people's shared customs are a `culture`**, linked by `practices`. A people and its polity
+  can carry different names: the Enu are the `culture`, Enuarak the `society` that practises it.
+  `language` is an attribute of `society` and `culture` only — land has no tongue; the people on
+  it do.
+
+**Things, kinds and beliefs**
+
+- **Artifacts include created phenomena**, not only portable objects — the Dragon's Shroud, a
+  wall of magical fog, is an `artifact` `created_by` Syrath.
+- **Kinds of living thing are `species`** — the Tvarid Spruce, not one tree. A species' habitat
+  is `located_in` a region. A named individual creature is a `character`.
 - **Aliases are `name_variants`, not claims.** A variant may also be the name of a different
   entity; that is allowed and is what makes the matcher return the ambiguity (see *The entity
   matcher*).
@@ -370,18 +409,33 @@ example at `.claude/skills/seed-ground-truth/examples/kaldian-empire-draft.md`.
 - **Deities are their own type.** `incarnation_of` (deity → character, inverse `deified_as`)
   links a god to the real being it was, and is simply absent for a deity of pure belief. The
   predicate's name is provisional until a document that names a deity exercises it.
+
+**Economy, titles and time**
+
+- **`economy` belongs to societies, not land.** A region is not agrarian; the society farming it
+  is. Land can `produces` a commodity; only an actor `exports` or `imports` one.
+- **`title` is for offices and styles.** A descriptive byname ("the last of the giants") is not
+  a title; it goes in the `summary`.
 - **An enum value the document does not state is left unset.** A society that is agrarian,
   industrial, and extractive at once gets no `economy` claim rather than a forced pick.
-- **Kinds of living thing are `species`** — the Tvarid Spruce, not one tree. A species' habitat
-  is `located_in` a region. A named individual creature is a `character`.
-- **A people that is not a state is still a `society`.** `society` covers any people considered as
-  a whole — kingdom, empire, tribe, nation — so the four Runar tribes are societies even with no
-  government. The umbrella they share is a `culture`, linked by `practices`, and a tribe is not
-  given a culture of its own unless the world treats it as distinct.
 - **A year with no era is AD** unless the document's context clearly says otherwise, via the
   calendar's default era — see [calendar.md](calendar.md).
 - **`located_in` carries no start or end date.** It is not a temporal predicate; a migration
   date belongs to the event, not the location claim.
+
+## Deliberately not modelled
+
+Not deferred — judged out of scope, so neither a labeller nor an extractor should try:
+
+- **Comparatives** — "the largest nation", "one of the most densely populated places".
+- **Purpose and intent** — "…with the intention of trapping Vaski". Summary prose, if anywhere.
+- **Causal relations between places** — "watered by moisture blown off the Dragon's Shroud".
+- **Extents** — "spanning from the Yeosin Frontier to the Sea of Akál" is not a location.
+- **Unnamed groups and events** — "nomadic tribes", "a period of civil war". Only a proper name
+  makes an entity.
+
+Hand entry is first-class throughout: `created_by = 'user'` on an entity or claim means it was
+written by a person with no document behind it, and needs no `claim_sources` row.
 
 # How the vocabulary grows
 

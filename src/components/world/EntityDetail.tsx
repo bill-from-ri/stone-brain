@@ -50,7 +50,14 @@ export function EntityDetail({
         <span className="tag tag-neutral">{entity.canonicity === 'canon' ? 'Canon' : 'Draft'}</span>
       </div>
 
-      {entity.summary && <p className="sb-entity-summary">{entity.summary}</p>}
+      {/* The entity's one description — there is no `description` claim. Shown
+          even when empty, so a missing summary reads as missing rather than as
+          a card with nothing to say. */}
+      {entity.summary ? (
+        <p className="sb-entity-summary">{entity.summary}</p>
+      ) : (
+        <p className="sb-entity-summary sb-entity-summary-empty">No summary yet.</p>
+      )}
 
       <div className="sb-tree-divider" style={{ margin: '16px 0' }} />
 

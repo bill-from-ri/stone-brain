@@ -1860,6 +1860,11 @@
   color: var(--muted);
 }
 
+.sb-entity-summary-empty {
+  color: var(--faint);
+  font-style: italic;
+}
+
 /* ============================================================ loading skeletons
 
    The fallback a route's loading.tsx paints while its server render is in

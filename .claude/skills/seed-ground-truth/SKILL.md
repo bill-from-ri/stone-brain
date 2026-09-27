@@ -193,14 +193,24 @@ The draft is scratch space, not a design record. Once seeded and verified:
   - Dynasties and houses → `faction`. Political alliances within a state → `faction`
     `member_of` the society.
   - Any people considered as a whole → `society`, **whether or not it is a state** —
-    a tribe with no government is still a `society`. A shared umbrella culture across
-    several peoples → `culture`, linked by `practices`.
+    a tribe with no government is still a `society`. The test: a group that acts as a
+    unit (wars, trades, migrates, is ruled) is a `society`; a shared way of life across
+    groups is a `culture`, linked by `practices`. A people and its polity may have
+    different names — the Enu (culture), Enuarak (society).
   - Sub-polities (a duchy within an empire) → `society`, `serves` the parent.
   - Land features → `region`; the enums `climate` (biome) and `landform`
     (geomorphology) are independent.
   - Kinds of living thing → `species`; a named individual creature → `character`.
 - **Political control of a region → `rules`** (a region cannot be `located_in` a
   society). Geographic containment or habitation → `located_in`.
+
+**Summaries**
+- **Every new entity gets a `summary`**: one or two sentences, drawn from the
+  document, saying what the entity is. It is the entity's only description — there is
+  no `description` claim — and it is what the entity's detail card shows. Prose no
+  predicate can hold (a byname, a purpose, a comparative) belongs here.
+- A summary already on an existing entity is never overwritten by a seed; the loader
+  only fills one that is missing.
 
 **Quotes and inference**
 - **Quotes:** verbatim substring of the cited paragraph, copied from

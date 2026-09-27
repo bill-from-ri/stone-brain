@@ -1,10 +1,11 @@
 # DRAFT — Seed round 3: "The Runar"
 
-> **Working document — rulings received 2026-09-27, two questions still open.** §5's proposals
-> are ruled on: only P3 (`species`) is approved, and it is in `registry.ts` and the reference
-> tables (`npm run db:seed` → 12 entity types, 73 predicates, 266 signatures). The `loadSeed`
-> fix (open question f) has landed. Still open before seeding: **c** (how Enuarak relates to
-> Enua) and **h** (entity `summary` vs `description` claims). Not yet in the database.
+> **Working document — all rulings received 2026-09-27; ready to seed.** §5's proposals are ruled
+> on: only P3 (`species`) is approved, and it is in `registry.ts` and the reference tables. The
+> `description` attribute has since been removed (decision 12), so the tables stand at 12 entity
+> types, 72 predicates, 254 signatures. The `loadSeed` fix (open question f) has landed. One
+> optional follow-up remains in open question c (a hand-entered Enuarak→Enua link). Not yet in
+> the database.
 
 Source: `The Runar`, Drive id `1pngPgMdvZf7yClZznYTYbbSXq_BeEXYm9B79iDN8Scg`
 (documents row `f41ff279-1013-4305-84a4-f69c8fb2f18e`), 29 paragraphs (¶0–¶28), ~8.6k chars /
@@ -33,13 +34,13 @@ cultural influence, inter-tribal trade) has no home in the current vocabulary; s
 | 3 | **"Frost Gulf" in ¶1, ¶19, ¶22 is the land, i.e. `Runara`**; in ¶7 ("between the Frost Gulf and the Orosh Mountains", "maritime trade within the gulf itself") it is the water, `Frost Gulf`. Round-1 decision 16 applied as-is. ¶1's "coastland dominated by iconic temperate rainforests" therefore attaches to `Runara`. |
 | 4 | **`Runar Basin` is its own region, located in `Runara`.** *(Ratified — was open question a.)* |
 | 5 | **Runyar is a name variant of the Runar culture.** ¶3: "effectively the same culture: Runyar is a cognate of Runar". Aliases are variants, not claims (Kaldia decision 4). |
-| 6 | **Enuarak is a `society`, with variant "Enu".** It is listed among "peoples" in ¶17 and the text alternates "Enuarak" / "the Enu" (¶7). It is **not** equated with the round-1 region `Enua`, though the names are plainly related — open question c. |
+| 6 | **The Enu are a `culture`; Enuarak is the `society`** that practises it. *(Ratified.)* The text says "Enuarak" for the polity (¶7, ¶17) and "the Enu" for the people and their ideas (¶7 "contact with the Enu", "Enu religious ideas"). `Enuarak —practices→ Enu`. Neither is equated with the round-1 region `Enua` — see open question c. |
 | 7 | **No entity name takes a leading "The"; names are title case; peoples are plural.** *(Ratified as a skill convention.)* `Eldi`, `Suedi`, `Tvars`, `Atarks`, `Kazavs`, `Runar Religion`. Existing entities were renamed to match (`Doom`, `Dragon's Shroud`, `Interior`, …). `Tvars` carries `Tvar` as a variant (¶20 "Tvar burial"). |
 | 8 | **Habitation is `located_in`, not `rules`.** "the Eldi of the Amber Coast" says where a people lives, not that it holds sovereignty; the text never claims political control of land. `located_in` (society→region) is the Kaldian Empire→Elduin precedent. |
 | 9 | **Named geographic descriptors that are not proper names are not entities**: "the deep inland forest" (Tvars), "the eastern forest-steppe frontier" (Atarks), "the monster-infested tundra to the north" (Kazavs), "the southern mountains". Same rule as round 1's unnamed steppe tribes. |
 | 10 | **`Steppe peoples` is not an entity.** ¶17 lists them, but it is a description ("Steppe peoples to the east"), not a name. Consequently nothing the Atarks absorbed from them is claimable. |
 | 11 | **`Runar Religion` is a `religion`.** ¶28's heading and first sentence name it and characterise it at length (animist, no shared pantheon, three worlds, sacred groves). `Runar —worships→ Runar Religion` (culture→religion). The cosmology itself goes in its `summary`, not in claims (§3). |
-| 12 | **Descriptions are entity `summary`s, not `description` claims** — provisionally; see open question h. |
+| 12 | **Descriptions are entity `summary`s; there is no `description` claim.** *(Ratified — was open question h. The `description` attribute is removed from the registry.)* |
 | 13 | **Kinds of living thing are `species`** *(P3, ratified)*. The Tvarid Spruce is a `species` (variant: Sky Posts), `located_in` Runara. |
 | 14 | **Each tribe practises the shared Runar culture; no per-tribe cultures.** *(Ratified — was open question b.)* |
 | 15 | **A bare year is AD unless context clearly says otherwise.** "The 400s" (¶10) is AD 400s. *(Ratified — was open question d.)* |
@@ -61,7 +62,9 @@ which argues for the variant; ¶2's basin/shoreland distinction argues against.
 culture". Modelling four more cultures would need a culture→culture link (none exists). Accept the
 loss, or see proposal P6?
 
-**c. ⬜ Open — how should Enuarak link to Enua?** Is Enuarak the round-1 `Enua` (region, formerly Nethros)? Written Map: the peninsula was
+**c. ✅ Identity resolved (decision 6); one optional follow-up.** Enuarak is not Enua — the Enu are
+a culture and Enuarak its society. **Remaining:** should `Enuarak —located_in→ Enua` be added as a
+hand-entered claim? Background — Is Enuarak the round-1 `Enua` (region, formerly Nethros)? Written Map: the peninsula was
 renamed Enua after "the Enu Conquests"; here the Enu of Enuarak lie "beyond the southern
 mountains", and round 1 put the Orosh Mountains in Enua. Strongly suggests `Enuarak —located_in→
 Enua`, but this document never says "Enua", so it is not claimed. Worth a hand-entered
@@ -89,9 +92,7 @@ from this document's ground truth. Decide: (i) drop them from this seed (current
 change `loadSeed` to attach a `claim_sources` row to the existing claim (recommended — the fact is
 genuinely stated in both documents and an extractor reading this one should be credited for it).
 
-**h. ⬜ Open — entity `summary` vs `description` claims.** The registry declares a `description`
-attribute on every type; the seed modules use the entity row's `summary` column instead, and the
-earlier drafts listed `description` claims that were never written. One should be retired.
+**h. ✅ Resolved: `summary` only (decision 12).** ~~Entity `summary` vs `description` claims.~~
 
 **g. Internal timing tension (no action, noted for Phase 3).** ¶2 dates the crossing to Elduin to
 the 2nd century BD; ¶8 says Eldi shamans drove the crossing "in pre-history ... in anticipation of
@@ -127,8 +128,8 @@ logged gap, and §5 proposes changes for the ones with real evidence.
 - **Eldi / Elduin / Elduin Dynasty.** ¶3: "the name Elduin itself derives from the Eldi". Three
   distinct entities (society, region, faction) with near-identical normalized names — a near-miss
   case, not an ambiguity; the matcher should suggest, never match.
-- **Enu / Enua / The Enu Conquests / Enuarak.** "Enu" as a variant of Enuarak sits one letter from
-  the region `Enua`. Near-miss again (open question c).
+- **Enu / Enua / Enu Conquests / Enuarak.** The culture `Enu` sits one letter from the region
+  `Enua`: a near-miss, not an ambiguity — the matcher should suggest, never match.
 - **Runar / Runara / Runar Basin / Runyar.** Four strings, three entities, one root.
 
 ---
@@ -217,11 +218,11 @@ Quotes are verbatim substrings of the cited rendered paragraph, and avoid `**` b
 curly apostrophes. *(reading)* = faithful interpretation; *(inferred)* = a further step, drop if
 too far. Summaries are proposed for every new entity (decision 12).
 
-### Entities (19 new-or-claimed + 4 referenced)
+### Entities (20 new-or-claimed + 4 referenced)
 
-**Cultures (1)** — Runar *(variant: Runyar)*
+**Cultures (2)** — Runar *(variant: Runyar)*, Enu
 
-**Societies (6)** — Eldi, Suedi, Tvars *(variant: Tvar)*, Atarks, Kazavs, Enuarak *(variant: Enu)*
+**Societies (6)** — Eldi, Suedi, Tvars *(variant: Tvar)*, Atarks, Kazavs, Enuarak
 
 **Regions (5)** — Runara \*, Elduin \*, Runar Basin, Amber Coast, Blighted Shore
 
@@ -247,7 +248,8 @@ Proposed summaries:
 | Tvars | The most conservative and insular Runar people, of the deep inland forest; prosperous producers of amber, furs, and medicinal goods. Bury in lakes and bogs. |
 | Atarks | Runar people of the eastern forest-steppe frontier, heavily influenced by steppe horse culture; believe the dead rise to the Upper World. |
 | Kazavs | Hunter-gatherer tribes of the monster-infested tundra north of the Suedi. |
-| Enuarak | The land of the Enu, beyond the mountains south of the Eldi; the main channel of metalwork, luxury goods, and religious ideas into the Runar Basin. |
+| Enuarak | The society of the Enu, beyond the mountains south of the Eldi; the main channel of metalwork, luxury goods, and religious ideas into the Runar Basin. |
+| Enu | The culture of Enuarak, whose religious ideas have influenced the Eldi. |
 | Runar Basin | The river basin inhabited by the Runar. |
 | Amber Coast | Coast of the Eldi, between the Frost Gulf and the Orosh Mountains. |
 | Blighted Shore | Northern coast of the Suedi, named for the monsters of the tundra beyond it. |
@@ -255,7 +257,7 @@ Proposed summaries:
 | Runar Religion | Animist and decentralised: holy groves, river and animal spirits, the stars; a three-world cosmology (Upper, Walked, Underworld) with the Tvarid Spruce as the Sky Posts. No shared pantheon. |
 | Amber, Furs, Medicinal Goods, Metalwork, Luxury Goods | *(none)* |
 
-### Claims (26)
+### Claims (27)
 
 | ¶ | Claim | Quote / note |
 | --- | --- | --- |
@@ -284,9 +286,10 @@ Proposed summaries:
 | 17 | `Eldi —imports→ Luxury Goods` | same quote *(inferred)* |
 | 25 | `Eldi economy = mercantile` | "whose mercantile economy runs on trade rather than raiding" *(also ¶7 "Eldi society is comparatively mercantile")* |
 | 22 | `Tvarid Spruce —located_in→ Runara` | "The Tvarid Spruce is the tallest and oldest living thing in the Frost Gulf" *(decision 13; Frost Gulf = the land, decision 3)* |
+| 7 | `Enuarak —practices→ Enu` | "Sustained contact with the Enu" *(reading — decision 6: the people of Enuarak, named in the same paragraph)* |
 | 28 | `Runar —worships→ Runar Religion` | "Runar religion is not a unified institution" *(reading — decision 11)* |
 
-**26 claims across 19 entities** — the thinnest document per character so far, by design of the
+**27 claims across 20 entities** — the thinnest document per character so far, by design of the
 vocabulary rather than the text: most of it is cosmology and custom (§3).
 
 ### Conditional claims (held for deferred proposals — not seeded this round)

@@ -12,8 +12,10 @@
  *
  * ## Sizing
  *
- * 27 relationship *concepts* and 23 attributes — 73 predicate rows and 266
- * signatures, over 12 entity types. Relationships are directional (ontology
+ * 27 relationship *concepts* and 22 attributes — 72 predicate rows and 254
+ * signatures, over 12 entity types. There is deliberately no `description`
+ * attribute: an entity's prose description is `entities.summary`, one curated
+ * line per entity rather than one competing claim per document. Relationships are directional (ontology
  * design: "symmetric relationships will therefore have 2 claims each"), so the
  * 27 concepts expand to 50 rows: `RELATIONSHIPS` declares one direction and
  * `deriveOntology()` generates the other, which is why a signature cannot be
@@ -447,10 +449,7 @@ type AttributeDef = {
   subjects: readonly EntityTypeName[]
 }
 
-const ALL_TYPES = ENTITY_TYPES.map((t) => t.name) as readonly EntityTypeName[]
-
 export const ATTRIBUTES = [
-  { name: 'description', label: 'Description', description: 'A short prose characterisation of the entity.', valueType: 'string', subjects: ALL_TYPES },
   { name: 'title', label: 'Title', description: 'A formal title or office held: "Queen of Ashfall", "High Cantor".', valueType: 'string', temporal: true, subjects: ['character'] },
   { name: 'species', label: 'Species', description: 'The kind of being the character is, in the world\'s own terms.', valueType: 'string', functional: true, subjects: ['character'] },
   { name: 'gender', label: 'Gender', description: 'The character\'s gender as the source material states it.', valueType: 'string', subjects: ['character'] },
