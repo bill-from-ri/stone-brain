@@ -9,9 +9,9 @@ import { deriveOntology } from './registry'
 /**
  * Hand-authored world data, and the loader that writes it.
  *
- * These claims are **ground truth for the Phase 2B bake-off**, which is the
- * whole reason they are written by hand. Generate them with a model and the
- * bake-off compares a model to itself and always passes.
+ * These claims are **ground truth for scoring Phase 2B extraction**, which is
+ * the whole reason they are written by hand. Generate them with a model and
+ * the scoring compares a model to itself and always passes.
  *
  * Everything here is `created_by: 'seed'` and `canonicity: 'canon'` — read from
  * a real document by a human, unlike an extractor's output, which lands as

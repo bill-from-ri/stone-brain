@@ -1,5 +1,16 @@
 @AGENTS.md
 
+# Terminology — phrases to avoid
+
+Unclear or overloaded terms. Don't use them in code, comments, docs, or replies; use the
+replacement.
+
+| Avoid | Say instead |
+| --- | --- |
+| bake-off | **model comparison** — running several models over the same documents to see whether the extraction prompt holds (implementation plan §7, deferred). **Extraction scoring** — checking one model's output against the hand-seeded ground truth. |
+
+Add to this table when a term causes confusion.
+
 # Feature flags
 
 Flags live in `src/lib/flags.ts`, are server-only, and are driven by environment

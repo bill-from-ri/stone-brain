@@ -3,9 +3,9 @@ import type * as schema from '@/db/schema'
 import { loadSeed, type SeedClaim, type SeedEntity, type WorldSeedReport } from './seed-world'
 
 /**
- * Seed round 2 — "The Kaldian Empire" (docs/seed-drafts/draft-seed-round-2.md).
+ * Seed round 2 — "The Kaldian Empire" (.claude/skills/seed-ground-truth/examples/kaldian-empire-draft.md).
  *
- * Ground truth for the Phase 2B bake-off, hand-read from the document. Where
+ * Ground truth for scoring Phase 2B extraction, hand-read from the document. Where
  * *Written Map* (`seed-world.ts`) was almost pure geography, this document is
  * people, factions, offices, events, and trade — so the two together exercise
  * both halves of the vocabulary.

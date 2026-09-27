@@ -2,8 +2,8 @@
  * `npm run extract -- "<document name>" [--write]` — run one real document
  * through the whole Phase 2B path against the real provider.
  *
- * This is the harness Phase 2B §4 was verified with, and the one §7's bake-off
- * will drive: the pieces either side of the model (§2's export, §3's write) are
+ * This is the harness Phase 2B §4 was verified with, and the one §7's model
+ * comparison will drive: the pieces either side of the model (§2's export, §3's write) are
  * covered by unit tests against a real Postgres, but "does this provider honour
  * `response_format` for a 70-value enum" is not a question a test can answer —
  * only a provider can.
@@ -25,7 +25,7 @@ loadEnv({ path: ['.env.local', '.env'], quiet: true })
 const args = process.argv.slice(2)
 const write = args.includes('--write')
 const json = args.includes('--json')
-/** Overrides the stored model id without touching the saved settings — §7's bake-off knob. */
+/** Overrides the stored model id without touching the saved settings — §7's model-comparison knob. */
 const modelOverride = args.find((a) => a.startsWith('--model='))?.slice('--model='.length)
 const query = args.filter((a) => !a.startsWith('--')).join(' ').trim()
 

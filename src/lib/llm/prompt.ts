@@ -8,7 +8,7 @@ import { describeVocabulary, type CompiledOntology, type Rejection } from '@/lib
  * retry — because the prompt is the part a person tunes and a test asserts on,
  * and neither wants a network client in the import graph. Nothing here is
  * `server-only`: it is string assembly, and being able to print it without a
- * provider configured is most of how the §7 bake-off gets debugged.
+ * provider configured is most of how extraction quality gets debugged.
  *
  * ## Everything derives from the compiled ontology
  *

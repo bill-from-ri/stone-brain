@@ -30,7 +30,7 @@ For claims to be made, we need to have the ontology in place first. This will in
 - [x] Create basic entity matcher function  
 - [x] Wire up Claims––both table and graph views––on frontend to visualize everything (users should have the ability to define and edit Claims via the frontend). Remember to mark the seed document as Verified
 
-**Phase 2A is complete.** What it left behind, beyond the checklist: a constraint layer that makes an invalid claim unwritable, the Nevlos calendar and its parser, an extraction contract whose validator and prompt are generated from one registry, and 29 entities / 28 claims hand-seeded from *Written Map (1012)* as ground truth for the 2B bake-off.
+**Phase 2A is complete.** What it left behind, beyond the checklist: a constraint layer that makes an invalid claim unwritable, the Nevlos calendar and its parser, an extraction contract whose validator and prompt are generated from one registry, and 29 entities / 28 claims hand-seeded from *Written Map (1012)* as ground truth for 2B's extraction scoring.
 
 Carried forward deliberately: inverse claims are materialised on hand-entry, and the extraction path will need the same (2B §5); the entity matcher never writes, so agent-proposed entities are 2B's job.
 
@@ -210,7 +210,9 @@ Relationships are directional, and `predicates.inverse_name` is already populate
 - [ ] Show them on the document, with the reason — this is also how we find out the vocabulary is too thin
 - [ ] Predicate proposals queue: let the model propose a missing predicate, and let the user promote or reject it (see ontology-design.md)
 
-### 7. Model bake-off
+### 7. Model comparison — deferred
+
+**Deferred (2026-09-27).** Only Gemini is available to run extraction for now, so there is nothing to compare it against. Scoring Gemini's output against the hand-seeded ground truth does not wait on this and continues as its own step; this section resumes when a second model is available.
 
 Since we do not control the model, the goal is not to pick one but to confirm the prompt holds across several and publish a recommended default (decisions §11).
 

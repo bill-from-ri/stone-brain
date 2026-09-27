@@ -565,7 +565,7 @@ OpenRouter remains viable and is unaffected by the §8 serverless decision: it i
 OpenAI-compatible HTTP API, so no persistent process is needed and streaming works over
 standard SSE from a Vercel function.
 
-**Confirmed for the Phase 2 bake-off.** One API, swap a model string, compare candidates on
+**Confirmed for the Phase 2 model comparison.** One API, swap a model string, compare candidates on
 long documents — exactly the "evaluate different models" task in the implementation plan.
 
 ### Why a single shared key was rejected
@@ -585,7 +585,7 @@ through one OpenRouter account:
    but that conflicts with the §8 zero-budget constraint. With more than a couple of users,
    50/day is the binding limit on the whole product.
 3. **Context windows vary** across free models, and Phase 2 targets long documents. Which free
-   models can hold a full document is for the bake-off to measure, not to assume.
+   models can hold a full document is for the model comparison to measure, not to assume.
 
 ### The decision: users configure their own provider
 
@@ -677,7 +677,7 @@ LLM-free. So the app must work fully with no provider configured, and the key is
 only when the user first attempts claim extraction. Progressive disclosure rather than a
 second barrier at signup.
 
-The Phase 2 bake-off changes purpose accordingly: from "pick the model" to "confirm the
+The Phase 2 model comparison changes purpose accordingly: from "pick the model" to "confirm the
 extraction prompt holds across a range of models, and publish a recommended default." Its
 output is a docs page, not a hardcoded constant.
 

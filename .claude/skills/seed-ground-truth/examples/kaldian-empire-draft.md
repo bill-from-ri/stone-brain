@@ -1,8 +1,9 @@
-# DRAFT — Seed round 2: "The Kaldian Empire"
+# Worked example — Seed round 2: "The Kaldian Empire"
 
-> **Working document, nothing locked in.** Scratch space for the second hand-seeded document —
-> proposed entities and claims for ground truth, and the ontology changes this document argues for.
-> Fold the settled parts into `ontology-design.md` and `registry.ts`, then delete this file.
+> **Frozen example, not a live document.** This is the round-2 draft as it stood when seeding
+> finished (2026-08-30), kept as the structural template for new drafts. Its settled decisions
+> now live in `docs/ontology-design.md` (*Modelling conventions*) and `registry.ts`; where this
+> file and those disagree, they win. Do not edit it to track later ontology changes.
 
 Source: `The Kaldian Empire`, 24 paragraphs (¶0–¶23), ~8.3k chars / ~2,070 tokens, exported 2026-08-30.
 A wiki-article on the largest nation on Elduin — its history, government, factions, culture, and economy.

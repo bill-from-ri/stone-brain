@@ -6,7 +6,7 @@ the reasoning behind the constraint layer lives in [architecture-decisions.md §
 
 ## Entities
 
-We start with ten entity types:
+We have eleven entity types:
 
 * Characters
 * Factions
@@ -18,8 +18,9 @@ We start with ten entity types:
 * Artifacts — including created phenomena, not only portable objects
 * Events
 * Commodities — classes of traded or produced good, not particular objects
+* Deities — worshipped beings; may be the deified form of a real character, or exist purely in belief
 
-**These live in one `entities` table with an `entity_type` column, not nine tables.** The note
+**These live in one `entities` table with an `entity_type` column, not a table per type.** The note
 at the bottom of the original draft was right, and it turns out to be forced rather than merely
 tidy: claims need a single foreign-key target, and Postgres has no polymorphic foreign key.
 
@@ -110,7 +111,7 @@ code. Three reference tables sit in front of `entities` and `claims`:
 
 | Table | Holds | Stops |
 | --- | --- | --- |
-| `entity_types` | the ten types, as rows | unknown types |
+| `entity_types` | the entity types, as rows | unknown types |
 | `predicates` | the verb vocabulary — `ruled_by`, `population`, … | invented predicates |
 | `predicate_signatures` | legal `(predicate, subject type, object type / value type)` triples | nonsense pairings |
 
@@ -126,8 +127,8 @@ truth — so the legal *combination* is the row.
 
 ### The starting vocabulary
 
-Defined in [`src/lib/ontology/registry.ts`](../src/lib/ontology/registry.ts): **26 relationship
-concepts and 22 attributes**, expanding to 70 predicate rows and 254 signatures. Only one
+Defined in [`src/lib/ontology/registry.ts`](../src/lib/ontology/registry.ts): **27 relationship
+concepts and 23 attributes**, expanding to 73 predicate rows and 263 signatures. Only one
 direction of each relationship is written by hand; the inverse predicate and its mirrored
 signatures are generated, so the two directions cannot disagree about which types they accept.
 
@@ -335,7 +336,42 @@ source document uses the phrase for both the bay and the forested land around it
 returns both, labelled, in either direction and with or without a type. A unique index would have
 made that world unrepresentable.
 
+The second seed repeats the pattern across types: *the Kalduin Dynasty* is a variant of the
+Kaldian Empire (`society`) and also the ruling house (`faction`), so resolving it returns both. It
+also gives the first cross-document match — `Elduin` and `Grain`, seeded from *Written Map*, are
+reused by exact name rather than minted again.
+
 ---
+
+# Modelling conventions
+
+How recurring real-world shapes map onto the vocabulary. Each was ratified while hand-labelling a
+document, and holds for extraction as much as for labelling — the full evidence is in the worked
+example at `.claude/skills/seed-ground-truth/examples/kaldian-empire-draft.md`.
+
+- **Dynasties and houses are `faction`s.** They `rules` land and succeed one another; for that,
+  `successor_of` / `predecessor_of` accept `faction → faction`. Succession is often stated with no
+  dates, so it cannot be recovered from `rules` windows alone. `society → society` succession
+  stays out: "successor state" is too vague to be useful.
+- **A polity controlling land is `rules`, not `located_in`.** A region cannot sit inside a
+  society. `located_in` is geographic containment only (`Kaldian Empire —located_in→ Elduin`).
+- **Sub-polities are `society`s.** A duchy or province within an empire is its own `society`,
+  joined to the parent by `serves`; true vassalage (a kingdom "under the aegis" of an empire) uses
+  the same `society → society` signature.
+- **Political alliances inside a state are `faction`s**, joined by `member_of` (faction →
+  society). Open to revision if a document shows alliances spanning states.
+- **A people's shared customs are a `culture`**, linked by `practices`. `language` is an
+  attribute of `society` and `culture` only — land has no tongue; the people on it do.
+- **Aliases are `name_variants`, not claims.** A variant may also be the name of a different
+  entity; that is allowed and is what makes the matcher return the ambiguity (see *The entity
+  matcher*).
+- **Eras are `event`s**, bounded by start and end dates where the document gives them.
+- **Deities are their own type.** `incarnation_of` (deity → character, inverse `deified_as`)
+  links a god to the real being it was, and is simply absent for a deity of pure belief. The
+  predicate's name is provisional until a document that names a deity exercises it.
+- **An enum value the document does not state is left unset.** A society that is agrarian,
+  industrial, and extractive at once gets no `economy` claim rather than a forced pick.
+- **Bare years are AD**, via the calendar's default era — see [calendar.md](calendar.md).
 
 # How the vocabulary grows
 
@@ -359,3 +395,13 @@ Closed at write time, open over the life of the project.
   construction.
 - **Agent-proposed entities.** The matcher deliberately never creates one (see below), so a name
   it cannot resolve waits for 2B's proposal step, which decides deliberately and records why.
+
+# Deferred vocabulary
+
+Raised by a seeded document, acknowledged, and deliberately not modelled yet:
+
+- **Currency and coinage.** No coin entities or currency attribute; a claim like "Swadia adopted
+  imperial currency" is dropped rather than forced into `imports`.
+- **`economy` enum breadth** — whether *industrial* and *extractive* belong in the enum. Wants a
+  second, corroborating document.
+- **The final name of `incarnation_of` / `deified_as`.**
