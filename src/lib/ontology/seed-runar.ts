@@ -3,7 +3,9 @@ import type * as schema from '@/db/schema'
 import { loadSeed, type SeedClaim, type SeedEntity, type WorldSeedReport } from './seed-world'
 
 /**
- * Seed round 3 — "The Runar" (docs/seed-drafts/draft-seed-round-3.md).
+ * Seed round 3 — "The Runar". Its rulings are in docs/ontology-design.md; the
+ * working draft, which the decision numbers below cite, is in git history:
+ * `git show 4330390:docs/seed-drafts/draft-seed-round-3.md`.
  *
  * Ground truth for scoring Phase 2B extraction, hand-read from the document.
  * Where *Written Map* was geography and *The Kaldian Empire* politics, this is

@@ -349,6 +349,10 @@ Kaldian Empire (`society`) and also the ruling house (`faction`), so resolving i
 also gives the first cross-document match — `Elduin` and `Grain`, seeded from *Written Map*, are
 reused by exact name rather than minted again.
 
+The third adds near-misses, which the matcher must *suggest* and never match: `Eldi` (a society),
+`Elduin` (the island named after them) and `Elduin Dynasty`; and `Enu` (a culture), `Enua` (a
+region) and `Enuarak` (a society) — related names, distinct entities.
+
 ---
 
 # Modelling conventions
@@ -377,7 +381,9 @@ round-2 rulings; the other rounds' drafts are in git history.
   dates, so it cannot be recovered from `rules` windows alone. `society → society` succession
   stays out: "successor state" is too vague to be useful.
 - **A polity controlling land is `rules`, not `located_in`.** A region cannot sit inside a
-  society. `located_in` is geographic containment only (`Kaldian Empire —located_in→ Elduin`).
+  society. `located_in` is geographic containment or habitation (`Kaldian Empire —located_in→
+  Elduin`; "the Eldi of the Amber Coast" is `Eldi —located_in→ Amber Coast`) — a people living
+  somewhere is not a claim that it holds sovereignty there.
 - **Sub-polities are `society`s.** A duchy or province within an empire is its own `society`,
   joined to the parent by `serves`; true vassalage (a kingdom "under the aegis" of an empire) uses
   the same `society → society` signature.
@@ -434,8 +440,8 @@ Not deferred — judged out of scope, so neither a labeller nor an extractor sho
 - **Purpose and intent** — "…with the intention of trapping Vaski". Summary prose, if anywhere.
 - **Causal relations between places** — "watered by moisture blown off the Dragon's Shroud".
 - **Extents** — "spanning from the Yeosin Frontier to the Sea of Akál" is not a location.
-- **Unnamed groups and events** — "nomadic tribes", "a period of civil war". Only a proper name
-  makes an entity.
+- **Unnamed groups, events, and places** — "nomadic tribes", "a period of civil war", "the deep
+  inland forest", "Steppe peoples to the east". Only a proper name makes an entity.
 
 Hand entry is first-class throughout: `created_by = 'user'` on an entity or claim means it was
 written by a person with no document behind it, and needs no `claim_sources` row.
@@ -469,8 +475,9 @@ Raised by a seeded document, acknowledged, and deliberately not modelled yet:
 
 - **Currency and coinage.** No coin entities or currency attribute; a claim like "Swadia adopted
   imperial currency" is dropped rather than forced into `imports`.
-- **`economy` enum breadth** — whether *industrial* and *extractive* belong in the enum. Wants a
-  second, corroborating document.
+- **`economy` enum breadth** — whether *industrial*, *extractive*, *raiding*, *subsistence*, or
+  *hunter-gatherer* belong in the enum. Two documents now argue for it (*The Kaldian Empire*,
+  *The Runar*); worth settling with the rest of the economy.
 - **The final name of `incarnation_of` / `deified_as`.**
 - **Trade and other economic relationships between peoples** (`trades_with` and kin). Named,
   bilateral trade is stated in *The Runar*; modelled together with the rest of the economy later.

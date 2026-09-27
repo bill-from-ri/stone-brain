@@ -181,6 +181,9 @@ The draft is scratch space, not a design record. Once seeded and verified:
   `Kaldian Culture`, `Runar Religion`.
 - **Peoples are plural**: `Tvars`, `Atarks`, `Conservatives`. A singular form the
   document uses goes in `variants` (`Tvar`).
+- **Only a proper name makes an entity.** "The deep inland forest", "Steppe peoples to
+  the east", "a period of civil war" are descriptions — leave them out and note them under
+  *Deliberately not claimed*.
 - **Cross-document reuse:** if an entity already exists (check `list-entities.ts`),
   name it **identically** — `normalizeName` folds case, diacritics, and punctuation,
   but the rest of the string must match for the loader to reuse the row.
