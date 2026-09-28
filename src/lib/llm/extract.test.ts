@@ -186,8 +186,34 @@ describe('extractClaims', () => {
   })
 
   it('rethrows the last refusal when no rung is accepted', async () => {
-    mockFetch(failure(503, 'Overloaded.'))
+    mockFetch(failure(400, 'Bad request.'))
     await expect(extractClaims(creds, input)).rejects.toBeInstanceOf(ProviderError)
+  })
+
+  it('treats a 5xx past the schema rung as an outage, not a refusal', async () => {
+    // gemini-3.7-flash, 2026-09-27: overloaded, 503 to every rung. Walking all
+    // six spent six requests of a 20/day free tier on one document.
+    const fetchMock = mockFetch(failure(503, 'Overloaded.'))
+
+    await expect(extractClaims(creds, input)).rejects.toMatchObject({
+      name: 'ProviderError',
+      reason: 'unreachable',
+    })
+    // The schema rung's 503 is read as "unsupported"; json_object's is not.
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps a remembered rung through an outage rather than re-walking the ladder', async () => {
+    mockFetch(failure(503, 'busy'), completion('{"claims":[]}'))
+    await extractClaims(creds, input)
+
+    const fetchMock = mockFetch(failure(503, 'busy'), completion('{"claims":[]}'))
+    await expect(extractClaims(creds, input)).rejects.toMatchObject({ reason: 'unreachable' })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    const next = mockFetch(completion('{"claims":[]}'))
+    await extractClaims(creds, input)
+    expect(bodyOf(next, 0).response_format).toEqual({ type: 'json_object' })
   })
 
   it('spends one retry on rejected claims and banks the ones that passed', async () => {
@@ -306,7 +332,7 @@ describe('extractClaims', () => {
     mockFetch(failure(503, 'busy'), completion('{"claims":[]}'))
     await extractClaims(creds, input)
 
-    const fetchMock = mockFetch(failure(503, 'busy'), completion('{"claims":[]}'))
+    const fetchMock = mockFetch(failure(400, 'response_format is not supported'), completion('{"claims":[]}'))
     const run = await extractClaims(creds, input)
 
     // The remembered json_object rung is tried first and refused, so the walk

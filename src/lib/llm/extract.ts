@@ -279,7 +279,8 @@ const acceptedRung = new Map<string, number>()
  * and the fix is one tier down, not one rung.
  *
  * The cost of a wrong guess is small and self-correcting. A genuine outage
- * fails every rung and the last error is rethrown; a genuine capability gap
+ * costs at most the schema rung plus one more before it is rethrown (see
+ * `isRequestRefusal`); a genuine capability gap
  * fails in a second or two without billing a token, because the request was
  * rejected before the model ever saw it.
  */
@@ -321,7 +322,7 @@ async function negotiateRequest(
       acceptedRung.set(key, rung)
       return { result, shape }
     } catch (err) {
-      if (!isRequestRefusal(err)) throw err
+      if (!isRequestRefusal(err, shape)) throw err
       if (rung === remembered) acceptedRung.delete(key)
       if (namesReasoningEffort(err)) skipEffort = shape.effort
       lastError = err
@@ -336,10 +337,19 @@ export function forgetNegotiatedShape(): void {
   acceptedRung.clear()
 }
 
-/** A provider answering "no" to the request, as opposed to failing or refusing us. */
-function isRequestRefusal(err: unknown): boolean {
+/**
+ * A provider answering "no" to the request, as opposed to failing or refusing us.
+ *
+ * A 4xx is always the request's fault. A 5xx is read as a refusal only on a
+ * schema rung, which is the one case measured to mean "unsupported" (§4:
+ * `gemini-3.7-flash` 503s every `json_schema` request). Anywhere else it is an
+ * outage: on 2026-09-27 the same model 503'd all six rungs while overloaded,
+ * and walking the ladder turned one failed document into six spent requests.
+ */
+function isRequestRefusal(err: unknown, shape: RequestShape): boolean {
   if (!(err instanceof ProviderError) || err.status === undefined) return false
-  return err.reason === 'model_rejected' || err.reason === 'unreachable'
+  if (err.reason === 'model_rejected') return true
+  return err.reason === 'unreachable' && shape.format?.type === 'json_schema'
 }
 
 function namesReasoningEffort(err: unknown): boolean {
