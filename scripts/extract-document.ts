@@ -16,6 +16,20 @@
  * shows up on the document. The write is additive and idempotent (§3), so
  * running it twice on an unchanged document creates nothing the second time.
  *
+ * ## A model that is not the configured provider
+ *
+ * Two flags split the run in half, as `capture-extraction.ts` does for scoring,
+ * so the reply can come from a model reached some other way than the
+ * OpenAI-compatible endpoint in Settings:
+ *
+ *   --dump-prompt=<dir>   write `<slug>.system.txt` and `<slug>.user.txt` (the
+ *                         exact strings `extractClaims` would send) and stop.
+ *   --from-reply=<file>   take the model's reply from a file instead of a
+ *                         provider, through the same `extractJson` +
+ *                         `parseExtraction` path a live reply takes. Needs
+ *                         `--model=<name>`, which is what the run is recorded
+ *                         under. One attempt, no repair round.
+ *
  * Needs `--conditions=react-server`: this reaches into `server-only` modules —
  * the Drive client and the provider store — which throw on import outside
  * Next's server bundle. See the npm script.
@@ -30,10 +44,17 @@ const write = args.includes('--write')
 const json = args.includes('--json')
 /** Overrides the stored model id without touching the saved settings — §7's model-comparison knob. */
 const modelOverride = args.find((a) => a.startsWith('--model='))?.slice('--model='.length)
+const flag = (name: string) =>
+  args.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3)
+const promptDir = flag('dump-prompt')
+const replyFile = flag('from-reply')
 const query = args.filter((a) => !a.startsWith('--')).join(' ').trim()
 
-if (!query) {
-  console.error('Usage: npm run extract -- "<document name>" [--write] [--json] [--model=<id>]')
+if (!query || (replyFile && !modelOverride)) {
+  console.error(
+    'Usage: npm run extract -- "<document name>" [--write] [--json] [--model=<id>]\n' +
+      '       [--dump-prompt=<dir> | --from-reply=<file> --model=<name>]',
+  )
   process.exit(1)
 }
 
@@ -45,12 +66,17 @@ const { documents, users } = await import('@/db/schema')
 const { DriveClient } = await import('@/lib/drive/client')
 const { readDocumentText } = await import('@/lib/documents/text')
 const { getProviderCredentials } = await import('@/lib/llm/provider')
-const { extractClaims, ExtractionError } = await import('@/lib/llm/extract')
+const { extractClaims, extractJson, ExtractionError } = await import('@/lib/llm/extract')
+const { extractionSystemPrompt, extractionUserPrompt } = await import('@/lib/llm/prompt')
+const { parseExtraction } = await import('@/lib/ontology/extraction')
+const fs = await import('node:fs')
+const path = await import('node:path')
 const { ProviderError } = await import('@/lib/llm/errors')
 const { coreOntology } = await import('@/lib/ontology/extraction')
 const { createRunner } = await import('@/lib/extraction/pipeline')
 const { runnerDeps } = await import('@/lib/extraction/run')
 type ModelRun = import('@/lib/llm/extract').ExtractionRun
+type ExtractionInput = import('@/lib/llm/extract').ExtractionInput
 
 const [user] = await db.select({ id: users.id, email: users.email }).from(users).limit(2)
 if (!user) throw new Error('No users in the database.')
@@ -75,14 +101,51 @@ if (matches.length > 1) {
 }
 const doc = matches[0]!
 
+const client = await DriveClient.forUser(user.id)
+
+if (promptDir) {
+  const text = await readDocumentText(client, doc.driveFileId)
+  const slug = doc.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()
+  fs.mkdirSync(promptDir, { recursive: true })
+  fs.writeFileSync(path.join(promptDir, `${slug}.system.txt`), extractionSystemPrompt(coreOntology()))
+  fs.writeFileSync(path.join(promptDir, `${slug}.user.txt`), extractionUserPrompt(doc.name, text.paragraphs))
+  console.error(`${doc.name}: prompts written to ${promptDir}/${slug}.* (${text.paragraphs.length} paragraphs)`)
+  process.exit(0)
+}
+
 const stored = await getProviderCredentials(user.id)
-if (!stored) throw new Error(`No provider configured for ${user.email}.`)
-const creds = modelOverride ? { ...stored, modelId: modelOverride } : stored
+if (!stored && !replyFile) throw new Error(`No provider configured for ${user.email}.`)
+// A reply from a file never reaches the stored provider, so it borrows nothing
+// from it: the run is recorded under the model that actually wrote the reply.
+const creds = replyFile
+  ? { ...stored, apiKey: '', baseUrl: 'offline', modelId: modelOverride! }
+  : modelOverride
+    ? { ...stored!, modelId: modelOverride }
+    : stored!
+
+/** The model step: a live call, or a saved reply taken down the same path. */
+async function extract(c: typeof creds, input: ExtractionInput): Promise<ModelRun> {
+  if (!replyFile) return extractClaims(c as Parameters<typeof extractClaims>[0], input)
+  const reply = fs.readFileSync(replyFile, 'utf8')
+  const payload = extractJson(reply)
+  if (payload === undefined) {
+    throw new ExtractionError('unusable_response', 'The saved reply is not JSON.', reply)
+  }
+  const parsed = parseExtraction(payload, input.ontology)
+  return {
+    claims: parsed.claims,
+    rejections: parsed.rejections,
+    proposals: parsed.proposals,
+    model: modelOverride!,
+    attempts: 1,
+    responseFormat: null,
+    usage: { promptTokens: 0, completionTokens: 0 },
+  }
+}
 
 console.error(`document : ${doc.name}`)
 console.error(`provider : ${creds.modelId} @ ${creds.baseUrl}`)
 
-const client = await DriveClient.forUser(user.id)
 const describeText = (text: Awaited<ReturnType<typeof readDocumentText>>) =>
   console.error(
     `text     : ${text.paragraphs.length} paragraphs, ${text.markdown.length} chars ` +
@@ -130,7 +193,7 @@ if (!write) {
 
   let run: ModelRun
   try {
-    run = await extractClaims(creds, {
+    run = await extract(creds, {
       documentName: doc.name,
       paragraphs: text.paragraphs,
       ontology: coreOntology(),
@@ -161,13 +224,15 @@ if (!write) {
 let captured: ModelRun | undefined
 const runExtraction = createRunner({
   ...runnerDeps,
-  credentials: async () => creds,
+  credentials: async () => creds as Parameters<typeof extractClaims>[0],
+  // A saved reply says nothing about whether the stored provider is healthy.
+  ...(replyFile ? { recordHealth: async () => {} } : {}),
   readText: async () => {
     const text = await readDocumentText(client, doc.driveFileId)
     describeText(text)
     return text
   },
-  extract: async (c, input) => (captured = await extractClaims(c, input)),
+  extract: async (c, input) => (captured = await extract(c, input)),
 })
 
 const outcome = await runExtraction(user.id, doc.id)
