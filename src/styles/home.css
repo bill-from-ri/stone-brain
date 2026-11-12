@@ -1,0 +1,302 @@
+/* The in-app Home screen (src/app/(app)/page.tsx).
+
+   The prototype's inline styles for the HOME section (frontend/Stone
+   Brain.dc.html, lines 104-205), extracted into classes the same way
+   components.css did for the rest of the shell. Kept in its own file because
+   only this route uses them. */
+
+.sb-home {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 26px 28px 34px;
+  max-width: 1180px;
+}
+
+.sb-home-title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.sb-home-summary {
+  margin: 5px 0 0;
+  max-width: 620px;
+  font-size: 13px;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+/* ------------------------------------------------------------ stat cards */
+
+.sb-home-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sb-home-stat {
+  padding: 14px 15px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.sb-home-stat[data-alert] {
+  border-color: var(--bad);
+}
+
+.sb-home-stat-label {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.sb-home-stat-value {
+  margin-top: 8px;
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.sb-home-stat[data-alert] .sb-home-stat-value {
+  color: #e08c86;
+}
+
+.sb-home-stat-note {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.sb-home-stat-ok,
+.sb-home-stat-bad {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.sb-home-stat-ok {
+  color: var(--ok);
+}
+
+.sb-home-stat-bad {
+  color: #e08c86;
+}
+
+/* --------------------------------------------------------------- columns */
+
+.sb-home-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.sb-home-col-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 11px;
+}
+
+.sb-home-kicker {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.sb-home-col-link {
+  margin-left: auto;
+  font-size: 11px;
+}
+
+/* ── pick up where you left off ── */
+
+.sb-home-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sb-home-step {
+  display: flex;
+  gap: 13px;
+  padding: 14px 15px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+}
+
+.sb-home-step:hover {
+  border-color: var(--gold-line);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.sb-home-step > i {
+  margin-top: 1px;
+  font-size: 17px;
+  color: var(--gold-lite);
+}
+
+.sb-home-step-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.sb-home-step-title {
+  font-size: 14.5px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.sb-home-step-detail {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+.sb-home-step-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  margin-top: 9px;
+}
+
+.sb-home-step-where {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.sb-home-tag-bad {
+  background: var(--bad-dim);
+  color: #e08c86;
+}
+
+/* ── empty states ── */
+
+.sb-home-empty {
+  display: flex;
+  gap: 13px;
+  padding: 16px 15px;
+  background: var(--surface);
+  border: 1px dashed var(--line-2);
+  border-radius: 8px;
+}
+
+.sb-home-empty > i {
+  margin-top: 1px;
+  font-size: 17px;
+  color: var(--gold-lite);
+}
+
+.sb-home-empty-title {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.sb-home-empty p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.sb-home-empty .btn {
+  margin-top: 12px;
+}
+
+.sb-home-empty--quiet > i {
+  color: var(--muted);
+}
+
+.sb-home-empty--quiet p {
+  margin: 0;
+}
+
+/* ── recent activity ── */
+
+.sb-home-activity {
+  margin: 0;
+  padding: 4px 15px;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.sb-home-event {
+  display: flex;
+  gap: 11px;
+  padding: 12px 0;
+}
+
+.sb-home-event + .sb-home-event {
+  border-top: 1px solid var(--line);
+}
+
+.sb-home-event > i {
+  margin-top: 1px;
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.sb-home-event > i[data-tone='ok'] {
+  color: var(--ok);
+}
+.sb-home-event > i[data-tone='bad'] {
+  color: var(--bad);
+}
+.sb-home-event > i[data-tone='gold'] {
+  color: var(--gold-lite);
+}
+
+.sb-home-event-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.sb-home-event-text {
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+
+.sb-home-event-text strong,
+.sb-home-event-text a {
+  font-weight: 500;
+}
+
+.sb-home-event-meta {
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* ------------------------------------------------------------ narrower */
+
+@media (max-width: 1080px) {
+  .sb-home-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .sb-home-cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
