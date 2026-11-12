@@ -1,0 +1,755 @@
+/* The public landing page (src/app/(public)/welcome/page.tsx).
+
+   Everything is under .lp / .lp-* so nothing here can reach the app shell:
+   this file is imported by the landing route alone, but global CSS in the App
+   Router is not unloaded on navigation, so a bare selector here would follow a
+   visitor into /connect. Colours come only from tokens.css — the page must read
+   as the same product as the app it leads into.
+
+   Type scale: the app runs at 13.5px because it is dense, tabular software.
+   A page meant to be read runs larger (16px body), and the headings use the
+   same weight-and-tracking recipe as the app's, just further up the scale. */
+
+.lp {
+  /* nocturne.css names "Inter" literally, but next/font registers the face
+     under a generated family exposed as --font-inter. Re-pointed here so the
+     headings and buttons on this page actually render in Inter. */
+  --font-heading: var(--font-inter), Inter, system-ui, sans-serif;
+  --font-body: var(--font-inter), Inter, system-ui, sans-serif;
+  --lp-gutter: 24px;
+  --lp-max: 1120px;
+
+  min-height: 100dvh;
+  background:
+    radial-gradient(ellipse 900px 520px at 78% -8%, rgba(184, 134, 11, 0.09), transparent 70%),
+    var(--bg);
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.6;
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp {
+    scroll-behavior: auto;
+  }
+}
+
+.lp-wrap {
+  max-width: var(--lp-max);
+  margin: 0 auto;
+  padding: 0 var(--lp-gutter);
+}
+
+.lp h1,
+.lp h2,
+.lp h3 {
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+.lp p {
+  text-wrap: pretty;
+}
+
+/* Buttons are anchors here; the global a:hover underline is for prose links. */
+.lp a.btn:hover {
+  text-decoration: none;
+}
+
+.lp .btn-primary {
+  color: var(--gold-lite);
+  border-color: var(--gold);
+}
+
+.lp-btn-lg {
+  min-height: 44px;
+  padding: 0 18px;
+  font-size: 14.5px;
+  gap: 8px;
+}
+
+.lp-mono {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 0.92em;
+}
+
+/* ------------------------------------------------------------ skip link */
+
+.lp-skip {
+  position: absolute;
+  left: 16px;
+  top: -60px;
+  z-index: 10;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--panel);
+  border: 1px solid var(--gold-line);
+}
+
+.lp-skip:focus {
+  top: 12px;
+}
+
+.lp main:focus {
+  outline: none;
+}
+
+/* --------------------------------------------------------------- header */
+
+.lp-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: rgba(21, 24, 28, 0.86);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+
+.lp-header-row {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  height: 60px;
+}
+
+.lp-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: -0.005em;
+}
+
+.lp-brand:hover {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+/* The same mark as the connect card and the nav rail. */
+.lp-mark {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: var(--gold-dim);
+  border: 1px solid var(--gold-line);
+  display: grid;
+  place-items: center;
+  color: var(--gold-lite);
+  font-size: 15px;
+}
+
+.lp-nav {
+  display: flex;
+  gap: 22px;
+  margin-right: auto;
+  font-size: 14px;
+}
+
+.lp-nav a {
+  color: var(--muted);
+}
+
+.lp-nav a:hover {
+  color: var(--ink);
+}
+
+.lp-header-cta {
+  font-size: 13.5px;
+  min-height: 36px;
+}
+
+/* ----------------------------------------------------------------- hero */
+
+.lp-hero {
+  padding: 88px 0 96px;
+}
+
+.lp-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 64px;
+  align-items: center;
+}
+
+.lp-kicker {
+  margin: 0 0 18px;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold-lite);
+}
+
+.lp-hero h1 {
+  margin: 0 0 22px;
+  font-size: clamp(36px, 5.2vw, 56px);
+  font-weight: 600;
+  line-height: 1.04;
+  letter-spacing: -0.03em;
+}
+
+.lp-lede {
+  margin: 0 0 32px;
+  max-width: 34em;
+  font-size: 18px;
+  line-height: 1.6;
+  color: #c3c6cb;
+}
+
+.lp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.lp-assurances {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.lp-assurances li {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.lp-assurances i {
+  color: var(--gold-lite);
+  font-size: 15px;
+}
+
+/* -------------------------------------------------------- illustrations */
+
+.lp-figure {
+  margin: 0;
+  min-width: 0;
+}
+
+.lp-caption {
+  margin-top: 12px;
+  font-size: 12.5px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.lp-conflict,
+.lp-claim {
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(0, 0, 0, 0.2);
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+.lp-conflict {
+  padding: 18px 18px 16px;
+  border-top: 2px solid var(--bad);
+}
+
+.lp-conflict-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #e08c86;
+}
+
+.lp-conflict-head i {
+  font-size: 15px;
+}
+
+.lp-chip {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.lp-conflict-question {
+  margin: 12px 0 14px;
+  font-size: 16px;
+  color: var(--ink);
+}
+
+.lp-conflict-question strong {
+  font-weight: 500;
+  color: var(--gold-pale);
+}
+
+.lp-sides {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.lp-side {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+
+.lp-side-claim {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 10px;
+}
+
+.lp-side-claim .lp-mono {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.lp-side-value {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+/* Same treatment as the app's .sb-quote: a gold hairline on the left. */
+.lp-quote {
+  margin: 0;
+  padding: 8px 11px;
+  border-left: 1px solid var(--gold-line);
+  background: rgba(0, 0, 0, 0.16);
+  border-radius: 0 6px 6px 0;
+  color: #cfccc4;
+  font-size: 12.5px;
+  line-height: 1.65;
+  flex: 1;
+}
+
+.lp-cite {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.lp-conflict-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.lp-fake-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 7px;
+  border: 1px solid var(--line-2);
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.lp-fake-btn--primary {
+  border-color: var(--gold);
+  color: var(--gold-lite);
+}
+
+.lp-claim {
+  padding: 16px;
+}
+
+.lp-claim-tuple {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  font-size: 14.5px;
+}
+
+.lp-entity {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--ink);
+}
+
+.lp-entity i {
+  color: var(--gold-lite);
+}
+
+.lp-predicate {
+  color: var(--gold-pale);
+}
+
+.lp-claim-facts {
+  display: flex;
+  gap: 24px;
+  margin: 14px 0;
+}
+
+.lp-claim-facts dt {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.lp-claim-facts dd {
+  margin: 2px 0 0;
+  color: var(--ink);
+}
+
+.lp-claim-inverse {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.lp-claim-inverse i {
+  color: var(--gold-lite);
+  transform: translateY(2px);
+}
+
+/* ------------------------------------------------------------- sections */
+
+.lp-section {
+  padding: 88px 0;
+  border-top: 1px solid var(--line);
+}
+
+.lp-h2 {
+  margin: 0 0 14px;
+  font-size: clamp(26px, 3.2vw, 34px);
+  font-weight: 600;
+  letter-spacing: -0.022em;
+  line-height: 1.15;
+}
+
+.lp-intro {
+  max-width: 40em;
+  margin: 0 0 40px;
+  color: var(--muted);
+  font-size: 16.5px;
+}
+
+.lp h3 {
+  margin: 0 0 8px;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+/* -- what it catches -- */
+
+.lp-catches {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.lp-card {
+  padding: 24px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.lp-card p {
+  margin: 0;
+  color: #b9bcc2;
+  font-size: 15px;
+}
+
+.lp-card-icon {
+  display: block;
+  margin-bottom: 14px;
+  font-size: 22px;
+  color: var(--gold-lite);
+}
+
+/* -- how it works -- */
+
+.lp-how-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 64px;
+  align-items: start;
+  margin-top: 36px;
+}
+
+.lp-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: none;
+}
+
+.lp-step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 18px;
+  padding-bottom: 32px;
+}
+
+/* The connecting line between step numbers: a pipeline, not a list. */
+.lp-step:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 17.5px;
+  top: 40px;
+  bottom: 6px;
+  width: 1px;
+  background: var(--line-2);
+}
+
+.lp-step:last-child {
+  padding-bottom: 0;
+}
+
+.lp-step-n {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--gold-line);
+  background: var(--gold-dim);
+  color: var(--gold-lite);
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-step h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.lp-step h3 i {
+  color: var(--gold-lite);
+  font-size: 17px;
+}
+
+.lp-step p {
+  margin: 0;
+  color: #b9bcc2;
+  font-size: 15px;
+}
+
+.lp-how-aside {
+  position: sticky;
+  top: 92px;
+}
+
+.lp-aside-label {
+  margin: 0 0 12px;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* -- under the hood -- */
+
+.lp-eng {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 32px 40px;
+  margin: 0;
+}
+
+.lp-eng-item {
+  padding-top: 16px;
+  border-top: 1px solid var(--line-2);
+}
+
+.lp-eng dt {
+  margin-bottom: 8px;
+  font-size: 15.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--ink);
+}
+
+.lp-eng dd {
+  margin: 0;
+  color: #b9bcc2;
+  font-size: 14.5px;
+}
+
+/* -- not built yet -- */
+
+.lp-notyet {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lp-notyet li {
+  padding: 22px;
+  border-radius: 12px;
+  border: 1px dashed var(--line-2);
+}
+
+.lp-notyet p {
+  margin: 0;
+  color: #b9bcc2;
+  font-size: 14.5px;
+}
+
+/* --------------------------------------------------------------- closing */
+
+.lp-cta {
+  padding: 96px 0;
+  border-top: 1px solid var(--line);
+  background: radial-gradient(ellipse 640px 300px at 50% 100%, rgba(184, 134, 11, 0.08), transparent 70%);
+}
+
+.lp-cta-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.lp-cta h2 {
+  margin: 0 0 12px;
+  font-size: clamp(28px, 3.6vw, 38px);
+  font-weight: 600;
+  letter-spacing: -0.024em;
+}
+
+.lp-cta p {
+  max-width: 32em;
+  margin: 0 0 28px;
+  color: var(--muted);
+}
+
+.lp-footer {
+  border-top: 1px solid var(--line);
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.lp-footer-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 24px;
+  padding-bottom: 24px;
+}
+
+/* ------------------------------------------------------------ responsive */
+
+@media (max-width: 960px) {
+  .lp-hero {
+    padding: 56px 0 72px;
+  }
+
+  .lp-hero-grid,
+  .lp-how-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 48px;
+  }
+
+  .lp-hero-copy {
+    max-width: 40em;
+  }
+
+  .lp-how-aside {
+    position: static;
+    max-width: 520px;
+  }
+
+  .lp-eng,
+  .lp-notyet {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .lp {
+    --lp-gutter: 16px;
+  }
+
+  /* The in-page links are a convenience; on a phone the header keeps the brand
+     and the one action that matters. */
+  .lp-nav {
+    display: none;
+  }
+
+  .lp-header-row {
+    justify-content: space-between;
+  }
+
+  .lp-section {
+    padding: 64px 0;
+  }
+
+  .lp-lede {
+    font-size: 16.5px;
+  }
+
+  .lp-catches,
+  .lp-eng,
+  .lp-notyet {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lp-intro {
+    margin-bottom: 28px;
+  }
+}
+
+@media (max-width: 480px) {
+  .lp-sides {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lp-header-cta {
+    padding: 0 10px;
+    font-size: 12.5px;
+  }
+
+  .lp-actions .btn {
+    flex: 1 1 100%;
+  }
+
+  .lp-footer-row {
+    flex-direction: column;
+  }
+}
