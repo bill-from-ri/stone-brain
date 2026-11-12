@@ -3,6 +3,7 @@ import type { NeonDatabase } from 'drizzle-orm/neon-serverless'
 import type * as schema from '@/db/schema'
 import { claimSources, claims, documents, entities } from '@/db/schema'
 import { ordinalFor } from './calendar'
+import { materialiseInverse } from './inverse-write'
 import { normalizeName } from './matcher'
 import { deriveOntology } from './registry'
 
@@ -17,6 +18,11 @@ import { deriveOntology } from './registry'
  * a real document by a human, unlike an extractor's output, which lands as
  * `draft`. Re-running is safe: entities match on `(user, type, normalized
  * name)` and claims on the generated `fingerprint`.
+ *
+ * Only the direction the document states is labelled here. The loader writes
+ * each relationship's inverse too, cited by the same passage, so the seeded
+ * graph obeys the same invariant as everything else (see `inverse.ts`) and
+ * scoring can compare it against extraction output that does the same.
  */
 
 type Db = NeonDatabase<typeof schema>
@@ -272,8 +278,11 @@ export type WorldSeedReport = {
   entitiesExisting: number
   /** Existing entities that had no summary and were given the seed's. */
   summariesFilled: number
+  /** Claims as labelled — the reverse directions are counted below. */
   claimsCreated: number
   claimsExisting: number
+  /** Inverses written this run that were not already in the graph. */
+  inversesCreated: number
   /**
    * Citations written this run. Normally equals `claimsCreated`; it runs higher
    * when a claim already existed from another document and this one is added as
@@ -331,6 +340,7 @@ export async function loadSeed(
     summariesFilled: 0,
     claimsCreated: 0,
     claimsExisting: 0,
+    inversesCreated: 0,
     sourcesCreated: 0,
     documentId,
   }
@@ -392,26 +402,29 @@ export async function loadSeed(
       throw new Error(`Seed claim names an object not in the entity list: ${claim.object}`)
     }
 
+    const values = {
+      userId,
+      subjectId: subject.id,
+      subjectType: subject.type,
+      predicate: claim.predicate,
+      objectId: object?.id ?? null,
+      objectType: object?.type ?? null,
+      ...valueColumns(claim),
+      ...(claim.startTime !== undefined && {
+        startTime: claim.startTime,
+        ...withOrder('startOrder', claim.startTime),
+      }),
+      ...(claim.endTime !== undefined && {
+        endTime: claim.endTime,
+        ...withOrder('endOrder', claim.endTime),
+      }),
+      canonicity: 'canon' as const,
+      createdBy: claim.handEntered === undefined ? ('seed' as const) : ('user' as const),
+    }
+
     const [written] = await db
       .insert(claims)
-      .values({
-        userId,
-        subjectId: subject.id,
-        subjectType: subject.type,
-        predicate: claim.predicate,
-        ...(object && { objectId: object.id, objectType: object.type }),
-        ...valueColumns(claim),
-        ...(claim.startTime !== undefined && {
-          startTime: claim.startTime,
-          ...withOrder('startOrder', claim.startTime),
-        }),
-        ...(claim.endTime !== undefined && {
-          endTime: claim.endTime,
-          ...withOrder('endOrder', claim.endTime),
-        }),
-        canonicity: 'canon',
-        createdBy: claim.handEntered === undefined ? 'seed' : 'user',
-      })
+      .values(values)
       // The fingerprint index is what makes re-running this a no-op rather than
       // a duplicate. The conflict action is a DO UPDATE that changes nothing, as
       // in `extraction-write.ts`, because DO NOTHING returns no id — and an
@@ -425,22 +438,27 @@ export async function loadSeed(
     if (written!.inserted) report.claimsCreated++
     else report.claimsExisting++
 
-    if (claim.handEntered !== undefined) continue
+    if (claim.handEntered === undefined) {
+      const [cited] = await db
+        .insert(claimSources)
+        .values({
+          userId,
+          claimId: written!.id,
+          documentId,
+          documentName: source.name,
+          quote: claim.quote,
+          paragraphIndex: claim.paragraph,
+        })
+        .onConflictDoNothing()
+        .returning({ id: claimSources.id })
 
-    const [cited] = await db
-      .insert(claimSources)
-      .values({
-        userId,
-        claimId: written!.id,
-        documentId,
-        documentName: source.name,
-        quote: claim.quote,
-        paragraphIndex: claim.paragraph,
-      })
-      .onConflictDoNothing()
-      .returning({ id: claimSources.id })
+      if (cited) report.sourcesCreated++
+    }
 
-    if (cited) report.sourcesCreated++
+    // After the citation, so the inverse is cited by it too. A hand-entered
+    // claim has none to copy, and its inverse is hand-entered alike.
+    const inverse = await materialiseInverse(db, { ...values, id: written!.id })
+    if (inverse?.inserted) report.inversesCreated++
   }
 
   return report

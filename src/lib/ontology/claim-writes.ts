@@ -1,26 +1,34 @@
 import 'server-only'
-import { and, count, eq, or } from 'drizzle-orm'
+import { and, count, eq, or, sql } from 'drizzle-orm'
+import type { NeonDatabase } from 'drizzle-orm/neon-serverless'
 import { db } from '@/db'
+import type * as schema from '@/db/schema'
 import { claims, entities } from '@/db/schema'
 import { ordinalFor } from './calendar'
 import { coreOntology } from './extraction'
+import { inverseOf, inversePredicate } from './inverse'
+import { copySources, findAssertion, materialiseInverse, type Assertion } from './inverse-write'
 import { normalizeName } from './matcher'
 
 /**
  * Writing claims by hand, from the frontend.
  *
- * Two things live here that the extraction path will also need, and which are
- * easier to get right once:
+ * Two things live here:
  *
  *   1. **Validation before insert.** The signature foreign key would reject an
  *      illegal claim anyway, but as an opaque constraint violation. Checking
  *      against the compiled ontology first turns that into a sentence.
- *   2. **Inverse materialisation.** Relationships are directional, so asserting
- *      one direction without the other leaves a graph that answers "who rules
- *      Ashfall" but not "what does Sera rule". The reverse claim is written for
- *      the user rather than asked of them — but never silently: the editor
- *      shows exactly what it will add, and it can be declined.
+ *   2. **Both directions, always.** Relationships are directional, so every
+ *      relationship claim has its inverse materialised beside it (see
+ *      `inverse.ts`) — and here, where a person can also edit and delete, the
+ *      two directions are kept as one fact: creating, editing or deleting one
+ *      does the same to the other, in the same transaction. The editor says
+ *      what the second write will be, so it is never a surprise; it is no
+ *      longer a choice, because a graph where "Sera rules Ashfall" survives the
+ *      deletion of "Ashfall is ruled by Sera" contradicts itself.
  */
+
+type Db = NeonDatabase<typeof schema>
 
 export type ClaimInput = {
   subjectId: string
@@ -29,8 +37,19 @@ export type ClaimInput = {
   value?: string | null
   startTime?: string | null
   endTime?: string | null
-  /** Whether to also write the reverse direction. The UI defaults it to true. */
-  createInverse?: boolean
+}
+
+/**
+ * An edit to an existing claim. The subject and predicate are fixed — changing
+ * either makes it a different claim, which is a delete and a create — so what
+ * can move is the other end and the dates. An absent field is left as it is;
+ * a date set to `null` is cleared.
+ */
+export type ClaimPatch = {
+  objectId?: string
+  value?: string
+  startTime?: string | null
+  endTime?: string | null
 }
 
 export type WriteResult =
@@ -40,24 +59,23 @@ export type WriteResult =
 /**
  * What the reverse direction of a claim would be, in words.
  *
- * Pure, and exported so the editor can render the confirmation from the same
- * logic that performs the write — a preview computed differently from the
- * action it previews is worse than no preview.
+ * Pure, and exported so a preview can be rendered from the same vocabulary
+ * that performs the write — a preview computed differently from the action it
+ * previews is worse than no preview.
  */
 export function describeInverse(
   predicate: string,
   subjectName: string,
   objectName: string,
 ): { predicate: string; text: string } | null {
-  const ontology = coreOntology()
-  const def = ontology.byName.get(predicate)
-  if (!def || def.kind !== 'relationship' || !def.inverseName) return null
+  const inverse = inversePredicate(predicate)
+  if (!inverse) return null
 
   return {
-    predicate: def.inverseName,
+    predicate: inverse,
     // Symmetric predicates name themselves, so this reads correctly for both
     // `married_to` (same verb, swapped ends) and `rules` / `ruled_by`.
-    text: `${objectName} — ${def.inverseName} → ${subjectName}`,
+    text: `${objectName} — ${inverse} → ${subjectName}`,
   }
 }
 
@@ -121,13 +139,28 @@ function valueColumns(predicate: string, value: string | null) {
   }
 }
 
+/**
+ * The validity window's four columns, explicitly — `null` included, so the same
+ * object serves an insert and an edit that clears a date. An unreadable label
+ * keeps its text and loses only its ordering.
+ */
 function timeColumns(startTime: string | null, endTime: string | null) {
-  const startOrder = startTime ? ordinalFor(startTime) : null
-  const endOrder = endTime ? ordinalFor(endTime) : null
   return {
-    ...(startTime && { startTime, ...(startOrder !== null && { startOrder }) }),
-    ...(endTime && { endTime, ...(endOrder !== null && { endOrder }) }),
+    startTime,
+    startOrder: startTime ? ordinalFor(startTime) : null,
+    endTime,
+    endOrder: endTime ? ordinalFor(endTime) : null,
   }
+}
+
+/**
+ * The catalog's `claims_time_order` check, asked first so it can be a sentence.
+ * Only decidable when both labels parse; an unordered label cannot be wrong.
+ */
+function timeProblem(times: ReturnType<typeof timeColumns>): string | null {
+  const { startOrder, endOrder } = times
+  if (startOrder === null || endOrder === null || endOrder >= startOrder) return null
+  return `'${times.endTime}' is before '${times.startTime}'.`
 }
 
 export async function createClaim(userId: string, input: ClaimInput): Promise<WriteResult> {
@@ -146,96 +179,252 @@ export async function createClaim(userId: string, input: ClaimInput): Promise<Wr
   }
 
   const times = timeColumns(input.startTime?.trim() || null, input.endTime?.trim() || null)
+  const timeError = timeProblem(times)
+  if (timeError) return { ok: false, error: timeError }
 
-  const [row] = await db
-    .insert(claims)
-    .values({
-      userId,
-      subjectId: subject.id,
-      subjectType: subject.entityType,
-      predicate: input.predicate,
-      ...(object && { objectId: object.id, objectType: object.entityType }),
-      ...valueColumns(input.predicate, value),
-      ...times,
-      canonicity: 'canon',
-      createdBy: 'user',
-    })
-    // The fingerprint index makes re-asserting the same claim a no-op rather
-    // than a duplicate, so a double-submit costs nothing.
-    .onConflictDoNothing()
-    .returning({ id: claims.id })
+  const values = {
+    userId,
+    subjectId: subject.id,
+    subjectType: subject.entityType,
+    predicate: input.predicate,
+    objectId: object?.id ?? null,
+    objectType: object?.entityType ?? null,
+    ...valueColumns(input.predicate, value),
+    ...times,
+    canonicity: 'canon' as const,
+    createdBy: 'user' as const,
+  }
 
-  if (!row) return { ok: false, error: 'That claim already exists.' }
+  // One transaction, so there is no moment — and no failure — at which the
+  // graph holds one direction of a relationship without the other.
+  return db.transaction(async (raw) => {
+    const tx = raw as unknown as Db
 
-  let inverseClaimId: string | null = null
-
-  const def = coreOntology().byName.get(input.predicate)
-  if (input.createInverse !== false && object && def?.inverseName) {
-    const [inverse] = await db
+    const [row] = await tx
       .insert(claims)
-      .values({
-        userId,
-        subjectId: object.id,
-        subjectType: object.entityType,
-        predicate: def.inverseName,
-        objectId: subject.id,
-        objectType: subject.entityType,
-        ...times,
-        canonicity: 'canon',
-        createdBy: 'user',
-      })
+      .values(values)
+      // The fingerprint index makes re-asserting the same claim a no-op rather
+      // than a duplicate, so a double-submit costs nothing.
       .onConflictDoNothing()
       .returning({ id: claims.id })
 
-    inverseClaimId = inverse?.id ?? null
-  }
+    if (!row) return { ok: false, error: 'That claim already exists.' } as const
 
-  return { ok: true, claimId: row.id, inverseClaimId }
+    // An inverse that already exists — asserted on its own earlier — is
+    // adopted rather than duplicated, and from here on travels with this one.
+    const inverse = await materialiseInverse(tx, { ...values, id: row.id })
+    return { ok: true, claimId: row.id, inverseClaimId: inverse?.id ?? null } as const
+  })
 }
 
 /**
- * Deletes a claim, and optionally the reverse direction that was written with
- * it. Not automatic: the inverse may have been asserted independently or carry
- * its own sources, so removing it is offered rather than assumed.
+ * Edits a claim and its inverse together.
+ *
+ * The row is updated in place rather than replaced, which is what lets an
+ * edited claim keep everything attached to its id: an extracted claim's
+ * citations stay its citations, and its provenance stays what it was — a
+ * person correcting the date on an extracted claim has not thereby written it.
+ *
+ * The inverse is found as it stood *before* the edit, by its swapped ends and
+ * old dates, and moved with it. If the edit makes the claim identical to one
+ * already in the graph, nothing is written and the collision comes back as a
+ * sentence; if it makes the *inverse* identical to an existing claim, that
+ * claim is adopted as the inverse and the old one retired, exactly as
+ * `createClaim` adopts one.
  */
-export async function deleteClaim(
+export async function updateClaim(
   userId: string,
   claimId: string,
-  withInverse: boolean,
-): Promise<{ deleted: number }> {
-  const [claim] = await db
-    .select({
-      subjectId: claims.subjectId,
-      objectId: claims.objectId,
-      predicate: claims.predicate,
-    })
+  patch: ClaimPatch,
+): Promise<WriteResult> {
+  const [current] = await db
+    .select()
     .from(claims)
     .where(and(eq(claims.userId, userId), eq(claims.id, claimId)))
     .limit(1)
 
-  if (!claim) return { deleted: 0 }
+  if (!current) return { ok: false, error: 'That claim no longer exists.' }
 
-  let deleted = 0
-  await db.delete(claims).where(and(eq(claims.userId, userId), eq(claims.id, claimId)))
-  deleted++
+  const def = coreOntology().byName.get(current.predicate)
+  if (!def) return { ok: false, error: `'${current.predicate}' is not in the vocabulary.` }
 
-  const def = coreOntology().byName.get(claim.predicate)
-  if (withInverse && claim.objectId && def?.inverseName) {
-    const removed = await db
-      .delete(claims)
-      .where(
-        and(
-          eq(claims.userId, userId),
-          eq(claims.subjectId, claim.objectId),
-          eq(claims.objectId, claim.subjectId),
-          eq(claims.predicate, def.inverseName),
-        ),
-      )
-      .returning({ id: claims.id })
-    deleted += removed.length
+  if (def.kind === 'relationship' && patch.value?.trim()) {
+    return { ok: false, error: `'${def.label}' is a relationship and takes an entity, not a value.` }
   }
 
-  return { deleted }
+  const objectId = patch.objectId ?? current.objectId
+  const object = objectId ? await loadEntity(userId, objectId) : null
+  if (objectId && !object) return { ok: false, error: 'That object entity no longer exists.' }
+
+  const value = patch.value !== undefined ? patch.value.trim() || null : renderValue(current)
+  const problem = check(current.predicate, current.subjectType, object?.entityType ?? null, value)
+  if (problem) return { ok: false, error: problem }
+
+  if (object && object.id === current.subjectId) {
+    return { ok: false, error: 'A claim cannot relate an entity to itself.' }
+  }
+
+  const times = timeColumns(
+    patch.startTime === undefined ? current.startTime : patch.startTime?.trim() || null,
+    patch.endTime === undefined ? current.endTime : patch.endTime?.trim() || null,
+  )
+  const timeError = timeProblem(times)
+  if (timeError) return { ok: false, error: timeError }
+
+  const next = {
+    objectId: object?.id ?? null,
+    objectType: object?.entityType ?? null,
+    // Every value column, cleared and then set, so changing a value can never
+    // leave the old one behind beside it — the arity check would refuse that.
+    valueInt: null,
+    valueFloat: null,
+    valueString: null,
+    valueTime: null,
+    valueOrder: null,
+    ...valueColumns(current.predicate, value),
+    ...times,
+  }
+
+  const updated = { ...current, ...next }
+  const duplicate = await findAssertion(db, userId, updated, { excludeId: claimId })
+  if (duplicate) return { ok: false, error: 'An identical claim already exists.' }
+
+  try {
+    return await db.transaction(async (raw) => {
+      const tx = raw as unknown as Db
+
+      const oldInverse = await findInverse(tx, current)
+
+      await tx
+        .update(claims)
+        .set({ ...next, updatedAt: new Date() })
+        .where(and(eq(claims.userId, userId), eq(claims.id, claimId)))
+
+      const inverse = inverseOf(updated)
+      if (!inverse) {
+        // Unreachable for today's vocabulary, where every relationship has an
+        // inverse; kept honest for a predicate that one day might not.
+        return { ok: true, claimId, inverseClaimId: null } as const
+      }
+
+      const target = await findAssertion(tx, userId, asAssertion(inverse), {
+        excludeId: oldInverse?.id,
+      })
+
+      if (!target && oldInverse) {
+        // The usual case: move the inverse with the claim. In place, so its
+        // id — and anything a conflict dismissal has pinned to it — survives.
+        await tx
+          .update(claims)
+          .set({
+            subjectId: inverse.subjectId,
+            subjectType: inverse.subjectType,
+            objectId: inverse.objectId,
+            objectType: inverse.objectType,
+            ...times,
+            updatedAt: new Date(),
+          })
+          .where(and(eq(claims.userId, userId), eq(claims.id, oldInverse.id)))
+        await copySources(tx, userId, claimId, oldInverse.id)
+        return { ok: true, claimId, inverseClaimId: oldInverse.id } as const
+      }
+
+      if (oldInverse) {
+        await tx
+          .delete(claims)
+          .where(and(eq(claims.userId, userId), eq(claims.id, oldInverse.id)))
+      }
+
+      // Either the edit made the inverse a claim already in the graph, which is
+      // adopted, or there was no inverse to move (a row older than the
+      // invariant), which is written now. `materialiseInverse` does both.
+      const written = await materialiseInverse(tx, updated)
+      return { ok: true, claimId, inverseClaimId: written?.id ?? null } as const
+    })
+  } catch (error) {
+    // The checks above ran outside the transaction, so a concurrent write can
+    // still beat this one to the fingerprint. The index is the arbiter; this
+    // only turns its verdict into the same sentence.
+    if (isUniqueViolation(error)) return { ok: false, error: 'An identical claim already exists.' }
+    throw error
+  }
+}
+
+/**
+ * Deletes a claim and its inverse.
+ *
+ * Always both. The inverse is not an independent fact that happens to agree —
+ * it is the same fact read from the other end — so deleting one direction and
+ * keeping the other would leave the graph asserting what the user just
+ * retracted. It is matched on its swapped ends, inverse predicate and the same
+ * dates: the claim's own reverse, not some other claim between the same two
+ * entities at a different time.
+ */
+export async function deleteClaim(
+  userId: string,
+  claimId: string,
+): Promise<{ deleted: number }> {
+  return db.transaction(async (raw) => {
+    const tx = raw as unknown as Db
+
+    const [claim] = await tx
+      .select()
+      .from(claims)
+      .where(and(eq(claims.userId, userId), eq(claims.id, claimId)))
+      .limit(1)
+
+    if (!claim) return { deleted: 0 }
+
+    const inverse = await findInverse(tx, claim)
+    const ids = [claim.id, ...(inverse ? [inverse.id] : [])]
+
+    const removed = await tx
+      .delete(claims)
+      .where(and(eq(claims.userId, userId), or(...ids.map((id) => eq(claims.id, id)))))
+      .returning({ id: claims.id })
+
+    return { deleted: removed.length }
+  })
+}
+
+/* ------------------------------------------------------------- the inverse */
+
+type StoredClaim = typeof claims.$inferSelect
+
+/** The claim that is this one's reverse direction, as it currently stands. */
+async function findInverse(tx: Db, claim: StoredClaim): Promise<{ id: string } | null> {
+  const inverse = inverseOf(claim)
+  return inverse ? findAssertion(tx, claim.userId, asAssertion(inverse)) : null
+}
+
+function asAssertion(row: typeof claims.$inferInsert): Assertion {
+  return {
+    subjectId: row.subjectId,
+    predicate: row.predicate,
+    objectId: row.objectId,
+    valueInt: row.valueInt,
+    valueFloat: row.valueFloat,
+    valueString: row.valueString,
+    valueTime: row.valueTime,
+    startTime: row.startTime,
+    endTime: row.endTime,
+  }
+}
+
+/** An attribute claim's value as the editor shows it — the one populated column. */
+function renderValue(row: StoredClaim): string | null {
+  return row.valueString ?? row.valueTime ?? row.valueInt?.toString() ?? row.valueFloat?.toString() ?? null
+}
+
+/**
+ * Postgres' unique_violation, through whatever the driver wrapped it in —
+ * Drizzle nests the database error as `cause`.
+ */
+function isUniqueViolation(error: unknown): boolean {
+  for (let e = error; e && typeof e === 'object'; e = (e as { cause?: unknown }).cause) {
+    if ((e as { code?: unknown }).code === '23505') return true
+  }
+  return false
 }
 
 /**

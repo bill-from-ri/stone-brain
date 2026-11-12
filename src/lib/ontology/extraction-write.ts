@@ -5,6 +5,7 @@ import { claimSources, claims, documents, entities } from '@/db/schema'
 import { ordinalFor } from './calendar'
 import { createDraftEntities, type CreatedDraft, type DraftProposal } from './entity-drafts'
 import type { ExtractedClaim } from './extraction'
+import { inverseOf } from './inverse'
 import { buildEntityIndex, resolve, type EntityIndex } from './matcher'
 import { looseNameKey, normalizeName } from './name-key'
 
@@ -27,6 +28,16 @@ import { looseNameKey, normalizeName } from './name-key'
  * The mechanism is `claims.fingerprint`, a generated column, with its unique
  * index as the conflict target. Two runs over an unchanged document therefore
  * write the same rows and produce the same graph.
+ *
+ * ## Inverses
+ *
+ * Every relationship claim is written with its reverse direction (see
+ * `inverse.ts`), in the same statement, rather than asking the model for both —
+ * which would cost output tokens and still leave the two directions free to
+ * disagree. The inverse goes through the same fingerprint upsert, so a document
+ * that states both directions, or a second run over it, does not double up;
+ * and it carries the same citations as the claim it mirrors, so it is never
+ * mistaken for an unsourced one.
  *
  * ## What is refused
  *
@@ -64,11 +75,25 @@ export type UnwrittenClaim = {
 }
 
 export type WriteExtractionResult = {
-  /** Claims this run created. */
+  /**
+   * Claims the model stated that this run created. Inverses are counted
+   * separately below, so this stays a measure of what was read from the
+   * document — doubling it for the reverse directions would make every
+   * extraction look twice as productive as it was.
+   */
   claimsCreated: number
   /** Claims the run re-asserted that were already in the graph. */
   claimsAlreadyPresent: number
-  /** `claim_sources` rows added — a new citation for a claim, new or not. */
+  /**
+   * Reverse directions this run created that the model did not itself state.
+   * An inverse the document also stated outright counts once, as a claim.
+   */
+  inversesCreated: number
+  /**
+   * `claim_sources` rows added for the claims as stated — a new citation for a
+   * claim, new or not. The same citation mirrored onto an inverse is not
+   * counted again, for the same reason as `claimsCreated`.
+   */
   sourcesCreated: number
   entitiesCreated: CreatedDraft[]
   unwritten: UnwrittenClaim[]
@@ -114,6 +139,7 @@ async function writeInTransaction(
     return {
       claimsCreated: 0,
       claimsAlreadyPresent: 0,
+      inversesCreated: 0,
       sourcesCreated: 0,
       entitiesCreated: [],
       unwritten: [],
@@ -169,19 +195,46 @@ async function writeInTransaction(
     return {
       claimsCreated: 0,
       claimsAlreadyPresent: 0,
+      inversesCreated: 0,
       sourcesCreated: 0,
       entitiesCreated,
       unwritten,
     }
   }
 
-  const written = await upsertClaims(db, pending)
-  const sourcesCreated = await writeSources(db, userId, written, context)
+  /*
+   * Inverses ride in the same batch, after the stated claims. Order matters
+   * only for the in-batch dedupe in `upsertClaims`, which keeps the first row
+   * of an identity: a direction the model stated outright is then written as
+   * stated, and the inverse that happens to equal it folds into it. Each
+   * inverse is paired with the claim it mirrors, so it is cited by that
+   * claim's quote.
+   */
+  const inverses = pending.flatMap(({ claim, row }) => {
+    const inverse = inverseOf({ ...row, objectId: row.objectId, objectType: row.objectType })
+    return inverse ? [{ claim, row: inverse, mirror: true }] : []
+  })
+
+  const written = await upsertClaims(db, [
+    ...pending.map((p) => ({ ...p, mirror: false })),
+    ...inverses,
+  ])
+  const stated = written.filter((w) => !w.mirror)
+  const mirrored = written.filter((w) => w.mirror)
+
+  const sourcesCreated = await writeSources(db, userId, stated, context)
+  await writeSources(db, userId, mirrored, context)
   await stampDocument(db, userId, context)
 
+  const statedIds = new Set(stated.map((w) => w.id))
+
   return {
-    claimsCreated: countClaims(written, true),
-    claimsAlreadyPresent: countClaims(written, false),
+    claimsCreated: countClaims(stated, true),
+    claimsAlreadyPresent: countClaims(stated, false),
+    inversesCreated: countClaims(
+      mirrored.filter((w) => !statedIds.has(w.id)),
+      true,
+    ),
     sourcesCreated,
     entitiesCreated,
     unwritten,
@@ -377,7 +430,15 @@ function buildClaimRow(
   }
 }
 
-type WrittenClaim = { id: string; inserted: boolean; claim: ExtractedClaim }
+type WrittenClaim = {
+  id: string
+  inserted: boolean
+  claim: ExtractedClaim
+  /** An inverse this module derived, rather than a claim the model stated. */
+  mirror: boolean
+}
+
+type PendingClaim = { claim: ExtractedClaim; row: ClaimRow; mirror: boolean }
 
 /**
  * Insert the batch, and come back with an id for every row — whether this run
@@ -393,7 +454,7 @@ type WrittenClaim = { id: string; inserted: boolean; claim: ExtractedClaim }
  */
 async function upsertClaims(
   db: NeonDatabase<typeof schema>,
-  pending: { claim: ExtractedClaim; row: ClaimRow }[],
+  pending: PendingClaim[],
 ): Promise<WrittenClaim[]> {
   /*
    * Distinct rows only. Postgres refuses outright — "ON CONFLICT DO UPDATE
@@ -439,9 +500,9 @@ async function upsertClaims(
    */
   const written: WrittenClaim[] = []
 
-  for (const { claim, row } of pending) {
+  for (const { claim, row, mirror } of pending) {
     const match = rows.find((r) => fingerprintMatches(r.fingerprint, row))
-    if (match) written.push({ id: match.id, inserted: match.inserted, claim })
+    if (match) written.push({ id: match.id, inserted: match.inserted, claim, mirror })
   }
 
   return written

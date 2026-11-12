@@ -144,15 +144,18 @@ describe('idempotency', () => {
 
     const first = await writeExtraction(db, userId, claims, context())
     expect(first.claimsCreated).toBe(1)
+    expect(first.inversesCreated).toBe(1)
 
     const second = await writeExtraction(db, userId, claims, context())
     expect(second.claimsCreated).toBe(0)
     expect(second.claimsAlreadyPresent).toBe(1)
+    expect(second.inversesCreated).toBe(0)
     expect(second.sourcesCreated).toBe(0)
     expect(second.entitiesCreated).toHaveLength(0)
 
-    expect(await claimRows()).toHaveLength(1)
-    expect(await sourceRows()).toHaveLength(1)
+    // The claim and its inverse, each cited once.
+    expect(await claimRows()).toHaveLength(2)
+    expect(await sourceRows()).toHaveLength(2)
     expect(await entityRows()).toHaveLength(2)
   })
 
@@ -168,7 +171,9 @@ describe('idempotency', () => {
 
     expect(result.claimsCreated).toBe(1)
     expect(result.claimsAlreadyPresent).toBe(1)
-    expect(await claimRows()).toHaveLength(2)
+    expect(result.inversesCreated).toBe(1)
+    // rules + ruled_by, born_in + birthplace_of.
+    expect(await claimRows()).toHaveLength(4)
   })
 
   it('leaves a claim a person promoted to canon alone', async () => {
@@ -178,10 +183,12 @@ describe('idempotency', () => {
     await writeExtraction(db, userId, [rulesClaim()], context())
 
     const rows = await claimRows()
-    expect(rows).toHaveLength(1)
-    // The upsert's conflict action must not be able to demote this.
-    expect(rows[0]!.canonicity).toBe('canon')
-    expect(rows[0]!.createdBy).toBe('user')
+    expect(rows).toHaveLength(2)
+    // The upsert's conflict action must not be able to demote either direction.
+    for (const row of rows) {
+      expect(row.canonicity).toBe('canon')
+      expect(row.createdBy).toBe('user')
+    }
   })
 
   it('does not accumulate duplicate sources for a claim quoted without a paragraph', async () => {
@@ -192,7 +199,8 @@ describe('idempotency', () => {
     await writeExtraction(db, userId, [claim], context())
     await writeExtraction(db, userId, [claim], context())
 
-    expect(await sourceRows()).toHaveLength(1)
+    // One for the claim, one mirrored onto its inverse — and no more.
+    expect(await sourceRows()).toHaveLength(2)
   })
 
   it('keeps both citations when one fact is asserted from two paragraphs', async () => {
@@ -208,7 +216,168 @@ describe('idempotency', () => {
 
     expect(result.claimsCreated).toBe(1)
     expect(result.sourcesCreated).toBe(2)
-    expect((await sourceRows()).map((s) => s.paragraphIndex).sort()).toEqual([4, 9])
+    // Both citations, on both directions.
+    expect((await sourceRows()).map((s) => s.paragraphIndex).sort()).toEqual([4, 4, 9, 9])
+  })
+})
+
+describe('inverses', () => {
+  it('writes the reverse direction, cited by the same passage', async () => {
+    const result = await writeExtraction(db, userId, [rulesClaim()], context())
+
+    expect(result.claimsCreated).toBe(1)
+    expect(result.inversesCreated).toBe(1)
+    // The citation as stated; the mirrored copy is not counted again.
+    expect(result.sourcesCreated).toBe(1)
+
+    const rows = await claimRows()
+    const entities = new Map((await entityRows()).map((e) => [e.name, e.id]))
+    const inverse = rows.find((r) => r.predicate === 'ruled_by')
+    expect(inverse).toMatchObject({
+      subjectId: entities.get('Ashfall'),
+      subjectType: 'settlement',
+      objectId: entities.get('Sera Vane'),
+      objectType: 'character',
+      canonicity: 'draft',
+      createdBy: 'llm',
+      extractedByModel: 'test/model',
+    })
+
+    const sources = await sourceRows()
+    const cited = sources.find((s) => s.claimId === inverse!.id)
+    // An inverse without a source would read as entered by hand.
+    expect(cited).toMatchObject({
+      documentId,
+      quote: 'Sera Vane rules Ashfall.',
+      paragraphIndex: 4,
+      documentRevisionId: 'rev-42',
+    })
+  })
+
+  it('carries the time bounds over to the inverse', async () => {
+    await writeExtraction(
+      db,
+      userId,
+      [rulesClaim({ startTime: '400 AD', endTime: '412 AD' })],
+      context(),
+    )
+
+    const inverse = (await claimRows()).find((r) => r.predicate === 'ruled_by')
+    expect(inverse).toMatchObject({ startTime: '400 AD', endTime: '412 AD' })
+    expect(inverse!.startOrder).not.toBeNull()
+  })
+
+  it('does not double up when the document states both directions', async () => {
+    const result = await writeExtraction(
+      db,
+      userId,
+      [
+        rulesClaim(),
+        {
+          subjectName: 'Ashfall',
+          subjectType: 'settlement',
+          predicate: 'ruled_by',
+          objectName: 'Sera Vane',
+          objectType: 'character',
+          quote: 'Ashfall is ruled by Sera Vane.',
+          paragraphIndex: 6,
+        },
+      ],
+      context(),
+    )
+
+    // Two claims the model stated, each the other's inverse: nothing derived.
+    expect(result.claimsCreated).toBe(2)
+    expect(result.inversesCreated).toBe(0)
+    expect(await claimRows()).toHaveLength(2)
+
+    // Each direction is cited by both passages.
+    for (const claim of await claimRows()) {
+      const paragraphs = (await sourceRows())
+        .filter((s) => s.claimId === claim.id)
+        .map((s) => s.paragraphIndex)
+        .sort()
+      expect(paragraphs, claim.predicate).toEqual([4, 6])
+    }
+  })
+
+  it('writes a symmetric predicate once in each direction', async () => {
+    const married = (subjectName: string, objectName: string): ExtractedClaim => ({
+      subjectName,
+      subjectType: 'character',
+      predicate: 'married_to',
+      objectName,
+      objectType: 'character',
+      quote: 'Sera Vane married Tomas Ord.',
+      paragraphIndex: 2,
+    })
+
+    const first = await writeExtraction(db, userId, [married('Sera Vane', 'Tomas Ord')], context())
+    expect(first.inversesCreated).toBe(1)
+
+    // The reverse, stated later, is already there.
+    const second = await writeExtraction(
+      db,
+      userId,
+      [married('Tomas Ord', 'Sera Vane')],
+      context(),
+    )
+    expect(second.claimsCreated).toBe(0)
+    expect(second.claimsAlreadyPresent).toBe(1)
+    expect(second.inversesCreated).toBe(0)
+
+    const rows = await claimRows()
+    expect(rows).toHaveLength(2)
+    expect(rows.every((r) => r.predicate === 'married_to')).toBe(true)
+  })
+
+  it('writes no inverse for an attribute', async () => {
+    const result = await writeExtraction(
+      db,
+      userId,
+      [
+        {
+          subjectName: 'Ashfall',
+          subjectType: 'settlement',
+          predicate: 'population',
+          valueInt: 1800,
+          quote: 'Approx. 1,800 souls.',
+        },
+      ],
+      context(),
+    )
+
+    expect(result.inversesCreated).toBe(0)
+    expect(await claimRows()).toHaveLength(1)
+  })
+
+  it('leaves an inverse a person already wrote untouched, and cites it', async () => {
+    const sera = await pg.query<{ id: string }>(
+      `insert into entities (user_id, entity_type, name, normalized_name, canonicity, created_by)
+       values ($1, 'character', 'Sera Vane', 'sera vane', 'canon', 'user') returning id`,
+      [userId],
+    )
+    const ashfall = await pg.query<{ id: string }>(
+      `insert into entities (user_id, entity_type, name, normalized_name, canonicity, created_by)
+       values ($1, 'settlement', 'Ashfall', 'ashfall', 'canon', 'user') returning id`,
+      [userId],
+    )
+    await pg.query(
+      `insert into claims (user_id, subject_id, subject_type, predicate, object_id, object_type,
+                           canonicity, created_by)
+       values ($1, $2, 'settlement', 'ruled_by', $3, 'character', 'canon', 'user')`,
+      [userId, ashfall.rows[0]!.id, sera.rows[0]!.id],
+    )
+
+    const result = await writeExtraction(db, userId, [rulesClaim()], context())
+    expect(result.claimsCreated).toBe(1)
+    expect(result.inversesCreated).toBe(0)
+
+    const inverse = (await claimRows()).find((r) => r.predicate === 'ruled_by')!
+    expect(inverse.canonicity).toBe('canon')
+    expect(inverse.createdBy).toBe('user')
+    // It is now evidenced by the document that stated its mirror.
+    expect((await sourceRows()).some((s) => s.claimId === inverse.id)).toBe(true)
   })
 })
 
@@ -235,7 +404,7 @@ describe('sources', () => {
     expect(source!.documentId).toBeNull()
     expect(source!.documentName).toBe('Town of Gabelford')
     expect(source!.quote).toBe('Sera Vane rules Ashfall.')
-    expect(await claimRows()).toHaveLength(1)
+    expect(await claimRows()).toHaveLength(2)
   })
 })
 
@@ -243,11 +412,14 @@ describe('provenance', () => {
   it('stamps the model on every claim and marks the document extracted', async () => {
     await writeExtraction(db, userId, [rulesClaim()], context())
 
-    expect((await claimRows())[0]).toMatchObject({
-      canonicity: 'draft',
-      createdBy: 'llm',
-      extractedByModel: 'test/model',
-    })
+    // The inverse included: it is no more canon than the claim it mirrors.
+    for (const row of await claimRows()) {
+      expect(row).toMatchObject({
+        canonicity: 'draft',
+        createdBy: 'llm',
+        extractedByModel: 'test/model',
+      })
+    }
 
     const [doc] = await db
       .select()
@@ -357,7 +529,7 @@ describe('what is refused', () => {
 
     expect(result.unwritten).toHaveLength(1)
     expect(result.claimsCreated).toBe(1)
-    expect(await claimRows()).toHaveLength(1)
+    expect(await claimRows()).toHaveLength(2)
   })
 })
 

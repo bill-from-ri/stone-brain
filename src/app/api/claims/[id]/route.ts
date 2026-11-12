@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { apiRequireReady } from '@/lib/auth/guard'
 import { getClaim, getClaimSources } from '@/db/queries/claims'
-import { deleteClaim } from '@/lib/ontology/claim-writes'
+import { deleteClaim, updateClaim } from '@/lib/ontology/claim-writes'
 
 const paramsSchema = z.object({ id: z.uuid() })
 
@@ -53,8 +53,42 @@ export async function GET(
   return NextResponse.json({ ok: true, claim, sources })
 }
 
-export async function DELETE(
+/**
+ * Editing a claim: its object or value, and its dates. The inverse moves with
+ * it — see `updateClaim`. The body is a `ClaimPatch`; an absent field is left
+ * alone and a date sent as `null` is cleared.
+ */
+const patchSchema = z
+  .object({
+    objectId: z.uuid().optional(),
+    value: z.string().max(2000).optional(),
+    startTime: z.string().max(120).nullable().optional(),
+    endTime: z.string().max(120).nullable().optional(),
+  })
+  .strict()
+
+export async function PATCH(
   request: NextRequest,
+  context: { params: Promise<{ id: string }> },
+) {
+  const guard = await apiRequireReady()
+  if (!guard.ok) return guard.response
+
+  const params = paramsSchema.safeParse(await context.params)
+  const body = patchSchema.safeParse(await request.json().catch(() => null))
+  if (!params.success || !body.success) {
+    return NextResponse.json({ ok: false, error: 'Malformed request.' }, { status: 400 })
+  }
+
+  const result = await updateClaim(guard.session.user.id, params.data.id, body.data)
+
+  // As with POST: a refused edit is a designed state with a readable reason.
+  return NextResponse.json(result, { status: result.ok ? 200 : 422 })
+}
+
+/** Deletes the claim and, always, its inverse — see `deleteClaim`. */
+export async function DELETE(
+  _request: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
   const guard = await apiRequireReady()
@@ -63,8 +97,7 @@ export async function DELETE(
   const parsed = paramsSchema.safeParse(await context.params)
   if (!parsed.success) return NextResponse.json({ ok: false }, { status: 400 })
 
-  const withInverse = request.nextUrl.searchParams.get('inverse') === '1'
-  const { deleted } = await deleteClaim(guard.session.user.id, parsed.data.id, withInverse)
+  const { deleted } = await deleteClaim(guard.session.user.id, parsed.data.id)
 
   return NextResponse.json({ ok: deleted > 0, deleted })
 }

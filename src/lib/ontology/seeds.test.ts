@@ -1,8 +1,20 @@
+import { PGlite } from '@electric-sql/pglite'
+import { drizzle } from 'drizzle-orm/pglite'
+import type { NeonDatabase } from 'drizzle-orm/neon-serverless'
 import { describe, expect, it } from 'vitest'
+import * as schema from '@/db/schema'
+import { applyMigrations, seedCatalog } from '@/test/catalog'
 import { NONE, deriveOntology } from './registry'
 import { KALDIA_CLAIMS, KALDIA_ENTITIES } from './seed-kaldia'
 import { RUNAR_CLAIMS, RUNAR_ENTITIES } from './seed-runar'
-import { SEED_CLAIMS, SEED_ENTITIES, type SeedClaim, type SeedEntity } from './seed-world'
+import {
+  SEED_CLAIMS,
+  SEED_DOCUMENT,
+  SEED_ENTITIES,
+  loadSeed,
+  type SeedClaim,
+  type SeedEntity,
+} from './seed-world'
 
 /**
  * The hand-seeded ground truth, checked against the registry it will be written
@@ -78,4 +90,54 @@ describe.each(SEEDS)('seed: %s', (_doc, seedEntities, seedClaims) => {
       if (!reused.has(entity.name)) expect(entity.summary, entity.name).toBeTruthy()
     }
   })
+})
+
+/**
+ * The loader, against a real catalog: the labelled direction is all a seed
+ * states, so the inverses are the loader's to write — cited, so the seeded
+ * graph obeys the same invariant extraction does.
+ */
+describe('loadSeed', () => {
+  it('materialises every relationship’s inverse with the same citation, idempotently', async () => {
+    const pg = new PGlite()
+    await applyMigrations(pg)
+    await seedCatalog(pg)
+    const db = drizzle(pg, { schema }) as unknown as NeonDatabase<typeof schema>
+
+    const users = await pg.query<{ id: string }>(
+      `insert into users (google_sub, email) values ('sub-1', 'a@example.test') returning id`,
+    )
+    const userId = users.rows[0]!.id
+    await pg.query(
+      `insert into documents (user_id, drive_file_id, name, mime_type, raw)
+       values ($1, $2, $3, 'application/vnd.google-apps.document', '{}')`,
+      [userId, SEED_DOCUMENT.driveFileId, SEED_DOCUMENT.name],
+    )
+
+    const relationships = SEED_CLAIMS.filter((c) => c.object !== undefined).length
+    const first = await loadSeed(db, userId, SEED_DOCUMENT, SEED_ENTITIES, SEED_CLAIMS)
+
+    expect(first.claimsCreated).toBe(SEED_CLAIMS.length)
+    expect(first.inversesCreated).toBe(relationships)
+
+    // Every relationship row has its reverse, and the two cite the same passages.
+    const pairs = await pg.query<{ predicate: string; mine: string; theirs: string | null }>(`
+      select c.predicate,
+             (select string_agg(paragraph_index::text, ',' order by paragraph_index)
+                from claim_sources where claim_id = c.id) as mine,
+             (select string_agg(s.paragraph_index::text, ',' order by s.paragraph_index)
+                from claims i join claim_sources s on s.claim_id = i.id
+               where i.user_id = c.user_id and i.subject_id = c.object_id
+                 and i.object_id = c.subject_id and i.predicate = p.inverse_name) as theirs
+      from claims c join predicates p on p.name = c.predicate
+      where c.object_id is not null
+    `)
+    expect(pairs.rows).toHaveLength(relationships * 2)
+    for (const row of pairs.rows) expect(row.theirs, row.predicate).toBe(row.mine)
+
+    const second = await loadSeed(db, userId, SEED_DOCUMENT, SEED_ENTITIES, SEED_CLAIMS)
+    expect(second).toMatchObject({ claimsCreated: 0, inversesCreated: 0, sourcesCreated: 0 })
+
+    await pg.close()
+  }, 180_000)
 })

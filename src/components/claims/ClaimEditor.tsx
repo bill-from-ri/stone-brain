@@ -2,7 +2,12 @@
 
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
-import type { EntityTypeOption, PredicateOption, SignatureRow } from '@/db/queries/claims'
+import type {
+  ClaimRow,
+  EntityTypeOption,
+  PredicateOption,
+  SignatureRow,
+} from '@/db/queries/claims'
 
 const NONE = '@none'
 
@@ -20,30 +25,37 @@ type EntityOption = { id: string; name: string; entityType: string }
  *
  * The server re-checks everything regardless. This is convenience, not
  * enforcement; a picker can be bypassed and the catalog cannot.
+ *
+ * The same form edits an existing claim when given one as `editing`. The
+ * subject and predicate are then fixed — changing either would make it a
+ * different claim — so the pickers that remain are the other end and the
+ * dates, and saving sends a patch rather than a new claim.
  */
 export function ClaimEditor({
   entities,
   entityTypes,
   predicates,
   signatures,
+  editing,
   onSaved,
 }: {
   entities: EntityOption[]
   entityTypes: EntityTypeOption[]
   predicates: PredicateOption[]
   signatures: SignatureRow[]
+  /** The claim to edit. Absent, the form writes a new one. */
+  editing?: ClaimRow
   /** Called once the claim is written — the modal closes on it. */
   onSaved?: () => void
 }) {
   const router = useRouter()
 
-  const [subjectId, setSubjectId] = useState('')
-  const [predicate, setPredicate] = useState('')
-  const [objectId, setObjectId] = useState('')
-  const [value, setValue] = useState('')
-  const [startTime, setStartTime] = useState('')
-  const [endTime, setEndTime] = useState('')
-  const [createInverse, setCreateInverse] = useState(true)
+  const [subjectId, setSubjectId] = useState(editing?.subjectId ?? '')
+  const [predicate, setPredicate] = useState(editing?.predicate ?? '')
+  const [objectId, setObjectId] = useState(editing?.objectId ?? '')
+  const [value, setValue] = useState(editing?.value ?? '')
+  const [startTime, setStartTime] = useState(editing?.startTime ?? '')
+  const [endTime, setEndTime] = useState(editing?.endTime ?? '')
 
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -76,6 +88,12 @@ export function ClaimEditor({
     return entities.filter((e) => e.id !== subject.id && legalTypes.has(e.entityType))
   }, [entities, signatures, subject, chosen])
 
+  /*
+   * The second write, spelled out. Not a choice: every relationship is stored
+   * in both directions, and the two are created, edited and deleted together
+   * (see src/lib/ontology/inverse.ts). Saying so before the save is what keeps
+   * that from being a surprise in the graph.
+   */
   const inversePreview =
     chosen?.kind === 'relationship' && chosen.inverseName && subject && objectId
       ? `${entities.find((e) => e.id === objectId)?.name ?? '…'} — ${chosen.inverseName} → ${subject.name}`
@@ -86,25 +104,44 @@ export function ClaimEditor({
     setError(null)
     setBusy(true)
 
-    const res = await fetch('/api/claims', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        subjectId,
-        predicate,
-        objectId: chosen?.kind === 'relationship' ? objectId : null,
-        value: chosen?.kind === 'attribute' ? value : null,
-        startTime: startTime || null,
-        endTime: endTime || null,
-        createInverse,
-      }),
-    })
+    const isRelationship = chosen?.kind === 'relationship'
+    const res = editing
+      ? await fetch(`/api/claims/${editing.id}`, {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          // A ClaimPatch: only the end the predicate takes, and dates sent as
+          // null when emptied, which is how a patch clears one.
+          body: JSON.stringify({
+            ...(isRelationship ? { objectId } : { value }),
+            startTime: startTime || null,
+            endTime: endTime || null,
+          }),
+        })
+      : await fetch('/api/claims', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            subjectId,
+            predicate,
+            objectId: isRelationship ? objectId : null,
+            value: isRelationship ? null : value,
+            startTime: startTime || null,
+            endTime: endTime || null,
+          }),
+        })
 
     const body = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null
     setBusy(false)
 
     if (!body?.ok) {
       setError(body?.error ?? 'Could not save that claim.')
+      return
+    }
+
+    // An edit closes on its result; there is nothing to clear for a next one.
+    if (editing) {
+      onSaved?.()
+      router.refresh()
       return
     }
 
@@ -129,6 +166,7 @@ export function ClaimEditor({
             setSubjectId(e.target.value)
             setPredicate('')
           }}
+          disabled={Boolean(editing)}
           required
         >
           <option value="">Choose an entity…</option>
@@ -150,7 +188,7 @@ export function ClaimEditor({
             setObjectId('')
             setValue('')
           }}
-          disabled={!subject}
+          disabled={!subject || Boolean(editing)}
           required
         >
           <option value="">Choose a predicate…</option>
@@ -238,21 +276,11 @@ export function ClaimEditor({
         </label>
       </div>
 
-      {/*
-        The confirmation. Relationships are directional, so saving one asserts a
-        second fact; showing it spelled out is the difference between a helpful
-        default and a surprise in the graph.
-      */}
       {inversePreview && (
         <div className="sb-inverse-note">
-          <label className="sb-check">
-            <input
-              type="checkbox"
-              checked={createInverse}
-              onChange={(e) => setCreateInverse(e.target.checked)}
-            />
-            Also record the reverse direction
-          </label>
+          <span className="sb-check">
+            {editing ? 'Also updates the reverse direction to:' : 'Also adds:'}
+          </span>
           <code className="sb-inverse-preview">{inversePreview}</code>
         </div>
       )}
@@ -260,7 +288,7 @@ export function ClaimEditor({
       {error && <p className="sb-form-error">{error}</p>}
 
       <button type="submit" className="btn btn-primary sb-btn-sm" disabled={busy || !predicate}>
-        {busy ? 'Saving…' : 'Save claim'}
+        {busy ? 'Saving…' : editing ? 'Save changes' : 'Save claim'}
       </button>
     </form>
   )
