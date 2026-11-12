@@ -107,7 +107,9 @@ async function DetailBodyLoader({
       }
       report={
         <>
-          <DocumentClaims claims={claims} total={doc.claimCount} extracted={doc.status !== 'unread'} />
+          <DocumentClaims
+            documentId={doc.id}
+            claims={claims} total={doc.claimCount} extracted={doc.status !== 'unread'} />
           {runs.latest && <LastRun run={runs.latest} />}
           <DocumentProposals proposals={proposals} />
         </>
@@ -240,11 +242,13 @@ function formatSize(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
+/** The UTC calendar date, as the Library table's day columns show it, so the two agree. */
 function formatDate(date: Date | null): string {
   if (!date) return '—'
   return new Intl.DateTimeFormat('en-GB', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
+    timeZone: 'UTC',
   }).format(date)
 }

@@ -3,6 +3,7 @@ import { ordinalFor } from '@/lib/ontology/calendar'
 import {
   conflictId,
   detectValueConflicts,
+  findMirrors,
   isValueConflictDismissed,
   pairDirections,
   valueConflictKey,
@@ -255,5 +256,42 @@ describe('pairDirections', () => {
       { claim: attr, partnerId: null },
       { claim: lone, partnerId: null },
     ])
+  })
+})
+
+describe('findMirrors', () => {
+  const rel = (id: string, subjectId: string, predicate: string, objectId: string, inverseName: string | null, over: Partial<PairableClaim> = {}): PairableClaim => ({
+    id, subjectId, objectId, predicate, inverseName, startTime: null, endTime: null, ...over,
+  })
+
+  it('finds the reverse direction of each contested claim', () => {
+    const sera = rel('1', 'ashfall', 'ruled_by', 'sera', 'rules')
+    const orin = rel('2', 'ashfall', 'ruled_by', 'orin', 'rules')
+    const pool = [
+      rel('3', 'sera', 'rules', 'ashfall', null),
+      rel('4', 'orin', 'rules', 'ashfall', null),
+      // Same ends, unrelated verb: not a mirror.
+      rel('5', 'sera', 'born_in', 'ashfall', null),
+    ]
+    expect(findMirrors([sera, orin], pool)).toEqual(new Map([['1', '3'], ['2', '4']]))
+  })
+
+  it('matches dates, so a differently dated claim on the same ends is not the mirror', () => {
+    const dated = rel('1', 'ashfall', 'ruled_by', 'sera', 'rules', { startTime: 'AD 400' })
+    const pool = [
+      rel('2', 'sera', 'rules', 'ashfall', null, { startTime: 'AD 500' }),
+      rel('3', 'sera', 'rules', 'ashfall', null, { startTime: 'AD 400' }),
+    ]
+    expect(findMirrors([dated], pool)).toEqual(new Map([['1', '3']]))
+  })
+
+  it('skips attributes, predicates with no inverse, and claims already in the conflict', () => {
+    const attr: PairableClaim = { id: '1', subjectId: 'sera', objectId: null, predicate: 'vital_status', inverseName: null, startTime: null, endTime: null }
+    const noInverse = rel('2', 'ashfall', 'ruled_by', 'sera', null)
+    // A symmetric pair already both on the sides: each is the other's mirror,
+    // and both are marked anyway, so neither is reported twice.
+    const a = rel('3', 'sera', 'married_to', 'orin', 'married_to')
+    const b = rel('4', 'orin', 'married_to', 'sera', 'married_to')
+    expect(findMirrors([attr, noInverse, a, b], [a, b])).toEqual(new Map())
   })
 })

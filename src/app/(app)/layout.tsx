@@ -23,6 +23,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   // Together, not in turn. Detection is memoised per request, so a page that
   // reads conflicts too (Conflicts, World) shares this pass rather than repeating it.
+  //
+  // How often this runs is bounded by the router, not by a cache: a layout is
+  // not re-rendered on client navigation between the pages under it, only on a
+  // full load and on `router.refresh()` — which every write in the app calls,
+  // and which is exactly when the rail's count may have moved. A cross-request
+  // cache would make that count lag the write that changed it.
   const [{ documentCount, folderCount }, conflictCount] = await Promise.all([
     getShellCounts(session.user.id),
     countOpenConflicts(session.user.id),

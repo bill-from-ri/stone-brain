@@ -1,17 +1,18 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { Route } from 'next'
 import { ConflictBadge } from '@/components/conflicts/ConflictBadge'
+import { useHydrated } from '@/components/shared/useHydrated'
 import { NAV } from './nav'
 
 type Props = {
   email: string
   pictureUrl: string | null
   driveConnected: boolean
-  /** Real Phase 1 counts. The prototype's "Graph health" bar is fiction until Phase 3. */
+  /** Real counts. The prototype's "Graph health" bar has no measure behind it, so it is not drawn. */
   documentCount: number
   folderCount: number
   /** Open (undismissed) conflicts, for the badge on the Conflicts item. */
@@ -31,6 +32,54 @@ type Props = {
 
 const COLLAPSE_KEY = 'sb:rail-collapsed'
 
+/*
+ * The collapsed preference, as a tiny external store over localStorage.
+ *
+ * The server cannot know it, so the server snapshot is "expanded" and the
+ * browser's real value takes over during hydration — `useSyncExternalStore`'s
+ * designed case, with no mismatch and no effect-scheduled second render. The
+ * `storage` event keeps other tabs in step; this tab's own writes notify
+ * directly, since that event never fires in the tab that wrote.
+ */
+const collapseListeners = new Set<() => void>()
+/** This tab's last choice, authoritative once made — and all there is when storage is blocked. */
+let collapsedHere: boolean | null = null
+
+function subscribeCollapsed(onChange: () => void) {
+  collapseListeners.add(onChange)
+  const onStorage = (event: StorageEvent) => {
+    if (event.key !== COLLAPSE_KEY) return
+    collapsedHere = event.newValue === '1'
+    onChange()
+  }
+  window.addEventListener('storage', onStorage)
+  return () => {
+    collapseListeners.delete(onChange)
+    window.removeEventListener('storage', onStorage)
+  }
+}
+
+function readCollapsed(): boolean {
+  if (collapsedHere !== null) return collapsedHere
+  try {
+    return window.localStorage.getItem(COLLAPSE_KEY) === '1'
+  } catch {
+    // Private mode, blocked storage: expanded is a fine answer.
+    return false
+  }
+}
+
+function writeCollapsed(next: boolean) {
+  collapsedHere = next
+  try {
+    window.localStorage.setItem(COLLAPSE_KEY, next ? '1' : '0')
+  } catch {
+    // Not worth failing the interaction over: the rail still toggles, and
+    // only forgets the choice on the next load.
+  }
+  for (const listener of collapseListeners) listener()
+}
+
 function initials(email: string): string {
   const [local = ''] = email.split('@')
   const parts = local.split(/[._-]/).filter(Boolean)
@@ -48,36 +97,16 @@ export function NavRail({
 }: Props) {
   const pathname = usePathname()
   const [avatarFailed, setAvatarFailed] = useState(false)
-  const [collapsed, setCollapsed] = useState(false)
+  const collapsed = useSyncExternalStore(subscribeCollapsed, readCollapsed, () => false)
 
   /**
-   * The preference is restored after mount, not during render — the server has
-   * no way to know it, and rendering it differently there would be a hydration
-   * mismatch. `ready` gates the width transition so that restore lands as the
-   * rail's initial state rather than as a visible animation on every page load.
+   * `ready` gates the width transition, so that restoring a collapsed rail
+   * lands as its initial state rather than as a visible animation on every
+   * page load.
    */
-  const [ready, setReady] = useState(false)
+  const ready = useHydrated()
 
-  useEffect(() => {
-    try {
-      setCollapsed(window.localStorage.getItem(COLLAPSE_KEY) === '1')
-    } catch {
-      // Private mode, blocked storage: expanded is a fine answer.
-    }
-    setReady(true)
-  }, [])
-
-  const toggle = () => {
-    setCollapsed((was) => {
-      const next = !was
-      try {
-        window.localStorage.setItem(COLLAPSE_KEY, next ? '1' : '0')
-      } catch {
-        // Not worth failing the interaction over.
-      }
-      return next
-    })
-  }
+  const toggle = () => writeCollapsed(!collapsed)
 
   return (
     <nav className="sb-rail" data-collapsed={collapsed} data-ready={ready}>
@@ -136,8 +165,10 @@ export function NavRail({
 
       <div className="sb-rail-spacer" />
 
-      {/* Replaces the prototype's "18 of 34 verified" bar: a real count, since
-          nothing is verified until Phase 2 and a fake percentage would be a lie. */}
+      {/* Replaces the prototype's "18 of 34 verified" bar with a plain count of
+          what is mirrored. How many are verified is on Home, beside what still
+          needs reading; a progress bar here would make verifying everything
+          look like the goal, when it is a check you choose to make. */}
       <div className="sb-rail-stat">
         {documentCount} {documentCount === 1 ? 'document' : 'documents'} · {folderCount}{' '}
         {folderCount === 1 ? 'folder' : 'folders'}

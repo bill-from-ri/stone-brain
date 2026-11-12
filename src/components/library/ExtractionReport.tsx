@@ -1,6 +1,8 @@
 import Link from 'next/link'
+import type { Route } from 'next'
 import type { DocumentClaim, DocumentProposal, FinishedRun, RunIssue } from '@/db/queries/extraction'
 import { viewIssue } from '@/lib/extraction/issues'
+import { LocalTime } from '@/components/shared/LocalTime'
 import { predicateText } from '@/components/shared/predicate'
 
 /**
@@ -21,20 +23,33 @@ import { predicateText } from '@/components/shared/predicate'
 const VISIBLE_ISSUES = 4
 
 export function DocumentClaims({
+  documentId,
   claims,
   total,
   extracted,
 }: {
+  /** The document's Stone Brain id, for the World's `?document=` filter. */
+  documentId: string
   claims: DocumentClaim[]
   total: number
   extracted: boolean
 }) {
+  /*
+   * Every link here carries the document filter. "Open World" means *this
+   * document's* claims, not the whole graph; and a single claim opened under
+   * the filter is certain to be among the rows the World loaded, where an
+   * unfiltered World caps its list and could leave the pane with nothing to
+   * draw from.
+   */
+  const inWorld = (claimId?: string) =>
+    `/world?document=${documentId}${claimId ? `&claim=${claimId}` : ''}` as Route
+
   return (
     <div className="sb-x-section">
       <div className="sb-x-kicker-row">
         <div className="sb-detail-kicker">Claims · {total}</div>
         {total > 0 && (
-          <Link className="sb-x-kicker-link" href="/world">
+          <Link className="sb-x-kicker-link" href={inWorld()}>
             Open World
           </Link>
         )}
@@ -51,7 +66,7 @@ export function DocumentClaims({
           <ul className="sb-x-claims">
             {claims.map((claim) => (
               <li key={claim.id}>
-                <Link href={`/world?claim=${claim.id}`}>
+                <Link href={inWorld(claim.id)}>
                   <Tuple subject={claim.subject} predicate={claim.predicate} object={claim.object} />
                 </Link>
               </li>
@@ -69,7 +84,7 @@ export function DocumentClaims({
 }
 
 export function LastRun({ run }: { run: FinishedRun }) {
-  const when = formatWhen(run.finishedAt ?? run.startedAt)
+  const when = <LocalTime value={run.finishedAt ?? run.startedAt} options={WHEN} />
 
   if (run.status === 'failed') {
     return (
@@ -212,12 +227,10 @@ function Tuple({
   )
 }
 
-function formatWhen(date: Date): string {
-  return new Intl.DateTimeFormat('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date)
+const WHEN: Intl.DateTimeFormatOptions = {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
 }

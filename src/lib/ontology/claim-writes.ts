@@ -1,5 +1,5 @@
 import 'server-only'
-import { and, count, eq, or, sql } from 'drizzle-orm'
+import { and, count, eq, or } from 'drizzle-orm'
 import type { NeonDatabase } from 'drizzle-orm/neon-serverless'
 import { db } from '@/db'
 import type * as schema from '@/db/schema'

@@ -45,8 +45,12 @@ export function ClaimEditor({
   signatures: SignatureRow[]
   /** The claim to edit. Absent, the form writes a new one. */
   editing?: ClaimRow
-  /** Called once the claim is written — the modal closes on it. */
-  onSaved?: () => void
+  /**
+   * Called once the claim is written — the modal closes on it. An edit passes
+   * the claim as it now reads, so whatever was showing it can redraw without
+   * waiting for the refresh.
+   */
+  onSaved?: (saved: ClaimRow | null) => void
 }) {
   const router = useRouter()
 
@@ -130,7 +134,9 @@ export function ClaimEditor({
           }),
         })
 
-    const body = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null
+    const body = (await res.json().catch(() => null)) as
+      | { ok?: boolean; error?: string; claim?: ClaimRow | null }
+      | null
     setBusy(false)
 
     if (!body?.ok) {
@@ -140,7 +146,7 @@ export function ClaimEditor({
 
     // An edit closes on its result; there is nothing to clear for a next one.
     if (editing) {
-      onSaved?.()
+      onSaved?.(body.claim ?? null)
       router.refresh()
       return
     }
@@ -150,7 +156,7 @@ export function ClaimEditor({
     setValue('')
     setStartTime('')
     setEndTime('')
-    onSaved?.()
+    onSaved?.(null)
     router.refresh()
   }
 

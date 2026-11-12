@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { AppHeader } from '@/components/shell/AppHeader'
 import { DetailPane } from '@/components/library/DetailPane'
@@ -14,6 +15,7 @@ import {
 import { requireReady } from '@/lib/auth/guard'
 
 export const dynamic = 'force-dynamic'
+export const metadata: Metadata = { title: 'Library' }
 
 /**
  * The three-pane Library, ported from the prototype (lines 208-287).

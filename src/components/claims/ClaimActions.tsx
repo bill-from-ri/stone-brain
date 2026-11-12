@@ -45,6 +45,7 @@ export function ClaimActions({
   hasInverse,
   claim,
   onDeleted,
+  onEdited,
 }: {
   claimId: string
   hasInverse: boolean
@@ -52,6 +53,8 @@ export function ClaimActions({
   claim?: ClaimRow
   /** Clears the selection pointing at a claim that no longer exists. */
   onDeleted?: () => void
+  /** The claim as an edit left it, for a pane drawn from a row that is now stale. */
+  onEdited?: (claim: ClaimRow) => void
 }) {
   const router = useRouter()
   const [confirming, setConfirming] = useState(false)
@@ -137,7 +140,10 @@ export function ClaimActions({
             predicates={editing.predicates}
             signatures={editing.signatures}
             editing={editing.claim}
-            onSaved={() => setEditing(null)}
+            onSaved={(saved) => {
+              setEditing(null)
+              if (saved) onEdited?.(saved)
+            }}
           />
         )}
       </Modal>

@@ -443,8 +443,9 @@ export const documents = pgTable(
  *
  * What it deliberately does NOT enforce: `value_enum` membership, and
  * cardinality/contradiction. The first belongs to the Zod layer; the second is
- * Phase 3's job, and `is_functional` / `is_temporal` are carried now purely so
- * that work needs no migration.
+ * derived on read by conflict detection (src/lib/conflicts/), which is what
+ * `is_functional` and `is_temporal` are for — a constraint could only refuse
+ * the second answer, when the point is to show the user both.
  *
  * ## On renaming
  *
@@ -513,13 +514,19 @@ export const predicates = pgTable(
     /**
      * Relationships are directional, so every symmetric or reciprocal fact is
      * two rows (per the ontology design). This names the other direction;
-     * `married_to` points at itself. Claim generation will use it to
-     * auto-materialise and dedupe the reverse claim — see docs/ontology-design.md.
+     * `married_to` points at itself. Every write path materialises and dedupes
+     * the reverse claim from it (`inverseOf` in src/lib/ontology/inverse.ts),
+     * and conflict detection pairs the two directions back up by it.
      */
     inverseName: text('inverse_name'),
     isSymmetric: boolean('is_symmetric').notNull().default(false),
 
-    /** Carried for Phase 3 conflict detection; nothing reads them yet. */
+    /**
+     * Read by conflict detection (src/lib/conflicts/). Only a functional
+     * (single-valued) predicate can produce a value conflict; a temporal one
+     * lets dated claims that do not overlap — a succession of rulers — stand
+     * side by side, where a non-temporal one ignores dates altogether.
+     */
     isTemporal: boolean('is_temporal').notNull().default(false),
     isFunctional: boolean('is_functional').notNull().default(false),
 

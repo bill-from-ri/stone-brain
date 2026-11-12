@@ -23,15 +23,16 @@ export type Crumb = {
  * The Library's centre pane, ported from the prototype (lines 228-257).
  *
  * The draft's layout: a breadcrumb bar, then the table. The draft's "Check
- * folder" button is deliberately omitted — it belongs to Phase 3 — as is its
+ * folder" button is deliberately omitted — conflicts are derived from the
+ * claims on every read (Phase 3), so there is no check to run — as is its
  * All/Removed filter, since soft-deleted documents are no longer shown here at
  * all (decisions §7a). The sync control takes the right of the bar, where the
  * draft put its own folder-level button.
  *
- * Claims, Extracted and Conflicts are real as of Phase 2B, and still render
- * as em-dashes for a document that has never been extracted, matching the
- * draft's own "Never checked" rows: a zero there would claim we looked and
- * found none. The draft's "Last checked" column was a conflict check; what
+ * Claims and Extracted are real as of Phase 2B and Conflicts as of Phase 3,
+ * and all three still render as em-dashes for a document that has never been
+ * extracted, matching the draft's own "Never checked" rows: a zero there would
+ * claim we looked and found none. The draft's "Last checked" column was a conflict check; what
  * this product can actually date is the last successful extraction, so that
  * is what the column says.
  *

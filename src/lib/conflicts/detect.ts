@@ -282,6 +282,49 @@ export function pairDirections<T extends PairableClaim>(
   return result
 }
 
+/**
+ * Each relationship claim's materialised reverse direction among `pool`, as
+ * claim id → mirror id.
+ *
+ * Value conflicts are detected on the single-valued direction only — two
+ * rulers make `Ashfall ruled_by …` contested, while `Sera rules Ashfall` and
+ * `Orin rules Ashfall` are two true sentences about a many-valued predicate.
+ * But they are the same two facts read from the other end, and the World's
+ * table lists both rows, so a mark on one direction and not the other would
+ * say the contradiction is only half there. This finds the other half.
+ *
+ * Matched on ends, inverse predicate and both time bounds — the columns an
+ * inverse is built with (ontology/inverse.ts) — so a claim that merely shares
+ * the ends, with different dates, is not mistaken for the mirror. Each mirror
+ * is used at most once, as in `pairDirections`.
+ */
+export function findMirrors(
+  claims: readonly PairableClaim[],
+  pool: readonly Omit<PairableClaim, 'inverseName'>[],
+): Map<string, string> {
+  const index = new Map<string, Omit<PairableClaim, 'inverseName'>[]>()
+  for (const c of pool) {
+    if (!c.objectId) continue
+    const k = pairKey(c.subjectId, c.objectId, c.predicate, c.startTime, c.endTime)
+    const list = index.get(k)
+    if (list) list.push(c)
+    else index.set(k, [c])
+  }
+
+  const taken = new Set<string>(claims.map((c) => c.id))
+  const mirrors = new Map<string, string>()
+  for (const claim of claims) {
+    if (!claim.objectId || !claim.inverseName) continue
+    const mirror = index
+      .get(pairKey(claim.objectId, claim.subjectId, claim.inverseName, claim.startTime, claim.endTime))
+      ?.find((m) => !taken.has(m.id))
+    if (!mirror) continue
+    taken.add(mirror.id)
+    mirrors.set(claim.id, mirror.id)
+  }
+  return mirrors
+}
+
 function pairKey(
   subjectId: string,
   objectId: string,

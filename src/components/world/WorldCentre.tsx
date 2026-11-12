@@ -1,5 +1,8 @@
 'use client'
 
+import Link from 'next/link'
+import { usePathname, useSearchParams } from 'next/navigation'
+import type { Route } from 'next'
 import type { ClaimRow, EntityRow, Graph } from '@/db/queries/claims'
 import { ClaimsTable } from '@/components/claims/ClaimsTable'
 import { NewClaimButton } from '@/components/claims/NewClaimButton'
@@ -23,6 +26,7 @@ export function WorldCentre({
   claims,
   entities,
   graph,
+  document,
   canCreateClaim,
 }: {
   view: WorldViewMode
@@ -30,6 +34,12 @@ export function WorldCentre({
   /** The rail's entities, so the focused one can be named without a query. */
   entities: EntityRow[]
   graph: Graph
+  /**
+   * The `?document=` filter, if one is active. `name` is null for an id that
+   * names no document of yours — the filter still applies, to nothing, so the
+   * bar still has to say it is there and offer the way out.
+   */
+  document: DocumentFilter | null
   /**
    * Whether there is anything to make a claim *about*. Only the claim button
    * is gated on it — `New entity` is the way out of an empty world, so gating
@@ -44,6 +54,7 @@ export function WorldCentre({
   const { entityId, inspecting, selectEntity, toggleInspecting } = useWorldSelection()
 
   const focusName = entityId ? (entities.find((e) => e.id === entityId)?.name ?? null) : null
+  const clearDocument = useHrefWithout('document')
 
   /*
    * Choosing an entity re-filters the claims underneath, which only the server
@@ -65,6 +76,13 @@ export function WorldCentre({
                 <strong>{focusName}</strong>
               </>
             )}
+            {document && (
+              <>
+                {' from '}
+                <strong>{document.name ?? 'an unknown document'}</strong>
+                {document.removed && ' (no longer in the Library)'}
+              </>
+            )}
           </div>
           {focusName && (
             <>
@@ -80,9 +98,18 @@ export function WorldCentre({
                 {inspecting ? 'Hide details' : 'Details'}
               </button>
               <button type="button" className="btn btn-secondary" onClick={() => selectEntity(null)}>
-                Show all
+                {document ? 'All entities' : 'Show all'}
               </button>
             </>
+          )}
+          {document && (
+            // A link, not selection state: the document filter is read only
+            // by the server, so widening it is a navigation either way. It
+            // keeps everything else in the URL — the entity, the open claim,
+            // the view — so it undoes exactly the one thing it names.
+            <Link className="btn btn-secondary" href={clearDocument} replace scroll={false}>
+              All documents
+            </Link>
           )}
           <PaneBarSpacer />
           <NewEntityButton />
@@ -94,8 +121,19 @@ export function WorldCentre({
       {view === 'graph' ? (
         <GraphView graph={graph} activeEntityId={entityId} onSelect={selectEntity} />
       ) : (
-        <ClaimsTable claims={claims} />
+        <ClaimsTable claims={claims} filtered={Boolean(entityId || document)} />
       )}
     </RecordPane>
   )
+}
+
+export type DocumentFilter = { id: string; name: string | null; removed: boolean }
+
+/** The current URL with one query parameter removed. */
+function useHrefWithout(key: string): Route {
+  const pathname = usePathname()
+  const query = new URLSearchParams(useSearchParams())
+  query.delete(key)
+  const qs = query.toString()
+  return (qs ? `${pathname}?${qs}` : pathname) as Route
 }

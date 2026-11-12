@@ -1,6 +1,6 @@
 import 'server-only'
 import { unstable_cache } from 'next/cache'
-import { aliasedTable, and, asc, count, desc, eq, ilike, isNull, or, sql } from 'drizzle-orm'
+import { aliasedTable, and, asc, count, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm'
 import { db } from '@/db'
 import {
   claimSources,
@@ -138,6 +138,12 @@ function claimsBase(userId: string) {
 export type ClaimFilters = {
   /** Only claims where this entity is the subject or the object. */
   entityId?: string
+  /**
+   * Only claims citing this document (its Stone Brain id, not the Drive file
+   * id) — what the Library's "Open World" means. Inverses carry their mirror's
+   * citations (§5), so both directions of a relationship it states are here.
+   */
+  documentId?: string
   /** Matches subject name, object name, or predicate. */
   query?: string
 }
@@ -152,6 +158,23 @@ export async function getClaims(
   if (filters.entityId) {
     conditions.push(
       or(eq(claims.subjectId, filters.entityId), eq(claims.objectId, filters.entityId))!,
+    )
+  }
+
+  if (filters.documentId) {
+    conditions.push(
+      inArray(
+        claims.id,
+        db
+          .select({ id: claimSources.claimId })
+          .from(claimSources)
+          .where(
+            and(
+              eq(claimSources.userId, userId),
+              eq(claimSources.documentId, filters.documentId),
+            ),
+          ),
+      ),
     )
   }
 

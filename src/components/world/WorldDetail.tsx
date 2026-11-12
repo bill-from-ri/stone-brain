@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type {
   ClaimRow,
   ClaimSourceRow,
@@ -52,7 +52,7 @@ export function WorldDetail({
     useWorldSelection()
 
   const localClaim = claimId ? (claims.find((c) => c.id === claimId) ?? null) : null
-  const { claim, sources, loading } = useClaimDetail(claimId, localClaim)
+  const { claim, sources, loading, applyEdit } = useClaimDetail(claimId, localClaim)
 
   const entity = entityId ? (entities.find((e) => e.id === entityId) ?? null) : null
   const shownEntity = inspecting ? entity : null
@@ -75,6 +75,7 @@ export function WorldDetail({
         sources={sources}
         sourcesLoading={loading}
         onDeleted={() => selectClaim(null)}
+        onEdited={applyEdit}
       />
     ) : shownEntity ? (
       <EntityDetail
@@ -120,16 +121,36 @@ export function WorldDetail({
  * `known` is the row from the table, which is the normal case and renders with
  * no fetch at all. The fetch still runs for its sources, and doubles as the way
  * a `?claim=` link to something outside the current filter still opens.
+ *
+ * `applyEdit` takes the row an edit returned. Both places the pane can draw
+ * from go stale at that moment: the table row until the refresh lands, and the
+ * fetched claim for good, since nothing re-fetches it. So the edited row is
+ * held over the table row it was made against — `basis` — until that row is
+ * replaced by the refresh, and written into the fetched copy outright.
  */
 function useClaimDetail(
   claimId: string | null,
   known: ClaimRow | null,
-): { claim: ClaimRow | null; sources: ClaimSourceRow[]; loading: boolean } {
+): {
+  claim: ClaimRow | null
+  sources: ClaimSourceRow[]
+  loading: boolean
+  applyEdit: (claim: ClaimRow) => void
+} {
   const [fetched, setFetched] = useState<{
     id: string
     claim: ClaimRow | null
     sources: ClaimSourceRow[]
   } | null>(null)
+  const [edited, setEdited] = useState<{ row: ClaimRow; basis: ClaimRow | null } | null>(null)
+
+  const applyEdit = useCallback(
+    (row: ClaimRow) => {
+      setEdited({ row, basis: known })
+      setFetched((prev) => (prev?.id === row.id ? { ...prev, claim: row } : prev))
+    },
+    [known],
+  )
 
   useEffect(() => {
     if (!claimId) return
@@ -153,12 +174,15 @@ function useClaimDetail(
     return () => controller.abort()
   }, [claimId])
 
-  if (!claimId) return { claim: null, sources: [], loading: false }
+  if (!claimId) return { claim: null, sources: [], loading: false, applyEdit }
 
   const hit = fetched?.id === claimId ? fetched : null
+  // Same row object as when the edit was made: the refresh has not landed yet.
+  const pendingEdit = edited?.row.id === claimId && edited.basis === known ? edited.row : null
   return {
-    claim: known ?? hit?.claim ?? null,
+    claim: pendingEdit ?? known ?? hit?.claim ?? null,
     sources: hit?.sources ?? [],
     loading: hit === null,
+    applyEdit,
   }
 }

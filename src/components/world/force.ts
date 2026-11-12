@@ -181,3 +181,34 @@ export function bounds(sim: Sim, padding = 60) {
     height: Math.max(maxY - minY + padding * 2, 90),
   }
 }
+
+/*
+ * The three ways a pointer acts on the simulation. Named here rather than
+ * written as property assignments in the component: the simulation is a
+ * mutable object outside React's model on purpose (it steps sixty times a
+ * second, and copying a few hundred nodes per frame to satisfy immutability
+ * would be the whole cost of drawing), so mutating it is this module's job,
+ * and the component only says what happened.
+ */
+
+/** Holds a node where the pointer is, out of the forces, while it is dragged. */
+export function pin(sim: Sim, index: number, at?: { x: number; y: number }): void {
+  const node = sim.nodes[index]
+  if (!node) return
+  node.fixed = true
+  if (at) {
+    node.x = at.x
+    node.y = at.y
+  }
+}
+
+/** Hands a dragged node back to the forces. */
+export function release(sim: Sim, index: number): void {
+  const node = sim.nodes[index]
+  if (node) node.fixed = false
+}
+
+/** Re-heats a cooled simulation so the neighbourhood settles around a moved node. */
+export function reheat(sim: Sim, alpha = ALPHA_WARM): void {
+  if (sim.alpha < alpha) sim.alpha = alpha
+}

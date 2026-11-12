@@ -96,7 +96,7 @@ export function SyncPoller({
         // complete:false means the crawl hit its time budget mid-flight —
         // come straight back rather than waiting out the interval.
         schedule(result.complete === false ? 250 : interval())
-      } catch (err) {
+      } catch {
         if (controller.signal.aborted) return
         backoff.current = backoff.current
           ? Math.min(backoff.current * 2, MAX_BACKOFF_MS)

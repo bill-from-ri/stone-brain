@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { AppHeader } from '@/components/shell/AppHeader'
 import { ConflictInbox, inboxHref, type InboxView } from '@/components/conflicts/ConflictInbox'
 import {
@@ -18,6 +19,7 @@ import { requireReady } from '@/lib/auth/guard'
 import '@/styles/conflicts.css'
 
 export const dynamic = 'force-dynamic'
+export const metadata: Metadata = { title: 'Conflicts' }
 
 /**
  * Conflicts: everywhere the graph disagrees with itself, and the one place to

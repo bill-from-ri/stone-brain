@@ -286,7 +286,6 @@ export type ScoreInput = {
   directions?: Map<string, Direction>
 }
 
-const RANK: Record<Grade, number> = { matched: 3, quote_elsewhere: 2, quote_paraphrased: 1 }
 const GRADES: Grade[] = ['matched', 'quote_elsewhere', 'quote_paraphrased']
 
 /* --------------------------------------------------------------------- score */

@@ -11,11 +11,6 @@
    same weight-and-tracking recipe as the app's, just further up the scale. */
 
 .lp {
-  /* nocturne.css names "Inter" literally, but next/font registers the face
-     under a generated family exposed as --font-inter. Re-pointed here so the
-     headings and buttons on this page actually render in Inter. */
-  --font-heading: var(--font-inter), Inter, system-ui, sans-serif;
-  --font-body: var(--font-inter), Inter, system-ui, sans-serif;
   --lp-gutter: 24px;
   --lp-max: 1120px;
 

@@ -24,11 +24,13 @@ export function ClaimDetail({
   sources,
   sourcesLoading = false,
   onDeleted,
+  onEdited,
 }: {
   claim: ClaimRow
   sources: ClaimSourceRow[]
   sourcesLoading?: boolean
   onDeleted?: () => void
+  onEdited?: (claim: ClaimRow) => void
 }) {
   return (
     <>
@@ -94,8 +96,10 @@ export function ClaimDetail({
 
       <ClaimActions
         claimId={claim.id}
+        claim={claim}
         hasInverse={Boolean(claim.inverseName && claim.objectId)}
         onDeleted={onDeleted}
+        onEdited={onEdited}
       />
     </>
   )

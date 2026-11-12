@@ -6,6 +6,7 @@ import type { ConflictKind } from '@/db/schema'
 import {
   conflictId,
   detectValueConflicts,
+  findMirrors,
   isValueConflictDismissed,
   pairDirections,
 } from './detect'
@@ -89,6 +90,13 @@ export type ValueConflict = ConflictBase & {
   /** For a relationship, the type every side's object shares. */
   objectType: string | null
   sides: ConflictSide[]
+  /**
+   * The reverse direction of each relationship claim on the sides — `Sera
+   * rules Ashfall` for a side holding `Ashfall ruled_by Sera`. Not shown in
+   * the inbox, which reads the conflict from its single-valued end; carried so
+   * that the World's table, which lists both rows, can mark both.
+   */
+  mirrorIds: string[]
 }
 
 export type VanishedSourceConflict = ConflictBase & {
@@ -105,7 +113,7 @@ export function claimIdsOf(conflict: Conflict): string[] {
   if (conflict.kind === 'vanished_source') {
     return conflict.partnerId ? [conflict.claim.id, conflict.partnerId] : [conflict.claim.id]
   }
-  return conflict.sides.flatMap((s) => s.claims.map((c) => c.id))
+  return [...conflict.sides.flatMap((s) => s.claims.map((c) => c.id)), ...conflict.mirrorIds]
 }
 
 /** Every document a conflict's claims cite, removed or not. */
@@ -148,7 +156,10 @@ export async function loadConflicts(db: Db, userId: string): Promise<Conflict[]>
   const needed = new Set<string>()
   for (const c of detected) for (const s of c.sides) for (const claim of s.claims) needed.add(claim.id)
   for (const { claim } of paired) needed.add(claim.id)
-  const sources = await sourcesFor(db, userId, [...needed])
+  const [sources, mirrors] = await Promise.all([
+    sourcesFor(db, userId, [...needed]),
+    mirrorsFor(db, userId, detected.flatMap((c) => c.sides.flatMap((s) => s.claims))),
+  ])
 
   const dismissedValue = dismissals.filter((d) => d.kind === 'value').map((d) => d.key)
   const dismissedVanished = new Set(
@@ -176,6 +187,12 @@ export async function loadConflicts(db: Db, userId: string): Promise<Conflict[]>
         claims: s.claims.map((row) => toConflictClaim(row, sources)),
         displaces: s.displaces,
       })),
+      mirrorIds: c.sides.flatMap((s) =>
+        s.claims.flatMap((claim) => {
+          const mirror = mirrors.get(claim.id)
+          return mirror ? [mirror] : []
+        }),
+      ),
     }
   })
 
@@ -321,6 +338,41 @@ function vanishedCandidates(db: Db, userId: string): Promise<CandidateRow[]> {
       ),
     )
     .orderBy(asc(claims.createdAt), asc(claims.id))
+}
+
+/**
+ * The reverse directions of the relationship claims in value conflicts — see
+ * `ValueConflict.mirrorIds`. One read narrowed by ends and predicate in SQL;
+ * the exact match, dates included, is `findMirrors`.
+ */
+async function mirrorsFor(
+  db: Db,
+  userId: string,
+  conflicted: CandidateRow[],
+): Promise<Map<string, string>> {
+  const relationships = conflicted.filter((c) => c.objectId !== null && c.inverseName !== null)
+  if (relationships.length === 0) return new Map()
+
+  const pool = await db
+    .select({
+      id: claims.id,
+      subjectId: claims.subjectId,
+      objectId: claims.objectId,
+      predicate: claims.predicate,
+      startTime: claims.startTime,
+      endTime: claims.endTime,
+    })
+    .from(claims)
+    .where(
+      and(
+        eq(claims.userId, userId),
+        inArray(claims.subjectId, [...new Set(relationships.map((c) => c.objectId!))]),
+        inArray(claims.objectId, [...new Set(relationships.map((c) => c.subjectId))]),
+        inArray(claims.predicate, [...new Set(relationships.map((c) => c.inverseName!))]),
+      ),
+    )
+
+  return findMirrors(relationships, pool)
 }
 
 async function sourcesFor(db: Db, userId: string, claimIds: string[]) {

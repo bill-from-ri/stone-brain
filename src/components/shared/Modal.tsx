@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useId, useRef } from 'react'
 
 /**
  * The frame every modal in the product is built from: a scrim that takes the
@@ -46,6 +46,28 @@ export function Modal({
   children: React.ReactNode
 }) {
   const panel = useRef<HTMLDivElement>(null)
+  // Per instance: an editor modal and a confirmation can share a page, and two
+  // panels pointing aria-labelledby at one id would both be named by the first.
+  const titleId = useId()
+
+  /*
+   * Focus goes back where it came from on close — the Edit or Delete button
+   * that opened this — rather than falling to <body>, which leaves a keyboard
+   * user at the top of the document after every dialog.
+   *
+   * Read before the focus effect below moves it (effects run in order), and
+   * skipped when a field inside already took it with `autoFocus` — that
+   * happens at commit, before any effect, so the opener is no longer knowable
+   * and there is nothing better to restore than the default.
+   */
+  useEffect(() => {
+    if (!open) return
+    const active = document.activeElement
+    const opener = panel.current?.contains(active) ? null : active
+    return () => {
+      if (opener instanceof HTMLElement && opener.isConnected) opener.focus()
+    }
+  }, [open])
 
   /*
    * Focus moves into the panel, but only if nothing inside it has claimed the
@@ -61,8 +83,6 @@ export function Modal({
 
   if (!open) return null
 
-  const titleId = 'sb-modal-title'
-
   return (
     <div
       className="sb-modal-scrim"
@@ -73,6 +93,10 @@ export function Modal({
        * the thing behind it too.
        */
       onKeyDown={(event) => {
+        if (event.key === 'Tab') {
+          trapTab(event, panel.current)
+          return
+        }
         if (event.key !== 'Escape') return
         event.stopPropagation()
         if (!busy) onClose()
@@ -113,4 +137,31 @@ export function Modal({
       </div>
     </div>
   )
+}
+
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+/**
+ * Keeps Tab inside the panel: past the last control it wraps to the first,
+ * and back past the first to the last. `aria-modal` tells a screen reader the
+ * page behind is out of play; without this, the keyboard would not know it.
+ */
+function trapTab(event: React.KeyboardEvent, root: HTMLElement | null) {
+  if (!root) return
+  const items = [...root.querySelectorAll<HTMLElement>(FOCUSABLE)]
+  if (items.length === 0) {
+    event.preventDefault()
+    return
+  }
+  const first = items[0]!
+  const last = items[items.length - 1]!
+  const active = document.activeElement
+  if (event.shiftKey && (active === first || active === root)) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && active === last) {
+    event.preventDefault()
+    first.focus()
+  }
 }

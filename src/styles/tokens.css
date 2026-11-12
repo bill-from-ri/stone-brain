@@ -47,6 +47,16 @@
   --color-neutral-800: #2b313b;
   --color-neutral-100: #e8eaee;
   --color-divider: rgba(232, 234, 238, 0.13);
+
+  /* Nocturne names "Inter" literally. next/font is the thing that actually
+     loads it, and the family name it registers is its own business: Turbopack
+     happens to keep "Inter", webpack hashes it to an unguessable name, and only
+     the --font-inter variable (set on <html> by the root layout) is promised to
+     name the face either way. Pointing both tokens at the variable is what
+     makes every heading, button and tag render in the loaded face rather than
+     falling back to the system font under the other bundler. */
+  --font-heading: var(--font-inter), system-ui, sans-serif;
+  --font-body: var(--font-inter), system-ui, sans-serif;
 }
 
 html,

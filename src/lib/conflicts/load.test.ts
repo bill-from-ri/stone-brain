@@ -235,7 +235,20 @@ describe('value conflicts', () => {
     await cite(orinRuledBy, doc.gone)
     const [conflict] = values(await loadConflicts(db, userId))
     expect(documentIdsOf(conflict!)).toEqual(new Set([doc.live, doc.gone]))
-    expect(new Set(claimIdsOf(conflict!))).toEqual(new Set([seraRuledBy, orinRuledBy]))
+  })
+
+  it('carries the reverse direction of each side, so both rows can be marked', async () => {
+    const [seraRules, seraRuledBy] = await both(rules(sera), 'ruled_by')
+    const [orinRules, orinRuledBy] = await both(rules(orin), 'ruled_by')
+    // Same ends as Sera's side, but dated: a different assertion, not its mirror.
+    await claim(rules(sera, 'AD 300', 'AD 310'))
+
+    const [conflict, ...rest] = values(await loadConflicts(db, userId))
+    expect(rest).toEqual([])
+    expect(new Set(conflict!.mirrorIds)).toEqual(new Set([seraRules, orinRules]))
+    expect(new Set(claimIdsOf(conflict!))).toEqual(
+      new Set([seraRuledBy, orinRuledBy, seraRules, orinRules]),
+    )
   })
 })
 

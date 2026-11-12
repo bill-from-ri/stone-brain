@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/guard'
 import { AppHeader } from '@/components/shell/AppHeader'
 import { ProviderPanel } from '@/components/settings/ProviderPanel'
@@ -7,6 +8,7 @@ import { getProviderStatus } from '@/lib/llm/provider'
 import '@/styles/library-extraction.css'
 
 export const dynamic = 'force-dynamic'
+export const metadata: Metadata = { title: 'Settings' }
 
 export default async function SettingsPage() {
   const session = await requireUser()

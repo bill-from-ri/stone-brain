@@ -121,7 +121,16 @@ export function KeepSideButton({
 }
 
 /** "Delete claim" for a claim whose sources have all vanished. */
-export function DeleteUnsourcedButton({ conflictId, sentence }: { conflictId: string; sentence: string }) {
+export function DeleteUnsourcedButton({
+  conflictId,
+  sentence,
+  hasReverse,
+}: {
+  conflictId: string
+  sentence: string
+  /** A relationship's reverse direction is always deleted with it; an attribute has none. */
+  hasReverse: boolean
+}) {
   const [confirming, setConfirming] = useState(false)
   const { busy, error, run } = useAction()
 
@@ -146,8 +155,8 @@ export function DeleteUnsourcedButton({ conflictId, sentence }: { conflictId: st
         }
         body={
           <p>
-            “{sentence}” and its reverse direction will be removed from your world, along with the
-            passages kept for it.
+            “{sentence}”{hasReverse ? ' and its reverse direction' : ''} will be removed from your
+            world, along with the passages kept for {hasReverse ? 'them' : 'it'}.
           </p>
         }
       >

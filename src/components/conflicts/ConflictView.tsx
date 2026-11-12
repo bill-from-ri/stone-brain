@@ -278,7 +278,11 @@ export function VanishedSourceView({
       <div className="sb-cf-actions">
         {!conflict.dismissed && (
           <>
-            <DeleteUnsourcedButton conflictId={conflict.id} sentence={sentenceOf(claim)} />
+            <DeleteUnsourcedButton
+              conflictId={conflict.id}
+              sentence={sentenceOf(claim)}
+              hasReverse={claim.objectId !== null}
+            />
             <span className="sb-cf-actions-sep">·</span>
           </>
         )}

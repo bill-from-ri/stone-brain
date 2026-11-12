@@ -1,6 +1,6 @@
 import 'server-only'
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm'
-import type { AnyPgColumn, PgTransaction } from 'drizzle-orm/pg-core'
+import type { AnyPgColumn } from 'drizzle-orm/pg-core'
 import { db } from '@/db'
 import { documents, folders } from '@/db/schema'
 import { parseDriveDate, parseVersion, type DriveFile } from '@/lib/drive/types'
@@ -17,7 +17,8 @@ import { parseDriveDate, parseVersion, type DriveFile } from '@/lib/drive/types'
  *     survive the round trip (decisions §5, §7a).
  */
 
-type Tx = PgTransaction<any, any, any> | typeof db
+/** The app's handle, or a transaction opened on it — exactly what `db.transaction` hands its callback. */
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0] | typeof db
 
 export async function upsertFolder(
   tx: Tx,

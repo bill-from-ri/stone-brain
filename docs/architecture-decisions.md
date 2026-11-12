@@ -402,7 +402,9 @@ Implications:
 - Claims carry their supporting quote and paragraph anchor denormalized at extraction time, so
   a flagged claim can still show what it was based on after the document is gone.
 - Resolution options mirror the Phase 3 conflict UI: delete the claim, re-point it at another
-  document, or accept it as unsourced (demoting `canonicity` to `draft`).
+  document, or accept it as unsourced (demoting `canonicity` to `draft`). *As built (Phase 3):*
+  delete (with its reverse direction), or "keep it as it stands", which records a dismissal and
+  leaves the claim unchanged. Re-pointing is not offered yet.
 - A document that reappears — untrashed, or moved back under the root — clears the flag. Since
   the match is on Drive `file_id`, this works automatically and is a good argument for
   soft-delete over hard-delete.
@@ -1019,9 +1021,12 @@ be bypassed, and correct in that it can be overridden.
 ### What is deliberately not enforced
 
 - **`value_enum` membership** — Zod. Doing it in Postgres means a trigger; see above.
-- **Cardinality and contradiction** — Phase 3. `is_functional` and `is_temporal` are carried now
-  and read by nothing, purely so that phase needs no migration. Two rulers is only a conflict if
-  the validity windows overlap, which is precisely the gating the implementation plan asks for.
+- **Cardinality and contradiction** — Phase 3. `is_functional` and `is_temporal` were carried
+  from the start, unread, so that phase would need no migration; it did not. Conflict detection
+  (`src/lib/conflicts/`) now reads both, derived on every read rather than enforced: two rulers is
+  only a conflict if the validity windows overlap, which is precisely the gating the
+  implementation plan asks for, and a constraint could only refuse the second ruler when the
+  point is to show the user both.
 
 ### Testing against a real Postgres
 
@@ -1033,7 +1038,8 @@ one devDependency, needs no Docker daemon, and runs in about a second.
 ### Growth: a proposals queue, not an open vocabulary
 
 A closed vocabulary that cannot grow strangles the project the first time the extractor correctly
-identifies a relationship we did not anticipate. Phase 2B's extraction schema will therefore
-accept a structured `proposed_predicate` that lands in a queue for human promotion rather than in
-the graph. Closed at write time, open over the project's life — and the queue is a useful signal
+identifies a relationship we did not anticipate. Phase 2B's extraction schema therefore accepts
+an optional `proposed_predicates` array whose entries land in a queue (`predicate_proposals`,
+reviewed in Settings) for human promotion rather than in the graph — built; see "How the
+vocabulary grows" in ontology-design.md. Closed at write time, open over the project's life — and the queue is a useful signal
 of where the ontology is thin.

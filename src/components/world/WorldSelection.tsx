@@ -1,6 +1,15 @@
 'use client'
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState, useTransition } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useTransition,
+} from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import type { Route } from 'next'
 
@@ -110,7 +119,12 @@ export function WorldSelectionProvider({
    * needs to handle.
    */
   const latest = useRef(selection)
-  latest.current = selection
+  // Kept current after each commit rather than written during render, which
+  // a render that React discards would otherwise leave behind. `commit` also
+  // writes it, so two handlers in the same tick see each other's choice.
+  useLayoutEffect(() => {
+    latest.current = selection
+  })
 
   useEffect(() => {
     if (pending) return
@@ -120,6 +134,7 @@ export function WorldSelectionProvider({
 
   const commit = useCallback(
     (next: Selection) => {
+      latest.current = next
       setSelection(next)
 
       const query = new URLSearchParams(params)

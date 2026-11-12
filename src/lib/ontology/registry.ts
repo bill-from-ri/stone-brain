@@ -593,7 +593,8 @@ export function deriveOntology(): { predicates: PredicateRow[]; signatures: Sign
     for (const [subject, object] of rel.pairs) {
       signatureRows.push({ predicate: rel.name, subjectType: subject, objectType: object, valueKind: NONE })
       // A symmetric predicate must accept the pair read backwards too, or the
-      // reciprocal claim the extractor is told to write would be rejected.
+      // materialised reverse of `married_to(A, B)` — which is `married_to(B, A)`,
+      // written by `inverseOf` on every write path — would fail the signature FK.
       if (symmetric) {
         signatureRows.push({ predicate: rel.name, subjectType: object, objectType: subject, valueKind: NONE })
       }

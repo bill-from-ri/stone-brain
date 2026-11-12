@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { ClaimIllustration } from '@/components/landing/ClaimIllustration'
 import { ConflictIllustration } from '@/components/landing/ConflictIllustration'
-import { env } from '@/lib/env'
 import '@/styles/landing.css'
 
 /**
@@ -26,8 +26,7 @@ const DESCRIPTION =
   'Stone Brain mirrors a Google Drive folder read-only, extracts every claim your documents make into a typed graph with verbatim citations, and shows you where they contradict each other.'
 
 export const metadata: Metadata = {
-  // The root layout sets no metadataBase, and Open Graph URLs must be absolute.
-  metadataBase: new URL(env.APP_URL),
+  // Relative URLs below resolve against the root layout's metadataBase.
   title: { absolute: TITLE },
   description: DESCRIPTION,
   alternates: { canonical: '/' },
@@ -128,12 +127,12 @@ export default function LandingPage() {
 
       <header className="lp-header">
         <div className="lp-wrap lp-header-row">
-          <a className="lp-brand" href="/">
+          <Link className="lp-brand" href="/">
             <span className="lp-mark" aria-hidden="true">
               <i className="ph ph-diamond" />
             </span>
             <span>Stone Brain</span>
-          </a>
+          </Link>
           <nav className="lp-nav" aria-label="Page sections">
             <a href="#how">How it works</a>
             <a href="#engineering">Under the hood</a>

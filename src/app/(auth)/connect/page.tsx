@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 
-export const metadata: Metadata = { title: 'Connect · Stone Brain' }
+export const metadata: Metadata = { title: 'Connect' }
 
 /**
  * Ported from the prototype's `connect` screen (frontend/Stone Brain.dc.html,

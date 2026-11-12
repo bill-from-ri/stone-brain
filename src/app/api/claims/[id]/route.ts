@@ -80,10 +80,20 @@ export async function PATCH(
     return NextResponse.json({ ok: false, error: 'Malformed request.' }, { status: 400 })
   }
 
-  const result = await updateClaim(guard.session.user.id, params.data.id, body.data)
+  const userId = guard.session.user.id
+  const result = await updateClaim(userId, params.data.id, body.data)
 
   // As with POST: a refused edit is a designed state with a readable reason.
-  return NextResponse.json(result, { status: result.ok ? 200 : 422 })
+  if (!result.ok) return NextResponse.json(result, { status: 422 })
+
+  /*
+   * The edited row comes back with the result, read the way the World reads
+   * it, so the pane that asked can redraw from it at once. Without it the pane
+   * kept showing the row it was opened from until the refreshed page landed —
+   * and for a claim opened by link from outside the table's rows, which no
+   * refresh ever replaces, until it was selected again.
+   */
+  return NextResponse.json({ ...result, claim: await getClaim(userId, params.data.id) })
 }
 
 /** Deletes the claim and, always, its inverse — see `deleteClaim`. */

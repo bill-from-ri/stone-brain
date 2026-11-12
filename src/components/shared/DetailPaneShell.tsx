@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useParamWriter } from './RecordTable'
 
 /**
@@ -40,11 +40,14 @@ export function DetailPaneShell({
   children: React.ReactNode
 }) {
   const setParams = useParamWriter()
+  /*
+   * What the pane last showed while open, kept so that closing animates the
+   * old content away rather than an empty box. Updated during render — React's
+   * pattern for state that tracks a prop — rather than in an effect, which
+   * would paint each new selection one frame late and render twice for it.
+   */
   const [held, setHeld] = useState<React.ReactNode>(children)
-
-  useEffect(() => {
-    if (open) setHeld(children)
-  }, [open, children])
+  if (open && held !== children) setHeld(children)
 
   const close = () =>
     onClose ? onClose() : setParams((p) => (clears ?? []).forEach((key) => p.delete(key)))

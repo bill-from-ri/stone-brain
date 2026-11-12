@@ -4,14 +4,17 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Graph } from '@/db/queries/claims'
 import { EmptyState } from '@/components/shared/RecordTable'
 import { predicateText } from '@/components/shared/predicate'
+import { useHydrated } from '@/components/shared/useHydrated'
 import {
   ALPHA_MIN,
-  ALPHA_WARM,
   ATTRIBUTE_LINK_DISTANCE,
   ENTITY_LINK_DISTANCE,
   bounds,
   createSim,
   nodeRadius,
+  pin,
+  reheat,
+  release,
   settle,
   step,
   type Sim,
@@ -55,10 +58,8 @@ type Props = {
  * of physics off the server, where it buys nothing.
  */
 export function GraphView(props: Props) {
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
-
-  if (!mounted) return <div className="sb-graph-placeholder" aria-hidden />
+  const hydrated = useHydrated()
+  if (!hydrated) return <div className="sb-graph-placeholder" aria-hidden />
   return <GraphCanvas {...props} />
 }
 
@@ -95,7 +96,7 @@ function GraphCanvas({ graph, activeEntityId, onSelect }: Props) {
 
   /** Re-heat after a drag, so the neighbourhood settles around the new place. */
   const warm = () => {
-    if (sim.alpha < ALPHA_WARM) sim.alpha = ALPHA_WARM
+    reheat(sim)
     if (!runningRef.current) {
       runningRef.current = true
       const tick = () => {
@@ -113,11 +114,16 @@ function GraphCanvas({ graph, activeEntityId, onSelect }: Props) {
 
   /* ------------------------------------------------------------ the viewport */
 
-  const [box, setBox] = useState<Box>(() => bounds(sim))
+  const [view, setView] = useState<{ sim: Sim; box: Box }>(() => ({ sim, box: bounds(sim) }))
 
   // A new graph is a new world: fit to it once, then leave the viewport alone
-  // so panning and zooming survive selecting, filtering and re-rendering.
-  useEffect(() => setBox(bounds(sim)), [sim])
+  // so panning and zooming survive selecting, filtering and re-rendering. The
+  // viewport remembers which simulation it was fitted to, and refits during
+  // render when that changes — not in an effect, which would paint one frame
+  // of the new graph inside the old graph's viewBox first.
+  if (view.sim !== sim) setView({ sim, box: bounds(sim) })
+  const box = view.sim === sim ? view.box : bounds(sim)
+  const setBox = (next: Box) => setView({ sim, box: next })
 
   /** Client pixels to world units, via the current viewBox. */
   const toWorld = (clientX: number, clientY: number) => {
@@ -163,7 +169,7 @@ function GraphCanvas({ graph, activeEntityId, onSelect }: Props) {
     ;(event.target as Element).setPointerCapture?.(event.pointerId)
     dragRef.current = { kind: 'node', node: i, pointerId: event.pointerId }
     movedRef.current = false
-    sim.nodes[i]!.fixed = true
+    pin(sim, i)
   }
 
   const onPointerDownBackground = (event: React.PointerEvent) => {
@@ -184,10 +190,7 @@ function GraphCanvas({ graph, activeEntityId, onSelect }: Props) {
     movedRef.current = true
 
     if (drag.kind === 'node') {
-      const at = toWorld(event.clientX, event.clientY)
-      const node = sim.nodes[drag.node]!
-      node.x = at.x
-      node.y = at.y
+      pin(sim, drag.node, toWorld(event.clientX, event.clientY))
       warm()
       return
     }
@@ -206,7 +209,7 @@ function GraphCanvas({ graph, activeEntityId, onSelect }: Props) {
     const drag = dragRef.current
     dragRef.current = null
     if (drag?.kind === 'node') {
-      sim.nodes[drag.node]!.fixed = false
+      release(sim, drag.node)
       warm()
     }
   }

@@ -48,8 +48,10 @@ export function ConflictBadge({
 
   const className = `sb-conflict-badge sb-conflict-badge--${kind}`
 
+  // On a link the tooltip is also its accessible name: a bare "3" or
+  // "Conflict" says nothing about where it goes to someone who cannot see it.
   return href ? (
-    <Link href={href} className={className} title={tooltip}>
+    <Link href={href} className={className} title={tooltip} aria-label={tooltip}>
       {body}
     </Link>
   ) : (

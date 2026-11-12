@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import type { NeonDatabase } from 'drizzle-orm/neon-serverless'
 import type * as schema from '@/db/schema'
 import { type Canonicity, entities } from '@/db/schema'
-import { looseNameKey, normalizeName } from './name-key'
+import { normalizeName } from './name-key'
 
 /**
  * Resolving a surface string to an entity that already exists.

@@ -28,14 +28,22 @@ type DocHit = SearchResponse['documents'][number]
 type EntityHit = SearchResponse['entities'][number]
 type Hit = { kind: 'document'; hit: DocHit } | { kind: 'entity'; hit: EntityHit }
 
+const NO_RESULTS: SearchResponse = { documents: [], entities: [] }
+
 export function GlobalSearch() {
   const router = useRouter()
   const listId = useId()
 
   const [value, setValue] = useState('')
-  const [results, setResults] = useState<SearchResponse>({ documents: [], entities: [] })
+  /*
+   * The last answer, labelled with the query it answers. Results and "still
+   * searching" are both derived from it against the current query rather than
+   * kept as their own state, so clearing the field or typing past an answer
+   * never needs a state write of its own — the old answer simply stops
+   * matching.
+   */
+  const [answer, setAnswer] = useState<{ query: string; results: SearchResponse } | null>(null)
   const [open, setOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
   const [active, setActive] = useState(0)
 
   const rootRef = useRef<HTMLDivElement>(null)
@@ -43,6 +51,8 @@ export function GlobalSearch() {
   const latest = useRef(0)
 
   const query = value.trim()
+  const results = answer?.query === query ? answer.results : NO_RESULTS
+  const loading = query !== '' && answer?.query !== query
 
   /** Entities first: a named thing is a more specific answer than a file. */
   const hits = useMemo<Hit[]>(
@@ -54,13 +64,8 @@ export function GlobalSearch() {
   )
 
   useEffect(() => {
-    if (!query) {
-      setResults({ documents: [], entities: [] })
-      setLoading(false)
-      return
-    }
+    if (!query) return
 
-    setLoading(true)
     const seq = ++latest.current
     const controller = new AbortController()
 
@@ -73,14 +78,12 @@ export function GlobalSearch() {
         )
         .then((data) => {
           if (seq !== latest.current) return
-          setResults(data)
+          setAnswer({ query, results: data })
           setActive(0)
-          setLoading(false)
         })
         .catch(() => {
           if (seq !== latest.current || controller.signal.aborted) return
-          setResults({ documents: [], entities: [] })
-          setLoading(false)
+          setAnswer({ query, results: NO_RESULTS })
         })
     }, 180)
 

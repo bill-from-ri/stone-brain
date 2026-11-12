@@ -3,8 +3,7 @@
 Everything here is manual and one-time. Nothing in it costs money.
 
 When you're done, `npm run dev` should take you through: `/connect` → Google consent →
-`/setup/folder`. (The folder picker itself is still being built; landing on that page is the
-success condition for now.)
+`/setup/folder`, where you pick the Drive folder to mirror; the Library then syncs it.
 
 ---
 

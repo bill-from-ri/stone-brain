@@ -203,6 +203,27 @@ export async function getDocument(
   return rows[0] ?? null
 }
 
+/**
+ * A document's name, by its Stone Brain id — for the World's "claims from this
+ * document" filter, which has to say what it is filtering on.
+ *
+ * Unlike `getDocument` this does return a removed document: its claims and
+ * their snapshotted evidence outlive it (decisions §7a), and filtering to
+ * "what did that document say" is most useful precisely when it has gone.
+ */
+export async function getDocumentLabel(
+  userId: string,
+  documentId: string,
+): Promise<{ id: string; name: string; removed: boolean } | null> {
+  const [row] = await db
+    .select({ id: documents.id, name: documents.name, removedAt: documents.removedAt })
+    .from(documents)
+    .where(and(eq(documents.userId, userId), eq(documents.id, documentId)))
+    .limit(1)
+
+  return row ? { id: row.id, name: row.name, removed: row.removedAt !== null } : null
+}
+
 export type SearchHit = {
   driveFileId: string
   name: string

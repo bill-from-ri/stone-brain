@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
+import { env } from '@/lib/env'
 import '@phosphor-icons/web/regular'
 import '@phosphor-icons/web/bold'
 import '@/styles/nocturne.css'
@@ -15,18 +16,35 @@ const inter = Inter({
   display: 'swap',
 })
 
+/*
+ * Defaults for every route. `metadataBase` is here rather than on the one
+ * page that first needed it (the landing page's Open Graph URLs must be
+ * absolute) because any page that later sets an image or a canonical URL
+ * needs it too, and Next resolves those against the nearest base up the tree.
+ * APP_URL is the same origin the OAuth redirect is built from, so the two
+ * cannot disagree about where the app lives.
+ *
+ * The template names the product after each screen's own title — "World ·
+ * Stone Brain" — so a row of tabs reads by screen.
+ */
 export const metadata: Metadata = {
-  title: 'Stone Brain',
+  metadataBase: new URL(env.APP_URL),
+  title: { default: 'Stone Brain', template: '%s · Stone Brain' },
   description:
     'Reads the documents in one Drive folder, extracts the claims they make, and tells you when they disagree with each other.',
+  applicationName: 'Stone Brain',
 }
 
+/*
+ * The font is applied by the `--font-heading` / `--font-body` tokens in
+ * tokens.css, which read the `--font-inter` variable this class sets — not by
+ * an inline style here, which reached the body and nothing that sets its own
+ * family (headings, buttons, tags).
+ */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={inter.variable}>
-      <body style={{ fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif' }}>
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   )
 }

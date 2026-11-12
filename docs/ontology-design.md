@@ -490,16 +490,30 @@ written by a person with no document behind it, and needs no `claim_sources` row
 
 A closed vocabulary that cannot grow will strangle the project the first time the extractor
 correctly identifies a relationship we did not anticipate. So the extraction schema gives it a
-structured way to fail: a `proposed_predicate` object (name, description, an example subject and
-object) that lands in a proposals queue instead of the graph. Because the vocabulary is global and curated, promotion means **editing the registry and
-re-running the seed** — a maintainer decision, not a per-user setting. The queue's job is to
+structured way to fail: an optional `proposed_predicates` array beside `claims`, each entry a
+name, a description, the subject (and, for a relationship, object) type, an example subject and
+object, and the sentence that prompted it with its ¶ anchor. Proposals never reach the graph.
+
+- **Parsed leniently** (`parseProposals` in `src/lib/ontology/extraction.ts`). A malformed
+  proposal drops that proposal and nothing else — never a rejection, never a failed run; names
+  are normalised to snake_case and deduplicated within a reply; a name already in the vocabulary
+  is not a proposal; and the types must be existing entity types (a new *type* is a larger change
+  than this queue is for).
+- **Filed per run** into `predicate_proposals` (`fileProposals` in
+  `src/lib/extraction/record.ts`), once per name *and document*: re-extracting a document does
+  not add a second card, but a second document wanting the same name does — how many documents
+  hit the same gap is the signal. A name already decided either way is not re-filed.
+- **Reviewed** in Settings → Vocabulary proposals, grouped by name, and on the document's pane in
+  the Library. Promoting, rejecting or reopening moves every row with that name together.
+
+Because the vocabulary is global and curated, promoting a proposal records the decision; it does
+not change what the extractor may write. Growing the vocabulary is still **editing the registry
+and re-running the seed** — a maintainer decision, not a per-user setting. The queue's job is to
 surface where the ontology is actually thin.
 
 Closed at write time, open over the life of the project.
 
-*(Phase 2B. Not built yet.)*
-
-# Deferred to claim generation (Phase 2B)
+# Settled during claim generation (Phase 2B)
 
 - **Inverse claims are materialized on every write (built).** `predicates.inverse_name` records
   the reverse direction of every relationship (`married_to` points at itself), and one pure
@@ -519,8 +533,12 @@ Closed at write time, open over the life of the project.
   - *Ground truth*: `loadSeed` materializes the inverse of each seeded relationship with the same
     citation, so the seeded graph obeys the invariant and scoring compares like with like.
   - *Existing rows*: `npm run db:backfill:inverses` mends rows written before this, idempotently.
-- **Agent-proposed entities.** The matcher deliberately never creates one (see below), so a name
-  it cannot resolve waits for 2B's proposal step, which decides deliberately and records why.
+- **Agent-proposed entities (built).** The matcher still never creates one; creation is its own
+  step, `createDraftEntities` in `src/lib/ontology/entity-drafts.ts`, which extraction calls for
+  names that resolved to nothing. Each is written as `canonicity: 'draft'`, `created_by: 'llm'`,
+  with the source document and model recorded, so it is traceable and reviewable; an extractor
+  never mints canon. A name that resolves *ambiguously* is not guessed at — its claims are
+  dropped with `entity_ambiguous` and listed in the run's report.
 
 # Deferred proposals
 

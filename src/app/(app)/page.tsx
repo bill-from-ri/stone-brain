@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { AppHeader } from '@/components/shell/AppHeader'
 import { NextSteps } from '@/components/home/NextSteps'
 import { RecentActivity } from '@/components/home/RecentActivity'
@@ -22,6 +23,7 @@ import { getProviderStatus } from '@/lib/llm/provider'
 import '@/styles/home.css'
 
 export const dynamic = 'force-dynamic'
+export const metadata: Metadata = { title: 'Home' }
 
 /**
  * Home, rebuilt from the prototype (frontend/Stone Brain.dc.html, lines

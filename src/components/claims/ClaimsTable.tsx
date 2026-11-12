@@ -11,8 +11,9 @@ import { useWorldSelection } from '@/components/world/WorldSelection'
  *
  * Its three-column spine — entity, relationship, entity — is kept exactly,
  * because it is what makes a claim readable as a sentence. The prototype's
- * checkbox and confidence columns are dropped: both belong to reviewing an
- * extraction run, which does not exist until Phase 2B.
+ * checkbox and confidence columns are dropped: both belong to reviewing one
+ * extraction run before committing it, and extraction here writes draft
+ * claims directly — its review lives on the document, in the Library.
  *
  * Attribute claims reuse the object column for their value, with the value type
  * in the faint position where a relationship shows the object's entity type.
@@ -33,7 +34,14 @@ import { useWorldSelection } from '@/components/world/WorldSelection'
  * the verb because that is what a conflict is about — the subject is fine and
  * the object is fine; it is the assertion between them that is contested.
  */
-export function ClaimsTable({ claims }: { claims: ClaimRow[] }) {
+export function ClaimsTable({
+  claims,
+  filtered = false,
+}: {
+  claims: ClaimRow[]
+  /** Whether an entity or document filter is narrowing the rows, for the empty state. */
+  filtered?: boolean
+}) {
   const { claimId, selectClaim, selectEntity } = useWorldSelection()
 
   const columns: Column<ClaimRow>[] = [
@@ -107,10 +115,14 @@ export function ClaimsTable({ claims }: { claims: ClaimRow[] }) {
       selectedKey={claimId}
       onSelect={(claim) => selectClaim(claim.id)}
       empty={
-        <EmptyState
-          title="No claims yet."
-          note="Add one by hand, or wait for extraction in Phase 2."
-        />
+        filtered ? (
+          <EmptyState title="No claims match." note="Widen the filter from the bar above." />
+        ) : (
+          <EmptyState
+            title="No claims yet."
+            note="Extract a document from the Library, or add a claim by hand."
+          />
+        )
       }
     />
   )

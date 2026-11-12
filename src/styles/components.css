@@ -1729,7 +1729,7 @@
 
 .sb-graph-svg text {
   pointer-events: none;
-  font-family: Inter, system-ui, sans-serif;
+  font-family: var(--font-body);
 }
 
 /* -- edges -- */

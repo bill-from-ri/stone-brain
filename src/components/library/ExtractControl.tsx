@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { LocalTime } from '@/components/shared/LocalTime'
 import { isProviderSettingsFailure, type RunRefusal, type RunSummary } from '@/lib/extraction/codes'
 
 /**
@@ -102,10 +103,10 @@ export function ExtractControl({
             <i className="ph ph-circle-notch sb-x-spin" />
             <span>An extraction is already running on this document.</span>
           </div>
-          {/* Formatted in the viewer's own timezone, which the server cannot
-              know — hence the hydration exemption on exactly this text. */}
-          <p className="sb-x-note" style={{ marginTop: 6 }} suppressHydrationWarning>
-            Started at {new Date(runningSince!).toLocaleTimeString([], { timeStyle: 'short' })}. Its
+          {/* In the viewer's own timezone, which the server cannot know — see
+              LocalTime for why a hydration exemption was not enough. */}
+          <p className="sb-x-note" style={{ marginTop: 6 }}>
+            Started at <LocalTime value={runningSince!} options={{ timeStyle: 'short' }} />. Its
             result appears here when it lands.
           </p>
         </div>

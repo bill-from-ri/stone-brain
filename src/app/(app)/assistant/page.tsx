@@ -1,8 +1,10 @@
+import type { Metadata } from 'next'
 import { AppHeader } from '@/components/shell/AppHeader'
 import { StubScreen } from '@/components/stub/NotYetReal'
 import { requireUser } from '@/lib/auth/guard'
 
 export const dynamic = 'force-dynamic'
+export const metadata: Metadata = { title: 'Assistant' }
 
 export default async function Page() {
   await requireUser()

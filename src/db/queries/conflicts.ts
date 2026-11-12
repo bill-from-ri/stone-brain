@@ -69,8 +69,10 @@ export type ClaimConflictMark = { kind: ConflictKind; conflictId: string }
  * conflict, which is the one that needs a decision about the world rather than
  * about a citation.
  *
- * Both directions of a vanished relationship are marked, though the inbox
- * shows it once: the World's table lists both rows.
+ * Both directions of a relationship are marked, though the inbox shows each
+ * conflict from one end: the World's table lists both rows, and "Sera rules
+ * Ashfall" is as contested as "Ashfall is ruled by Sera" when Orin rules it
+ * too. `claimIdsOf` carries the mirrors for exactly this.
  */
 export async function getClaimConflictMarks(userId: string): Promise<Map<string, ClaimConflictMark>> {
   const marks = new Map<string, ClaimConflictMark>()
