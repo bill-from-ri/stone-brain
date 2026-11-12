@@ -74,8 +74,23 @@ type RelationshipDef = {
   symmetric?: boolean
   /** The relationship can start and stop holding. Phase 3 uses this to gate conflicts. */
   temporal?: boolean
-  /** At most one object at a time. Phase 3 cardinality; nothing reads it yet. */
-  functional?: boolean
+  /**
+   * Which direction is single-valued — holds at most one object for a given
+   * subject (at a time, when `temporal`). Phase 3 raises a value conflict when
+   * two claims in that direction disagree, and nothing else does.
+   *
+   * A direction rather than a boolean because cardinality does not survive
+   * inversion, and it is not always the declared direction that keeps it. A
+   * character is `born_in` one place, so `'forward'`; but one ruler `rules`
+   * many settlements while each settlement is `ruled_by` one ruler, so for
+   * `rules` it is `'inverse'`. A boolean on the declared direction could only
+   * say the first, and said the second backwards for as long as it existed.
+   *
+   * Omitted means neither direction: many-to-many, never a conflict. Leave it
+   * off when in doubt — a false conflict is noise the user has to dismiss, and
+   * a vocabulary that cries wolf trains them to stop reading the inbox.
+   */
+  functional?: 'forward' | 'inverse'
   pairs: readonly Pair[]
 }
 
@@ -113,7 +128,8 @@ export const RELATIONSHIPS = [
     description: 'The subject holds command or headship of the object organisation. Use `rules` for sovereign authority over a place.',
     inverse: { name: 'led_by', label: 'Led by', description: 'The object organisation is commanded by the subject.' },
     temporal: true,
-    functional: true,
+    // One head of an organisation at a time; one person may head several.
+    functional: 'inverse',
     pairs: [
       ['character', 'faction'],
       ['character', 'religion'],
@@ -126,7 +142,8 @@ export const RELATIONSHIPS = [
     description: 'The subject holds sovereign authority over the object place or people.',
     inverse: { name: 'ruled_by', label: 'Ruled by', description: 'The object is under the sovereign authority of the subject.' },
     temporal: true,
-    functional: true,
+    // A place has one sovereign at a time; a sovereign may hold many places.
+    functional: 'inverse',
     pairs: [
       ['character', 'settlement'],
       ['character', 'region'],
@@ -142,6 +159,7 @@ export const RELATIONSHIPS = [
     label: 'Parent of',
     description: 'The subject is a biological or adoptive parent of the object.',
     inverse: { name: 'child_of', label: 'Child of', description: 'The subject is a child of the object.' },
+    // Neither direction is functional: a child has two parents.
     pairs: [['character', 'character']],
   },
   {
@@ -157,6 +175,9 @@ export const RELATIONSHIPS = [
     description: 'The two characters are joined in marriage or an equivalent formal union.',
     symmetric: true,
     temporal: true,
+    // Deliberately not functional. Whether a second spouse contradicts the
+    // first depends on the culture, and the ontology cannot know which one a
+    // character belongs to — so it never calls a second marriage a conflict.
     pairs: [['character', 'character']],
   },
   {
@@ -204,7 +225,9 @@ export const RELATIONSHIPS = [
     description: 'The subject settlement is the seat of government of the object.',
     inverse: { name: 'has_capital', label: 'Has capital', description: 'The subject is governed from the object settlement.' },
     temporal: true,
-    functional: true,
+    // A polity has one seat of government at a time. Not forward: one city can
+    // be capital of a society and of the region it sits in at once.
+    functional: 'inverse',
     pairs: [
       ['settlement', 'society'],
       ['settlement', 'region'],
@@ -216,7 +239,7 @@ export const RELATIONSHIPS = [
     label: 'Born in',
     description: 'The character was born at the object place.',
     inverse: { name: 'birthplace_of', label: 'Birthplace of', description: 'The subject place is where the object character was born.' },
-    functional: true,
+    functional: 'forward',
     pairs: [
       ['character', 'settlement'],
       ['character', 'region'],
@@ -227,7 +250,7 @@ export const RELATIONSHIPS = [
     label: 'Died in',
     description: 'The character died at the object place.',
     inverse: { name: 'death_place_of', label: 'Death place of', description: 'The subject place is where the object character died.' },
-    functional: true,
+    functional: 'forward',
     pairs: [
       ['character', 'settlement'],
       ['character', 'region'],
@@ -239,7 +262,9 @@ export const RELATIONSHIPS = [
     description: 'The character dwells at the object place. Use `born_in` / `died_in` for those specific facts.',
     inverse: { name: 'residence_of', label: 'Residence of', description: 'The subject place is home to the object character.' },
     temporal: true,
-    functional: true,
+    // One home at a time. A second residence held at the same time is rare
+    // enough in the corpus that surfacing it is worth the occasional dismissal.
+    functional: 'forward',
     pairs: [
       ['character', 'settlement'],
       ['character', 'region'],
@@ -250,6 +275,8 @@ export const RELATIONSHIPS = [
     label: 'Founded',
     description: 'The subject established the object.',
     inverse: { name: 'founded_by', label: 'Founded by', description: 'The subject was established by the object.' },
+    // Not functional: co-founders are ordinary, and so is a founder credited
+    // both as a person and as the house they led.
     pairs: [
       ['character', 'settlement'],
       ['character', 'faction'],
@@ -277,6 +304,8 @@ export const RELATIONSHIPS = [
     description: 'The subject possesses or bears the object artifact.',
     inverse: { name: 'owned_by', label: 'Owned by', description: 'The subject artifact is possessed by the object.' },
     temporal: true,
+    // Not functional, though it looks it: a relic is held by a king *and* by
+    // the crown he holds it for, and the documents say both.
     pairs: [
       ['character', 'artifact'],
       ['faction', 'artifact'],
@@ -439,7 +468,7 @@ export const RELATIONSHIPS = [
     label: 'Of species',
     description: 'The subject character is an individual of the object species — a dragon, a giant, a human.',
     inverse: { name: 'has_individual', label: 'Has individual', description: 'The object character is an individual of the subject species.' },
-    functional: true,
+    functional: 'forward',
     pairs: [['character', 'species']],
   },
 ] as const satisfies readonly RelationshipDef[]
@@ -455,6 +484,14 @@ type AttributeDef = {
   values?: readonly string[]
   unit?: string
   temporal?: boolean
+  /**
+   * At most one value per subject (at a time, when `temporal`). An attribute
+   * has only one direction, so this stays a boolean.
+   *
+   * Only closed sets and dates qualify. A free-text attribute compares as
+   * text, and "monarchy" and "absolute monarchy" are not a contradiction —
+   * making one functional turns every paraphrase into a conflict.
+   */
   functional?: boolean
   subjects: readonly EntityTypeName[]
 }
@@ -473,7 +510,9 @@ export const ATTRIBUTES = [
   { name: 'occurred_on', label: 'Occurred on', description: 'In-world date the event took place.', valueType: 'date', functional: true, subjects: ['event'] },
   { name: 'outcome', label: 'Outcome', description: 'How the event resolved, and for whom.', valueType: 'string', subjects: ['event'] },
   { name: 'population', label: 'Population', description: 'Number of inhabitants or members.', valueType: 'int', temporal: true, subjects: ['settlement', 'region', 'society', 'faction', 'culture', 'religion'] },
-  { name: 'government_type', label: 'Government type', description: 'The form of rule: monarchy, council, theocracy, and so on.', valueType: 'string', temporal: true, functional: true, subjects: ['society', 'settlement', 'region', 'faction'] },
+  // Not functional despite being single-valued in spirit: it is free text, so
+  // "monarchy" against "hereditary monarchy" would read as a contradiction.
+  { name: 'government_type', label: 'Government type', description: 'The form of rule: monarchy, council, theocracy, and so on.', valueType: 'string', temporal: true, subjects: ['society', 'settlement', 'region', 'faction'] },
   { name: 'motto', label: 'Motto', description: 'A words-of-the-house style phrase.', valueType: 'string', subjects: ['faction', 'society', 'settlement', 'religion'] },
   { name: 'language', label: 'Language', description: 'A language spoken officially or in common use. Not attached to regions — land has no tongue; the people on it do.', valueType: 'string', temporal: true, subjects: ['society', 'culture'] },
   /**
@@ -545,7 +584,7 @@ export function deriveOntology(): { predicates: PredicateRow[]; signatures: Sign
       inverseName: symmetric ? rel.name : (inverse?.name ?? null),
       isSymmetric: symmetric,
       isTemporal: 'temporal' in rel && rel.temporal === true,
-      isFunctional: 'functional' in rel && rel.functional === true,
+      isFunctional: 'functional' in rel && rel.functional === 'forward',
       valueType: null,
       valueEnum: null,
       unit: null,
@@ -569,9 +608,10 @@ export function deriveOntology(): { predicates: PredicateRow[]; signatures: Sign
         inverseName: rel.name,
         isSymmetric: false,
         isTemporal: 'temporal' in rel && rel.temporal === true,
-        // Functionality does not survive inversion: one settlement has one
-        // ruler, but one ruler may hold several settlements.
-        isFunctional: false,
+        // Each direction carries its own cardinality — see `functional` on
+        // RelationshipDef. One ruler holds many settlements (`rules` is not
+        // functional) while each settlement has one ruler (`ruled_by` is).
+        isFunctional: 'functional' in rel && rel.functional === 'inverse',
         valueType: null,
         valueEnum: null,
         unit: null,

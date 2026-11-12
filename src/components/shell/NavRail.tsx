@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { Route } from 'next'
+import { ConflictBadge } from '@/components/conflicts/ConflictBadge'
 import { NAV } from './nav'
 
 type Props = {
@@ -13,6 +14,8 @@ type Props = {
   /** Real Phase 1 counts. The prototype's "Graph health" bar is fiction until Phase 3. */
   documentCount: number
   folderCount: number
+  /** Open (undismissed) conflicts, for the badge on the Conflicts item. */
+  conflictCount: number
   /**
    * The canonical Library URL, already resolved to the root folder.
    *
@@ -40,6 +43,7 @@ export function NavRail({
   driveConnected,
   documentCount,
   folderCount,
+  conflictCount,
   libraryHref,
 }: Props) {
   const pathname = usePathname()
@@ -102,6 +106,9 @@ export function NavRail({
           // but they are design previews with no real data behind them. The phase
           // marker here and the banner on the screen itself both say so.
           const preview = item.phase > 1 ? `Preview — arrives in Phase ${item.phase}` : undefined
+          const count = item.badge === 'conflicts' ? conflictCount : 0
+          const counted =
+            count > 0 ? `${count} open ${count === 1 ? 'conflict' : 'conflicts'}` : undefined
 
           return (
             <Link
@@ -112,11 +119,16 @@ export function NavRail({
               }`}
               // Collapsed, the icon is all there is, so the tooltip has to carry
               // the label as well.
-              title={collapsed ? [item.label, preview].filter(Boolean).join(' — ') : preview}
+              title={
+                collapsed ? [item.label, preview, counted].filter(Boolean).join(' — ') : preview
+              }
             >
               <i className={item.icon} />
               <span className="sb-rail-label">{item.label}</span>
               {item.phase > 1 && <span className="sb-rail-phase">P{item.phase}</span>}
+              {/* Zero draws nothing: a "0" beside Conflicts would be one more
+                  thing to read that says nothing is wrong. */}
+              {count > 0 && <ConflictBadge count={count} />}
             </Link>
           )
         })}

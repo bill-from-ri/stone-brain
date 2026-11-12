@@ -1,6 +1,7 @@
 'use client'
 
 import type { ClaimRow } from '@/db/queries/claims'
+import { ConflictBadge, conflictHref } from '@/components/conflicts/ConflictBadge'
 import { EmptyState, RecordTable, type Column } from '@/components/shared/RecordTable'
 import { predicateText } from '@/components/shared/predicate'
 import { useWorldSelection } from '@/components/world/WorldSelection'
@@ -26,6 +27,11 @@ import { useWorldSelection } from '@/components/world/WorldSelection'
  * finding Rowan again in a rail of hundreds. The name is the link and the rest
  * of the row still opens the claim, which is why EntityName stops the click
  * from reaching the row underneath.
+ *
+ * A claim that is a side of an open conflict, or whose sources have all
+ * vanished, carries a badge beside its verb that opens the conflict. Beside
+ * the verb because that is what a conflict is about — the subject is fine and
+ * the object is fine; it is the assertion between them that is contested.
  */
 export function ClaimsTable({ claims }: { claims: ClaimRow[] }) {
   const { claimId, selectClaim, selectEntity } = useWorldSelection()
@@ -45,7 +51,21 @@ export function ClaimsTable({ claims }: { claims: ClaimRow[] }) {
       key: 'predicate',
       header: 'Relationship',
       cell: (claim) => (
-        <span className="sb-claim-predicate">{predicateText(claim.predicateLabel)}</span>
+        <>
+          <span className="sb-claim-predicate">{predicateText(claim.predicateLabel)}</span>
+          {claim.conflict && (
+            <>
+              {' '}
+              {/* Its own navigation, so the row's select must not run too. */}
+              <span onClick={(event) => event.stopPropagation()}>
+                <ConflictBadge
+                  kind={claim.conflict.kind}
+                  href={conflictHref(claim.conflict.conflictId)}
+                />
+              </span>
+            </>
+          )}
+        </>
       ),
     },
     {

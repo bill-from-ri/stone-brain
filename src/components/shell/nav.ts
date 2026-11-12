@@ -13,6 +13,10 @@
  * same claims drawn two ways, and a rail that offers them separately asks you
  * to choose a rendering before you have chosen a question. /claims and /graph
  * redirect into it.
+ *
+ * Conflicts moved to 1 when Phase 3 made it real. It is also the one item that
+ * carries a count (`badge`): an open conflict is the thing in the product most
+ * worth knowing about from another screen.
  */
 import type { Route } from 'next'
 
@@ -21,6 +25,8 @@ export type NavItem = {
   label: string
   icon: string
   phase: 1 | 2 | 3 | 4
+  /** A live count the rail draws beside the label. */
+  badge?: 'conflicts'
 }
 
 export const NAV: NavItem[] = [
@@ -28,5 +34,5 @@ export const NAV: NavItem[] = [
   { href: '/library', label: 'Library', icon: 'ph ph-folders', phase: 1 },
   { href: '/world', label: 'World', icon: 'ph ph-graph', phase: 1 },
   { href: '/assistant', label: 'Assistant', icon: 'ph ph-pen-nib', phase: 4 },
-  { href: '/conflicts', label: 'Conflicts', icon: 'ph ph-warning-diamond', phase: 3 },
+  { href: '/conflicts', label: 'Conflicts', icon: 'ph ph-warning-diamond', phase: 1, badge: 'conflicts' },
 ]

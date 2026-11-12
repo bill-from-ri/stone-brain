@@ -1,15 +1,18 @@
 import type { ClaimRow, ClaimSourceRow } from '@/db/queries/claims'
+import Link from 'next/link'
+import { conflictHref } from '@/components/conflicts/ConflictBadge'
 import { ClaimActions } from './ClaimActions'
 
 /**
  * The right pane's claim body, from the prototype (lines 500-514): the claim as
  * a tuple, the passage it was read from, and its actions.
  *
- * The prototype's "Conflicts with" block is deliberately absent — contradiction
- * detection is Phase 3, and a panel that never populates reads as broken. What
- * replaces it here is the §7a case that *is* implementable now: a source whose
- * document has left the Library is called out rather than quietly rendered as
- * an ordinary citation.
+ * The prototype's "Conflicts with" block becomes a single flag: when the claim
+ * is a side of an open contradiction, or every document it was read from has
+ * left the Library (§7a), the pane says so and links to the conflict. The
+ * competing claims themselves are not listed here — the Conflicts screen sets
+ * them side by side with their evidence, which is what deciding needs, and a
+ * second, thinner rendering of the same comparison would only drift from it.
  *
  * Rendered on the client from the table row that was clicked, so the claim
  * itself is drawn with no round trip at all. Only its source passages have to
@@ -50,6 +53,15 @@ export function ClaimDetail({
         <span className="tag tag-neutral">{provenanceLabel(claim.createdBy)}</span>
         {claim.inverseName && <span className="tag tag-neutral">Inverse: {claim.inverseName}</span>}
       </div>
+
+      {claim.conflict && (
+        <div className={`sb-cf-flag sb-cf-flag--${claim.conflict.kind}`} role="note">
+          {claim.conflict.kind === 'value'
+            ? 'Another claim gives this a different answer for the same time. '
+            : 'Every document this claim was read from has left the Library. '}
+          <Link href={conflictHref(claim.conflict.conflictId)}>Resolve in Conflicts</Link>
+        </div>
+      )}
 
       <div className="sb-tree-divider" style={{ margin: '16px 0' }} />
 

@@ -215,10 +215,50 @@ constraint name.
 
 - **`value_enum` membership** — Zod's job. Enforcing it in Postgres would mean a trigger, and a
   trigger is SQL that Drizzle cannot see or diff (ADR §8 makes Drizzle the sole schema owner).
-- **Cardinality and contradiction** — Phase 3's job. `predicates.is_functional` and
-  `is_temporal` are carried now, unread, purely so that work needs no migration. A settlement
-  having two rulers is only a conflict if their validity windows overlap, and that is exactly
-  the gating the implementation plan asks for.
+- **Cardinality and contradiction** — Phase 3's job, done by query rather than by constraint
+  (see *Single-valued predicates* below). A settlement having two rulers is only a conflict if
+  their validity windows overlap, and a constraint cannot know that.
+
+## Single-valued predicates
+
+`predicates.is_functional` marks a predicate that holds **at most one object or value per
+subject** — at a time, when it is also `is_temporal`. It is the only thing that makes two claims
+able to contradict each other: Phase 3 raises a value conflict when two claims share a subject
+and a functional predicate but disagree, and for no other predicate.
+
+Cardinality belongs to a *direction*, not to a relationship. One ruler `rules` many settlements;
+each settlement is `ruled_by` one ruler. So the registry says which end is single-valued —
+`functional: 'forward' | 'inverse'` — and `deriveOntology()` sets `is_functional` on that row
+alone. (It once took a boolean on the declared direction, which put the flag on `rules` and
+`leads` — exactly backwards.)
+
+| Single-valued direction | Why that end |
+| --- | --- |
+| `ruled_by`, `led_by`, `has_capital` (inverse) | A place has one sovereign, an organisation one head, a polity one seat — while one person may rule, lead, or a city be capital of, several. |
+| `born_in`, `died_in`, `resides_in`, `of_species` (forward) | A character is born once, dies once, lives in one place at a time, and is one kind of being. |
+| `vital_status`, `climate`, `landform`, `economy` | Closed value sets: two different members really are a disagreement. |
+| `birth_date`, `death_date`, `founded_on`, `dissolved_on`, `occurred_on` | Dates, compared on the calendar rather than as text — *AD 412* and *month 3, AD 412* agree. |
+
+Deliberately **not** functional, because a false conflict is noise the user must dismiss and an
+inbox that cries wolf stops being read:
+
+- **`married_to`** — whether a second spouse contradicts the first depends on the culture.
+- **`parent_of` / `child_of`** — a child has two parents.
+- **`founded_by`, `owned_by`** — co-founders, and relics held by a person *and* the crown.
+- **Free-text attributes**, including `government_type` — text comparison would turn every
+  paraphrase ("monarchy" / "hereditary monarchy") into a contradiction. Only enums and dates
+  are compared.
+
+Two further rules keep detection conservative, and live in `src/lib/conflicts/`:
+
+- **Objects of different types do not compete.** A settlement `ruled_by` a duke and `ruled_by`
+  the duchy is layered sovereignty, and `born_in` a city and `born_in` its region is the same
+  fact at two scales. Only objects of the same entity type can disagree.
+- **Different periods do not conflict** — for a temporal predicate, two claims conflict only if
+  their dates provably overlap, or both are undated, or both give the same dates. One dated and
+  one undated claim is read as a succession with a date unrecorded, not as a contradiction. A
+  non-temporal predicate ignores dates: a character born in two places is a conflict whenever
+  the documents say it.
 
 ## Renaming
 
@@ -461,11 +501,24 @@ Closed at write time, open over the life of the project.
 
 # Deferred to claim generation (Phase 2B)
 
-- **Inverse claims are not materialized yet.** `predicates.inverse_name` records the reverse
-  direction of every relationship (`married_to` points at itself), so claim generation can
-  auto-write and dedupe the reciprocal claim rather than asking the model for both. Doing it at
-  generation time keeps the round trip cheap and keeps the two directions consistent by
-  construction.
+- **Inverse claims are materialized on every write (built).** `predicates.inverse_name` records
+  the reverse direction of every relationship (`married_to` points at itself), and one pure
+  function, `inverseOf` in `src/lib/ontology/inverse.ts`, turns a relationship claim into its
+  reverse: ends swapped, the inverse predicate, the same time bounds and the same provenance.
+  Every write path uses it, so the two directions are consistent by construction rather than by
+  asking the model for both:
+  - *Extraction* (`writeExtraction`) writes each claim's inverse in the same transaction and the
+    same fingerprint upsert, so a document stating both directions, or a re-extraction, does not
+    double up. The inverse carries the mirrored claim's `claim_sources` citations — an inverse
+    without them would read as unsourced. The run reports `inversesCreated` separately, so
+    `claimsCreated` still counts only what the model stated.
+  - *Hand entry* always writes the inverse, and editing (`updateClaim`) or deleting
+    (`deleteClaim`) one direction applies to the other in the same transaction. The inverse is
+    matched on swapped ends, inverse predicate and the same dates. The editor states the second
+    write ("Also adds: …") rather than offering it as a choice.
+  - *Ground truth*: `loadSeed` materializes the inverse of each seeded relationship with the same
+    citation, so the seeded graph obeys the invariant and scoring compares like with like.
+  - *Existing rows*: `npm run db:backfill:inverses` mends rows written before this, idempotently.
 - **Agent-proposed entities.** The matcher deliberately never creates one (see below), so a name
   it cannot resolve waits for 2B's proposal step, which decides deliberately and records why.
 

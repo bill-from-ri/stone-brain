@@ -12,6 +12,7 @@ import {
   predicates,
 } from '@/db/schema'
 import { normalizeName } from '@/lib/ontology/matcher'
+import { getClaimConflictMarks, type ClaimConflictMark } from './conflicts'
 
 /**
  * Every query here takes userId as its first parameter and filters on it, on
@@ -72,6 +73,12 @@ export type ClaimRow = {
   canonicity: string
   createdBy: string
   sourceCount: number
+  /**
+   * The open conflict this claim is part of, if any — a side of a
+   * contradiction, or a claim whose sources have all vanished. Derived on
+   * read, like the conflicts themselves; see db/queries/conflicts.ts.
+   */
+  conflict: ClaimConflictMark | null
 }
 
 /** The shape both list and detail read, so the two can never disagree. */
@@ -160,18 +167,38 @@ export async function getClaims(
     )
   }
 
-  return claimsBase(userId)
-    .where(and(...conditions))
-    .orderBy(asc(subject.name), asc(claims.predicate))
-    .limit(limit)
+  const [rows, marks] = await Promise.all([
+    claimsBase(userId)
+      .where(and(...conditions))
+      .orderBy(asc(subject.name), asc(claims.predicate))
+      .limit(limit),
+    getClaimConflictMarks(userId),
+  ])
+
+  return rows.map((row) => withConflict(row, marks))
+}
+
+/**
+ * Attaches the conflict mark. Issued alongside the claim read rather than
+ * after it, and detection is memoised per request, so on the World screen this
+ * shares one pass with the nav rail's count.
+ */
+function withConflict(
+  row: Omit<ClaimRow, 'conflict'>,
+  marks: Map<string, ClaimConflictMark>,
+): ClaimRow {
+  return { ...row, conflict: marks.get(row.id) ?? null }
 }
 
 export async function getClaim(userId: string, claimId: string): Promise<ClaimRow | null> {
-  const [row] = await claimsBase(userId)
-    .where(and(eq(claims.userId, userId), eq(claims.id, claimId)))
-    .limit(1)
+  const [[row], marks] = await Promise.all([
+    claimsBase(userId)
+      .where(and(eq(claims.userId, userId), eq(claims.id, claimId)))
+      .limit(1),
+    getClaimConflictMarks(userId),
+  ])
 
-  return row ?? null
+  return row ? withConflict(row, marks) : null
 }
 
 export type ClaimSourceRow = {

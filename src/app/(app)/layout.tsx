@@ -3,6 +3,7 @@ import type { Route } from 'next'
 import { NavRail } from '@/components/shell/NavRail'
 import { ConnectionBanner } from '@/components/shell/ConnectionBanner'
 import { getShellCounts } from '@/db/queries/library'
+import { countOpenConflicts } from '@/db/queries/conflicts'
 import { requireUser, setupStateOf } from '@/lib/auth/guard'
 
 /**
@@ -20,7 +21,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // with no root folder gets the picker and nothing else.
   if (state === 'needs_root') redirect('/setup/folder')
 
-  const { documentCount, folderCount } = await getShellCounts(session.user.id)
+  // Together, not in turn. Detection is memoised per request, so a page that
+  // reads conflicts too (Conflicts, World) shares this pass rather than repeating it.
+  const [{ documentCount, folderCount }, conflictCount] = await Promise.all([
+    getShellCounts(session.user.id),
+    countOpenConflicts(session.user.id),
+  ])
   const driveConnected = session.tokenStatus === 'active'
 
   return (
@@ -31,6 +37,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         driveConnected={driveConnected}
         documentCount={documentCount}
         folderCount={folderCount}
+        conflictCount={conflictCount}
         // `needs_root` redirected above, so the root folder is known by here.
         libraryHref={`/library/${session.rootDriveFolderId}` as Route}
       />
