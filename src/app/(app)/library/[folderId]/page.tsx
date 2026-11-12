@@ -4,6 +4,7 @@ import { DetailPane } from '@/components/library/DetailPane'
 import { DocumentTable, type Crumb } from '@/components/library/DocumentTable'
 import { FolderTree } from '@/components/library/FolderTree'
 import { SyncPoller } from '@/components/library/SyncPoller'
+import { getConflictCountsByDocument } from '@/db/queries/conflicts'
 import {
   getDocuments,
   getFolderDocCounts,
@@ -33,11 +34,15 @@ export default async function LibraryFolderPage({
   const { doc: selectedDocId } = await searchParams
   const userId = session.user.id
 
-  const [tree, docCounts, documents, syncStatus] = await Promise.all([
+  const [tree, docCounts, documents, syncStatus, conflictCounts] = await Promise.all([
     getFolderTree(userId),
     getFolderDocCounts(userId),
     getDocuments(userId, folderId),
     getSyncStatus(userId),
+    // Whole-library, keyed by document id. Conflicts are derived by query, not
+    // stored, so this is the one place the Library pays for them; the table
+    // and the detail pane both read from this map rather than asking twice.
+    getConflictCountsByDocument(userId),
   ])
 
   // A folder id that isn't in our mirror is either a typo or something outside
@@ -60,6 +65,8 @@ export default async function LibraryFolderPage({
     if (node.isRoot || !node.parentDriveFolderId || !byId.has(node.parentDriveFolderId)) break
   }
 
+  const selected = selectedDocId ? documents.find((d) => d.driveFileId === selectedDocId) : undefined
+
   return (
     <>
       <AppHeader />
@@ -81,11 +88,15 @@ export default async function LibraryFolderPage({
           breadcrumb={breadcrumb}
           selectedDriveFileId={selectedDocId ?? null}
           indexing={!(syncStatus?.initialCrawlDone ?? false)}
+          conflictCounts={Object.fromEntries(conflictCounts)}
         />
         {/* Reads its own row, behind a Suspense boundary — see DetailPane. The
             page no longer waits on it, so an unselected Library costs nothing
             for the pane and a selected one streams it in. */}
-        <DetailPane driveFileId={selectedDocId ?? null} />
+        <DetailPane
+          driveFileId={selectedDocId ?? null}
+          conflictCount={selected ? (conflictCounts.get(selected.id) ?? 0) : 0}
+        />
       </div>
     </>
   )

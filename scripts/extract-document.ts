@@ -10,8 +10,11 @@
  *
  * **Dry run by default.** Without `--write` it stops after validation and prints
  * what came back, so the expensive half can be inspected before anything
- * reaches the graph. `--write` calls `writeExtraction()`, which is additive and
- * idempotent (§3), so running it twice on an unchanged document is a no-op.
+ * reaches the graph. `--write` runs the same `runExtraction` service the
+ * Library's Extract button does (src/lib/extraction), so a run from here is
+ * recorded like any other — its row, its dropped claims, its proposals — and
+ * shows up on the document. The write is additive and idempotent (§3), so
+ * running it twice on an unchanged document creates nothing the second time.
  *
  * Needs `--conditions=react-server`: this reaches into `server-only` modules —
  * the Drive client and the provider store — which throw on import outside
@@ -45,7 +48,9 @@ const { getProviderCredentials } = await import('@/lib/llm/provider')
 const { extractClaims, ExtractionError } = await import('@/lib/llm/extract')
 const { ProviderError } = await import('@/lib/llm/errors')
 const { coreOntology } = await import('@/lib/ontology/extraction')
-const { writeExtraction } = await import('@/lib/ontology/extraction-write')
+const { createRunner } = await import('@/lib/extraction/pipeline')
+const { runnerDeps } = await import('@/lib/extraction/run')
+type ModelRun = import('@/lib/llm/extract').ExtractionRun
 
 const [user] = await db.select({ id: users.id, email: users.email }).from(users).limit(2)
 if (!user) throw new Error('No users in the database.')
@@ -78,43 +83,27 @@ console.error(`document : ${doc.name}`)
 console.error(`provider : ${creds.modelId} @ ${creds.baseUrl}`)
 
 const client = await DriveClient.forUser(user.id)
-const text = await readDocumentText(client, doc.driveFileId)
-console.error(
-  `text     : ${text.paragraphs.length} paragraphs, ${text.markdown.length} chars ` +
-    `(${text.strippedBytes.toLocaleString()} bytes of images dropped)`,
-)
+const describeText = (text: Awaited<ReturnType<typeof readDocumentText>>) =>
+  console.error(
+    `text     : ${text.paragraphs.length} paragraphs, ${text.markdown.length} chars ` +
+      `(${text.strippedBytes.toLocaleString()} bytes of images dropped)`,
+  )
 
 const started = Date.now()
-let run
-try {
-  run = await extractClaims(creds, {
-    documentName: doc.name,
-    paragraphs: text.paragraphs,
-    ontology: coreOntology(),
-  })
-} catch (err) {
-  if (err instanceof ExtractionError) {
-    console.error(`\nFAILED (${err.code}): ${err.message}`)
-    if (err.raw) console.error(`\n--- raw reply ---\n${err.raw.slice(0, 4000)}`)
-    process.exit(1)
-  }
-  if (err instanceof ProviderError) {
-    console.error(`\nPROVIDER (${err.reason}): ${err.detail}`)
-    process.exit(1)
-  }
-  throw err
-}
 
-console.error(
-  `run      : ${run.claims.length} claims, ${run.rejections.length} rejected, ` +
-    `${run.attempts} attempt(s), ${((Date.now() - started) / 1000).toFixed(1)}s, ` +
-    `format "${run.responseFormat ?? 'text'}", ` +
-    `${run.usage.promptTokens}+${run.usage.completionTokens} tokens, model "${run.model}"`,
-)
+function printRun(run: ModelRun) {
+  console.error(
+    `run      : ${run.claims.length} claims, ${run.rejections.length} rejected, ` +
+      `${run.proposals.length} proposed predicates, ` +
+      `${run.attempts} attempt(s), ${((Date.now() - started) / 1000).toFixed(1)}s, ` +
+      `format "${run.responseFormat ?? 'text'}", ` +
+      `${run.usage.promptTokens}+${run.usage.completionTokens} tokens, model "${run.model}"`,
+  )
 
-if (json) {
-  console.log(JSON.stringify(run, null, 2))
-} else {
+  if (json) {
+    console.log(JSON.stringify(run, null, 2))
+    return
+  }
   for (const c of run.claims) {
     const object =
       c.objectName !== undefined
@@ -128,27 +117,78 @@ if (json) {
     console.log(`  REJECTED [${r.index}] ${r.code}: ${r.message}`)
     console.log(`      ${JSON.stringify(r.received).slice(0, 200)}`)
   }
+  for (const p of run.proposals) {
+    const sig = p.objectType ? `${p.subjectType} -> ${p.objectType}` : `${p.subjectType} attribute`
+    console.log(`  PROPOSED ${p.name} (${sig}): ${p.description}`)
+    if (p.quote) console.log(`      P${p.paragraphIndex ?? '?'} "${p.quote.slice(0, 110)}"`)
+  }
 }
 
 if (!write) {
+  const text = await readDocumentText(client, doc.driveFileId)
+  describeText(text)
+
+  let run: ModelRun
+  try {
+    run = await extractClaims(creds, {
+      documentName: doc.name,
+      paragraphs: text.paragraphs,
+      ontology: coreOntology(),
+    })
+  } catch (err) {
+    if (err instanceof ExtractionError) {
+      console.error(`\nFAILED (${err.code}): ${err.message}`)
+      if (err.raw) console.error(`\n--- raw reply ---\n${err.raw.slice(0, 4000)}`)
+      process.exit(1)
+    }
+    if (err instanceof ProviderError) {
+      console.error(`\nPROVIDER (${err.reason}): ${err.detail}`)
+      process.exit(1)
+    }
+    throw err
+  }
+
+  printRun(run)
   console.error('\nDry run — nothing written. Pass --write to store this extraction.')
   process.exit(0)
 }
 
-const result = await writeExtraction(db, user.id, run.claims, {
-  documentId: doc.id,
-  documentName: doc.name,
-  headRevisionId: text.headRevisionId,
-  driveVersion: doc.driveVersion,
-  model: run.model,
+/*
+ * The write path is the product's own service, with two taps: the model
+ * override replaces the stored model id, and the reply is captured on its way
+ * through so the claims can be printed as the dry run prints them.
+ */
+let captured: ModelRun | undefined
+const runExtraction = createRunner({
+  ...runnerDeps,
+  credentials: async () => creds,
+  readText: async () => {
+    const text = await readDocumentText(client, doc.driveFileId)
+    describeText(text)
+    return text
+  },
+  extract: async (c, input) => (captured = await extractClaims(c, input)),
 })
 
+const outcome = await runExtraction(user.id, doc.id)
+if (!outcome.ok) {
+  console.error(`\nREFUSED (${outcome.refusal}): ${outcome.message}`)
+  process.exit(1)
+}
+if (captured) printRun(captured)
+
+const summary = outcome.run
+if (summary.failure) {
+  console.error(`\nFAILED (${summary.failure.code}): ${summary.failure.message}`)
+  console.error(`recorded : run ${summary.runId}`)
+  process.exit(1)
+}
+
 console.error(
-  `\nwritten  : ${result.claimsCreated} new claims, ${result.claimsAlreadyPresent} already present, ` +
-    `${result.sourcesCreated} sources, ${result.entitiesCreated.length} draft entities, ` +
-    `${result.unwritten.length} unwritten`,
+  `\nwritten  : ${summary.claimsCreated} new claims, ${summary.claimsAlreadyPresent} already present, ` +
+    `${summary.inversesCreated} inverses, ${summary.entitiesCreated} draft entities, ` +
+    `${summary.dropped} dropped, ${summary.proposalsFiled} proposals filed`,
 )
-for (const e of result.entitiesCreated) console.error(`  + ${e.entityType} "${e.name}"`)
-for (const u of result.unwritten) console.error(`  ! ${u.code}: ${u.message}`)
+console.error(`recorded : run ${summary.runId}`)
 
 process.exit(0)

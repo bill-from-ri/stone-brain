@@ -1,7 +1,7 @@
 import 'server-only'
-import { and, asc, count, eq, ilike, isNull } from 'drizzle-orm'
+import { and, asc, count, eq, ilike, isNull, max, sql } from 'drizzle-orm'
 import { db } from '@/db'
-import { documents, folders, syncState } from '@/db/schema'
+import { claimSources, documents, extractionRuns, folders, syncState } from '@/db/schema'
 
 /**
  * Every query here takes userId as its first parameter and filters on it.
@@ -85,6 +85,73 @@ export type DocumentRow = {
   removedAt: Date | null
   driveVersion: number | null
   sizeBytes: number | null
+  /** The `drive_version` the last extraction read — staleness is this against `driveVersion`. */
+  extractedDriveVersion: number | null
+  /** Distinct claims citing this document, inverses included (they carry its quote too). */
+  claimCount: number
+  /** When the last *successful* run finished. A failed run is not an extraction. */
+  lastExtractedAt: Date | null
+}
+
+/**
+ * Per-document claim counts, as a grouped subquery joined back on — one pass
+ * over `claim_sources` for the whole folder rather than a correlated count per
+ * row. `count(distinct claim_id)`, because a claim quoted from two paragraphs
+ * of the same document has two source rows and is still one claim.
+ */
+function claimCounts(userId: string) {
+  return db
+    .select({
+      documentId: claimSources.documentId,
+      n: sql<number>`count(distinct ${claimSources.claimId})::int`.as('claim_n'),
+    })
+    .from(claimSources)
+    .where(eq(claimSources.userId, userId))
+    .groupBy(claimSources.documentId)
+    .as('claim_counts')
+}
+
+function lastExtractions(userId: string) {
+  return db
+    .select({
+      documentId: extractionRuns.documentId,
+      at: max(extractionRuns.finishedAt).as('last_extracted_at'),
+    })
+    .from(extractionRuns)
+    .where(and(eq(extractionRuns.userId, userId), eq(extractionRuns.status, 'succeeded')))
+    .groupBy(extractionRuns.documentId)
+    .as('last_extractions')
+}
+
+/** The Library's row shape, with its two aggregates attached. */
+function documentRows(userId: string) {
+  const counts = claimCounts(userId)
+  const extracted = lastExtractions(userId)
+
+  return db
+    .select({
+      id: documents.id,
+      driveFileId: documents.driveFileId,
+      name: documents.name,
+      webViewLink: documents.webViewLink,
+      modifiedTime: documents.modifiedTime,
+      createdTime: documents.createdTime,
+      ownerDisplayName: documents.ownerDisplayName,
+      status: documents.status,
+      trashed: documents.trashed,
+      removedAt: documents.removedAt,
+      driveVersion: documents.driveVersion,
+      sizeBytes: documents.sizeBytes,
+      extractedDriveVersion: documents.extractedDriveVersion,
+      claimCount: sql<number>`coalesce(${counts.n}, 0)`.mapWith(Number),
+      // An aggregate read back through a subquery alias arrives as the
+      // driver's raw value, not through the column's own mapping.
+      lastExtractedAt: sql<Date | null>`${extracted.at}`.mapWith((v: string | Date) => new Date(v)),
+    })
+    .from(documents)
+    .leftJoin(counts, eq(counts.documentId, documents.id))
+    .leftJoin(extracted, eq(extracted.documentId, documents.id))
+    .$dynamic()
 }
 
 /**
@@ -101,22 +168,7 @@ export async function getDocuments(
   userId: string,
   folderDriveId: string,
 ): Promise<DocumentRow[]> {
-  return db
-    .select({
-      id: documents.id,
-      driveFileId: documents.driveFileId,
-      name: documents.name,
-      webViewLink: documents.webViewLink,
-      modifiedTime: documents.modifiedTime,
-      createdTime: documents.createdTime,
-      ownerDisplayName: documents.ownerDisplayName,
-      status: documents.status,
-      trashed: documents.trashed,
-      removedAt: documents.removedAt,
-      driveVersion: documents.driveVersion,
-      sizeBytes: documents.sizeBytes,
-    })
-    .from(documents)
+  return documentRows(userId)
     .where(
       and(
         eq(documents.userId, userId),
@@ -138,22 +190,7 @@ export async function getDocument(
   userId: string,
   driveFileId: string,
 ): Promise<DocumentRow | null> {
-  const rows = await db
-    .select({
-      id: documents.id,
-      driveFileId: documents.driveFileId,
-      name: documents.name,
-      webViewLink: documents.webViewLink,
-      modifiedTime: documents.modifiedTime,
-      createdTime: documents.createdTime,
-      ownerDisplayName: documents.ownerDisplayName,
-      status: documents.status,
-      trashed: documents.trashed,
-      removedAt: documents.removedAt,
-      driveVersion: documents.driveVersion,
-      sizeBytes: documents.sizeBytes,
-    })
-    .from(documents)
+  const rows = await documentRows(userId)
     .where(
       and(
         eq(documents.userId, userId),

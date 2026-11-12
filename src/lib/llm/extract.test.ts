@@ -286,6 +286,38 @@ describe('extractClaims', () => {
     expect(run.claims[0]!.quote).toBe('Sera Vane rules Ashfall')
   })
 
+  it('carries proposals from both attempts, one per name', async () => {
+    const proposal = {
+      name: 'trades_with',
+      description: 'A society that trades with another.',
+      subject_type: 'society',
+      object_type: 'society',
+      quote: 'Andras trades salt with Kaldia.',
+    }
+    mockFetch(
+      completion(
+        JSON.stringify({
+          claims: [rulesClaim, { ...rulesClaim, predicate: 'governs' }],
+          proposed_predicates: [proposal],
+        }),
+      ),
+      completion(
+        JSON.stringify({
+          claims: [],
+          proposed_predicates: [
+            { ...proposal, quote: 'a later, worse quote' },
+            { ...proposal, name: 'governs', subject_type: 'character', object_type: 'settlement' },
+          ],
+        }),
+      ),
+    )
+
+    const run = await extractClaims(creds, input)
+
+    expect(run.proposals.map((p) => p.name)).toEqual(['trades_with', 'governs'])
+    expect(run.proposals[0]!.quote).toBe('Andras trades salt with Kaldia.')
+  })
+
   it('treats an empty completion as a failed run, not an empty document', async () => {
     mockFetch(completion(''))
 
@@ -301,6 +333,7 @@ describe('extractClaims', () => {
     const run = await extractClaims(creds, input)
     expect(run.claims).toEqual([])
     expect(run.rejections).toEqual([])
+    expect(run.proposals).toEqual([])
   })
 
   it('reports a reply with no JSON in it rather than retrying into the void', async () => {

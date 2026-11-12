@@ -142,9 +142,34 @@ export type Rejection = {
   received: unknown
 }
 
+/**
+ * A predicate the model needed and the vocabulary does not have — the closed
+ * vocabulary's structured way to fail (ontology-design.md, "How the vocabulary
+ * grows"). It lands in a queue for a person, never in the graph.
+ */
+export type ProposedPredicate = {
+  /** snake_case, already normalised. Never a name the vocabulary has. */
+  name: string
+  description: string
+  subjectType: string
+  /** Present for a relationship; absent for an attribute. */
+  objectType?: string
+  exampleSubject?: string
+  /** The object entity for a relationship, the value for an attribute. */
+  exampleObject?: string
+  quote?: string
+  paragraphIndex?: number
+}
+
 export type ParseResult = {
   claims: ExtractedClaim[]
   rejections: Rejection[]
+  /**
+   * Proposals that survived the lenient pass in `parseProposals`. Never part
+   * of `rejections`: those are fed back to the model as things to fix, and a
+   * proposal is not a mistake.
+   */
+  proposals: ProposedPredicate[]
 }
 
 /* ---------------------------------------------------------------- the schema */
@@ -167,9 +192,48 @@ function claimSchema(ontology: CompiledOntology) {
   })
 }
 
-/** What the model is asked to return. */
+/** Generous bounds: they exist so a runaway reply cannot write a novel into the queue. */
+const PROPOSAL_NAME = /^[a-z][a-z0-9_]*$/
+
+/**
+ * One proposed predicate, as the model writes it.
+ *
+ * A plain object rather than a strict one, unlike a claim. A claim's stray
+ * field is refused because it may be data the model meant and we would
+ * silently drop; a proposal is advice to a person, so an extra field costs
+ * nothing and refusing over it would throw away the signal for a formatting
+ * slip.
+ *
+ * The types are held to the vocabulary's entity types. A proposal naming a
+ * type we do not have is a proposal for a new *type*, which is a larger change
+ * than this queue is for — and it would leave nothing for a person to compare
+ * against the registry's existing signatures.
+ */
+function proposalSchema(ontology: CompiledOntology) {
+  const entityType = z.enum(ontology.entityTypes as [string, ...string[]])
+  return z.object({
+    name: z.string().trim().min(1).max(64),
+    description: z.string().trim().min(1).max(600),
+    subject_type: entityType,
+    object_type: entityType.optional(),
+    example_subject: z.string().trim().min(1).max(200).optional(),
+    example_object: z.union([z.string().trim().min(1).max(200), z.number()]).optional(),
+    quote: z.string().trim().min(1).max(2000).optional(),
+    paragraph: z.number().int().nonnegative().optional(),
+  })
+}
+
+/**
+ * What the model is asked to return.
+ *
+ * `proposed_predicates` is optional, so every reply written before it existed —
+ * and every model that ignores it — still validates.
+ */
 export function extractionSchema(ontology: CompiledOntology) {
-  return z.strictObject({ claims: z.array(claimSchema(ontology)) })
+  return z.strictObject({
+    claims: z.array(claimSchema(ontology)),
+    proposed_predicates: z.array(proposalSchema(ontology)).optional(),
+  })
 }
 
 export function extractionJsonSchema(ontology: CompiledOntology): unknown {
@@ -379,6 +443,7 @@ export function parseExtraction(input: unknown, ontology: CompiledOntology): Par
           received: input,
         },
       ],
+      proposals: [],
     }
   }
 
@@ -401,7 +466,57 @@ export function parseExtraction(input: unknown, ontology: CompiledOntology): Par
     else rejections.push(checked.rejection)
   }
 
-  return { claims, rejections }
+  const proposals = Array.isArray(input)
+    ? []
+    : parseProposals((input as { proposed_predicates?: unknown }).proposed_predicates, ontology)
+
+  return { claims, rejections, proposals }
+}
+
+/**
+ * The proposals in a reply, leniently.
+ *
+ * The opposite policy to the claims above, on purpose: anything wrong with a
+ * proposal drops *that proposal* and nothing else — never a rejection, never a
+ * failed run. A proposal is the model's advice about the vocabulary; a reply
+ * whose claims are good must not be spoiled by advice that came out malformed.
+ *
+ * Two more are dropped, and both are the model asking for something it already
+ * has: a name already in the vocabulary (it should have emitted the claim), and
+ * a second proposal of a name within the same reply.
+ */
+export function parseProposals(input: unknown, ontology: CompiledOntology): ProposedPredicate[] {
+  if (!Array.isArray(input)) return []
+
+  const schema = proposalSchema(ontology)
+  const out: ProposedPredicate[] = []
+  const seen = new Set<string>()
+
+  for (const entry of input) {
+    const parsed = schema.safeParse(entry)
+    if (!parsed.success) continue
+    const raw = parsed.data
+
+    // Models write "Trades With" and "trades-with" as readily as the
+    // snake_case they were asked for; all three are one proposal.
+    const name = raw.name.toLowerCase().replace(/[\s-]+/g, '_')
+    if (!PROPOSAL_NAME.test(name)) continue
+    if (ontology.byName.has(name) || seen.has(name)) continue
+    seen.add(name)
+
+    out.push({
+      name,
+      description: raw.description,
+      subjectType: raw.subject_type,
+      ...(raw.object_type !== undefined && { objectType: raw.object_type }),
+      ...(raw.example_subject !== undefined && { exampleSubject: raw.example_subject }),
+      ...(raw.example_object !== undefined && { exampleObject: String(raw.example_object) }),
+      ...(raw.quote !== undefined && { quote: raw.quote }),
+      ...(raw.paragraph !== undefined && { paragraphIndex: raw.paragraph }),
+    })
+  }
+
+  return out
 }
 
 function structuralCode(error: z.ZodError): Rejection['code'] {

@@ -6,6 +6,7 @@ import {
   parseExtraction,
   type CompiledOntology,
   type ExtractedClaim,
+  type ProposedPredicate,
   type Rejection,
 } from '@/lib/ontology/extraction'
 import { normalizeName } from '@/lib/ontology/name-key'
@@ -97,6 +98,12 @@ export type ExtractionRun = {
    * index is unique within a run rather than colliding between attempts.
    */
   rejections: Rejection[]
+  /**
+   * Predicates the model asked for and the vocabulary lacks (§6), from both
+   * attempts, first occurrence of a name kept. Empty when the reply omitted the
+   * field, which every reply written before it existed does.
+   */
+  proposals: ProposedPredicate[]
   /** What the provider says it ran — the value for `extracted_by_model` (ADR §11). */
   model: string
   /** 1 when the first reply validated clean, 2 when a repair was spent. */
@@ -154,6 +161,7 @@ export async function extractClaims(
     return {
       claims: parsed.claims,
       rejections: [],
+      proposals: parsed.proposals,
       model: first.model,
       attempts: 1,
       responseFormat: shape.format?.type ?? null,
@@ -191,6 +199,7 @@ export async function extractClaims(
     return {
       claims: parsed.claims,
       rejections: parsed.rejections,
+      proposals: parsed.proposals,
       model: first.model,
       attempts: 2,
       responseFormat: shape.format?.type ?? null,
@@ -201,6 +210,9 @@ export async function extractClaims(
   return {
     claims: dedupe([...parsed.claims, ...repaired.claims]),
     rejections: repaired.rejections,
+    // The repair is where an off-vocabulary claim is told it may be proposed
+    // instead, so its proposals are as real as the first reply's.
+    proposals: mergeProposals(parsed.proposals, repaired.proposals),
     model: first.model,
     attempts: 2,
     responseFormat: shape.format?.type ?? null,
@@ -361,6 +373,7 @@ function namesReasoningEffort(err: unknown): boolean {
 type ParsedReply = {
   claims: ExtractedClaim[]
   rejections: Rejection[]
+  proposals: ProposedPredicate[]
   /** How many entries the model emitted, so the next attempt can keep numbering. */
   emitted: number
 }
@@ -389,6 +402,7 @@ function parseReply(text: string, input: ExtractionInput, offset: number): Parse
   return {
     claims: result.claims,
     rejections: result.rejections.map((r) => ({ ...r, index: r.index + offset })),
+    proposals: result.proposals,
     emitted: result.claims.length + result.rejections.length,
   }
 }
@@ -439,6 +453,15 @@ function providerSchema(ontology: CompiledOntology): unknown {
   const schema = extractionJsonSchema(ontology) as Record<string, unknown>
   const { $schema: _meta, ...rest } = schema
   return rest
+}
+
+/** One proposal per name across both attempts; the first reply's evidence wins. */
+function mergeProposals(
+  first: ProposedPredicate[],
+  second: ProposedPredicate[],
+): ProposedPredicate[] {
+  const names = new Set(first.map((p) => p.name))
+  return [...first, ...second.filter((p) => !names.has(p.name))]
 }
 
 /**

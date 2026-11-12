@@ -1,7 +1,10 @@
 import { requireUser } from '@/lib/auth/guard'
 import { AppHeader } from '@/components/shell/AppHeader'
 import { ProviderPanel } from '@/components/settings/ProviderPanel'
+import { ProposalsPanel } from '@/components/settings/ProposalsPanel'
+import { getProposalQueue } from '@/db/queries/extraction'
 import { getProviderStatus } from '@/lib/llm/provider'
+import '@/styles/library-extraction.css'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,7 +13,10 @@ export default async function SettingsPage() {
   // Read on the server so the key's ciphertext has no path to the browser —
   // getProviderStatus is the display-safe half of the read split (see
   // src/lib/llm/provider.ts).
-  const provider = await getProviderStatus(session.user.id)
+  const [provider, proposals] = await Promise.all([
+    getProviderStatus(session.user.id),
+    getProposalQueue(session.user.id),
+  ])
 
   return (
     <>
@@ -45,6 +51,8 @@ export default async function SettingsPage() {
         </div>
 
         <ProviderPanel initial={provider} />
+
+        <ProposalsPanel open={proposals.open} decided={proposals.decided} />
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <form action="/api/auth/signout" method="post">

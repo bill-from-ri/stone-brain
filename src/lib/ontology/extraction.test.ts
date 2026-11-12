@@ -218,6 +218,107 @@ describe('per-claim isolation', () => {
 })
 
 /**
+ * Proposals are advice about the vocabulary, not data for the graph, so they
+ * are parsed on the opposite policy to claims: anything wrong drops that
+ * proposal alone, and nothing about them can fail a reply or reach the retry.
+ */
+describe('proposed predicates', () => {
+  const proposal = (over: Record<string, unknown> = {}) => ({
+    name: 'trades_with',
+    description: 'A society that trades regularly with another.',
+    subject_type: 'society',
+    object_type: 'society',
+    example_subject: 'Andras',
+    example_object: 'Kaldia',
+    quote: 'Andras trades salt with Kaldia.',
+    paragraph: 3,
+    ...over,
+  })
+
+  it('is backwards compatible with a reply that omits the field', () => {
+    expect(parseExtraction(claim(), ontology).proposals).toEqual([])
+    expect(parseExtraction(claim().claims, ontology).proposals).toEqual([])
+  })
+
+  it('translates a well-formed proposal', () => {
+    expect(ontology.byName.has('trades_with')).toBe(false)
+    const { proposals, rejections } = parseExtraction(
+      { ...claim(), proposed_predicates: [proposal()] },
+      ontology,
+    )
+    expect(rejections).toEqual([])
+    expect(proposals).toEqual([
+      {
+        name: 'trades_with',
+        description: 'A society that trades regularly with another.',
+        subjectType: 'society',
+        objectType: 'society',
+        exampleSubject: 'Andras',
+        exampleObject: 'Kaldia',
+        quote: 'Andras trades salt with Kaldia.',
+        paragraphIndex: 3,
+      },
+    ])
+  })
+
+  it('normalises the spellings a model reaches for into one snake_case name', () => {
+    const { proposals } = parseExtraction(
+      {
+        claims: [],
+        proposed_predicates: [proposal({ name: 'Trades With' }), proposal({ name: 'trades-with' })],
+      },
+      ontology,
+    )
+    expect(proposals.map((p) => p.name)).toEqual(['trades_with'])
+  })
+
+  it('drops a name the vocabulary already has — the model should have emitted the claim', () => {
+    const { proposals } = parseExtraction(
+      { claims: [], proposed_predicates: [proposal({ name: 'ruled_by' })] },
+      ontology,
+    )
+    expect(proposals).toEqual([])
+  })
+
+  it('drops a malformed proposal without touching the claims or the rejections', () => {
+    const result = parseExtraction(
+      {
+        ...claim(),
+        proposed_predicates: [
+          proposal({ subject_type: 'nation' }),
+          proposal({ description: '' }),
+          proposal({ name: '9lives' }),
+          'not an object',
+          proposal({ name: 'attested_in', object_type: undefined, example_object: 1012 }),
+        ],
+      },
+      ontology,
+    )
+    expect(result.claims).toHaveLength(1)
+    expect(result.rejections).toEqual([])
+    expect(result.proposals).toEqual([
+      expect.objectContaining({ name: 'attested_in', exampleObject: '1012' }),
+    ])
+    expect(result.proposals[0]).not.toHaveProperty('objectType')
+  })
+
+  it('ignores a field that is not an array', () => {
+    expect(parseExtraction({ ...claim(), proposed_predicates: 'none' }, ontology).proposals).toEqual(
+      [],
+    )
+  })
+
+  it('offers the field in the JSON Schema without requiring it', () => {
+    const schema = extractionJsonSchema(ontology) as {
+      properties: Record<string, unknown>
+      required: string[]
+    }
+    expect(schema.properties).toHaveProperty('proposed_predicates')
+    expect(schema.required).toEqual(['claims'])
+  })
+})
+
+/**
  * The registry seeds the reference tables, drives this validator, and writes
  * the prompt. If those three ever disagree the failure is silent — the prompt
  * offers a predicate the validator rejects, and extraction just looks bad.

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import type { Route } from 'next'
 import type { DocumentRow } from '@/db/queries/library'
-import { displayStatus } from '@/lib/documents/status'
+import { displayStatus, isStale } from '@/lib/documents/status'
 import { SyncControls } from './SyncControls'
 import {
   EmptyState,
@@ -28,19 +28,29 @@ export type Crumb = {
  * all (decisions §7a). The sync control takes the right of the bar, where the
  * draft put its own folder-level button.
  *
- * Claims / Last checked / Conflicts render as em-dashes, matching the draft's
- * own "Never checked" rows. A zero would claim we looked and found none.
+ * Claims, Extracted and Conflicts are real as of Phase 2B, and still render
+ * as em-dashes for a document that has never been extracted, matching the
+ * draft's own "Never checked" rows: a zero there would claim we looked and
+ * found none. The draft's "Last checked" column was a conflict check; what
+ * this product can actually date is the last successful extraction, so that
+ * is what the column says.
+ *
+ * `conflictCounts` arrives from the page (document id → open conflicts among
+ * the claims citing it) rather than being fetched here, which a client
+ * component could not do anyway.
  */
 export function DocumentTable({
   documents,
   breadcrumb,
   selectedDriveFileId,
   indexing,
+  conflictCounts,
 }: {
   documents: DocumentRow[]
   breadcrumb: Crumb[]
   selectedDriveFileId: string | null
   indexing: boolean
+  conflictCounts: Record<string, number>
 }) {
   const setParams = useParamWriter()
 
@@ -53,17 +63,42 @@ export function DocumentTable({
         <div className="sb-doc-name">
           <i className="ph ph-file-doc" />
           <span>{doc.name}</span>
+          {isStale(doc) && (
+            <i
+              className="ph-bold ph-arrows-clockwise sb-x-stale-mark"
+              title="Changed in Drive since it was last extracted"
+              aria-label="Changed since last extraction"
+            />
+          )}
         </div>
       ),
     },
-    { key: 'claims', header: 'Claims', cell: () => <span className="sb-cell-faint">—</span> },
+    {
+      key: 'claims',
+      header: 'Claims',
+      cell: (doc) =>
+        neverExtracted(doc) ? (
+          <span className="sb-cell-faint">—</span>
+        ) : (
+          <span className="sb-cell-muted">{doc.claimCount}</span>
+        ),
+    },
     { key: 'status', header: 'Status', cell: (doc) => <StatusTag status={doc.status} /> },
-    { key: 'checked', header: 'Last checked', cell: () => <span className="sb-cell-faint">—</span> },
+    {
+      key: 'extracted',
+      header: 'Extracted',
+      cell: (doc) =>
+        doc.lastExtractedAt ? (
+          <span className="sb-cell-muted">{formatDay(doc.lastExtractedAt)}</span>
+        ) : (
+          <span className="sb-cell-faint">—</span>
+        ),
+    },
     {
       key: 'conflicts',
       header: 'Conflicts',
       align: 'right',
-      cell: () => <span className="sb-cell-faint">—</span>,
+      cell: (doc) => <ConflictCell count={conflictCounts[doc.id] ?? 0} extracted={!neverExtracted(doc)} />,
     },
   ]
 
@@ -126,6 +161,40 @@ function Breadcrumb({ crumbs }: { crumbs: Crumb[] }) {
       })}
     </nav>
   )
+}
+
+const neverExtracted = (doc: DocumentRow) => doc.status === 'unread' && doc.claimCount === 0
+
+function ConflictCell({ count, extracted }: { count: number; extracted: boolean }) {
+  if (count > 0) {
+    return (
+      <Link
+        className="sb-x-conflicts-link"
+        href="/conflicts"
+        // The row itself is a click target that opens the pane; this link
+        // goes somewhere else, so it must not also select the row on the way.
+        onClick={(event) => event.stopPropagation()}
+      >
+        <i className="ph-bold ph-warning-diamond" />
+        {count}
+      </Link>
+    )
+  }
+  return <span className="sb-cell-faint">{extracted ? '0' : '—'}</span>
+}
+
+/**
+ * Day precision is enough for a column, and a fixed locale and the UTC
+ * calendar date keep the server's render and the browser's hydration in
+ * agreement — this is a client component, rendered in both places.
+ */
+function formatDay(date: Date | string): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(date))
 }
 
 function StatusTag({ status }: { status: string }) {
