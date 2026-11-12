@@ -13,17 +13,41 @@
  * than burning further requests on a key that is revoked or rate limited.
  *
  * Writes `scoring/captures/<run-label>/<seed>.json`, refusing to overwrite.
+ *
+ * ## Capturing a model that is not the configured provider
+ *
+ * Two flags split the run in half, so the reply can come from anywhere — a
+ * model reached some other way than the OpenAI-compatible endpoint in Settings:
+ *
+ *   --dump-prompts=<dir>   write `<seed>.system.txt` and `<seed>.user.txt` (the
+ *                          exact strings `extractClaims` would send) plus the
+ *                          paragraphs, and stop without calling any model.
+ *   --from-replies=<dir>   read `<seed>.reply.txt` from the same directory and
+ *                          build the fixture from it, through the same
+ *                          `extractJson` + `parseExtraction` path a live reply
+ *                          takes. Needs `--model=<name>` for the record.
+ *
+ * A fixture built this way is one attempt with no repair round, and says so
+ * (`attempts: 1`, `responseFormat: null`); its rejections are the first
+ * reply's. The scorer reads both kinds identically.
  */
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { config as loadEnv } from 'dotenv'
 
 loadEnv({ path: ['.env.local', '.env'], quiet: true })
 
 const [label, ...wanted] = process.argv.slice(2).filter((a) => !a.startsWith('--'))
-if (!label) {
-  console.error('Usage: npm run extract:capture -- <run-label> [seed ...]')
+const flag = (name: string) =>
+  process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3)
+const promptDir = flag('dump-prompts')
+const replyDir = flag('from-replies')
+const replyModel = flag('model')
+if (!label || (replyDir && !replyModel)) {
+  console.error(
+    'Usage: npm run extract:capture -- <run-label> [seed ...] [--dump-prompts=<dir> | --from-replies=<dir> --model=<name>]',
+  )
   process.exit(1)
 }
 
@@ -33,10 +57,10 @@ const { documents, users } = await import('@/db/schema')
 const { DriveClient } = await import('@/lib/drive/client')
 const { readDocumentText } = await import('@/lib/documents/text')
 const { getProviderCredentials } = await import('@/lib/llm/provider')
-const { extractClaims, ExtractionError } = await import('@/lib/llm/extract')
+const { extractClaims, extractJson, ExtractionError } = await import('@/lib/llm/extract')
 const { ProviderError } = await import('@/lib/llm/errors')
 const { extractionSystemPrompt, extractionUserPrompt } = await import('@/lib/llm/prompt')
-const { coreOntology } = await import('@/lib/ontology/extraction')
+const { coreOntology, parseExtraction } = await import('@/lib/ontology/extraction')
 const world = await import('@/lib/ontology/seed-world')
 const kaldia = await import('@/lib/ontology/seed-kaldia')
 const runar = await import('@/lib/ontology/seed-runar')
@@ -60,8 +84,10 @@ mkdirSync(outDir, { recursive: true })
 
 const [user] = await db.select({ id: users.id }).from(users).limit(1)
 if (!user) throw new Error('No users.')
-const creds = await getProviderCredentials(user.id)
-if (!creds) throw new Error('No provider configured.')
+const offline = Boolean(promptDir || replyDir)
+const configured = offline ? null : await getProviderCredentials(user.id)
+if (!offline && !configured) throw new Error('No provider configured.')
+const creds = configured ?? { modelId: replyModel ?? '(prompts only)', baseUrl: 'offline' }
 const client = await DriveClient.forUser(user.id)
 const ontology = coreOntology()
 const systemPrompt = extractionSystemPrompt(ontology)
@@ -77,9 +103,19 @@ for (const name of seeds) {
     .where(eq(documents.driveFileId, seed.driveFileId))
   const text = await readDocumentText(client, seed.driveFileId)
 
+  if (promptDir) {
+    mkdirSync(promptDir, { recursive: true })
+    writeFileSync(join(promptDir, `${name}.system.txt`), systemPrompt)
+    writeFileSync(join(promptDir, `${name}.user.txt`), extractionUserPrompt(seed.name, text.paragraphs))
+    console.error(`${name.padEnd(8)} : prompts written (${text.paragraphs.length} paragraphs)`)
+    continue
+  }
+
   const started = Date.now()
   try {
-    const run = await extractClaims(creds, { documentName: seed.name, paragraphs: text.paragraphs, ontology })
+    const run = replyDir
+      ? runFromReply(readFileSync(join(replyDir, `${name}.reply.txt`), 'utf8'))
+      : await extractClaims(configured!, { documentName: seed.name, paragraphs: text.paragraphs, ontology })
     const seconds = (Date.now() - started) / 1000
     const fixture = {
       seed: name,
@@ -119,3 +155,18 @@ for (const name of seeds) {
 }
 
 process.exit(0)
+
+/** A saved reply, taken through the path `extractClaims` takes a live one. */
+function runFromReply(reply: string) {
+  const payload = extractJson(reply)
+  if (payload === undefined) throw new ExtractionError('unusable_response', 'The saved reply is not JSON.', reply)
+  const parsed = parseExtraction(payload, ontology)
+  return {
+    claims: parsed.claims,
+    rejections: parsed.rejections,
+    model: replyModel!,
+    attempts: 1,
+    responseFormat: null,
+    usage: { promptTokens: 0, completionTokens: 0 },
+  }
+}

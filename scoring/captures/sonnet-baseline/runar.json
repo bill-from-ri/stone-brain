@@ -1,0 +1,342 @@
+{
+  "seed": "runar",
+  "document": {
+    "name": "The Runar",
+    "driveFileId": "1pngPgMdvZf7yClZznYTYbbSXq_BeEXYm9B79iDN8Scg"
+  },
+  "capturedAt": "2026-11-12T01:45:42.925Z",
+  "modelRequested": "claude-sonnet-5-5",
+  "baseUrl": "offline",
+  "systemPromptSha": "6aa16b4077a1d1b0",
+  "userPromptSha": "5b50bf585f13883b",
+  "driveVersion": 54,
+  "headRevisionId": "835",
+  "seconds": 0.004,
+  "paragraphs": [
+    {
+      "index": 0,
+      "text": "# The Runar",
+      "headings": [],
+      "kind": "heading"
+    },
+    {
+      "index": 1,
+      "text": "Lying in the shadow of the Dragon’s Shroud, the Frost Gulf is a cold and wet coastland dominated by iconic temperate rainforests. This environment is home to innumerable species of plants and animals and has historically been mostly untouched by human hands.",
+      "headings": [
+        "The Runar"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 2,
+      "text": "People first moved into this region several thousand years before the Doom. In Antiquity, these settlers eventually came to be known as the Runar, spreading along the rivers and the coast until they inhabited the entire Runar Basin, the adjacent shorelands, and even crossed onto the island of Elduin in the 2nd century BD.",
+      "headings": [
+        "The Runar"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 3,
+      "text": "The Runyar of Elduin and the Runar of the mainland are effectively the same culture: Runyar is a cognate of Runar, and the name Elduin itself derives from the Eldi, the tribe from whom the first Elduinian settlers descended. When the Dragon's Shroud rose, that kinship was severed. No Runar has had contact with Elduin in centuries, and what memory of it survives on the mainland has long since drifted into half-forgotten myth.",
+      "headings": [
+        "The Runar"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 4,
+      "text": "# The Four Tribes",
+      "headings": [],
+      "kind": "heading"
+    },
+    {
+      "index": 5,
+      "text": "The Runar are not one people but four, sharing a common root but shaped into distinct cultures by the geography of the Frost Gulf and by centuries of contact with the peoples on their borders. Today, the Runar are divided into four peoples: the Eldi of the Amber Coast, the Suedi of the Blighted Shore, the Tvars of the deep inland forest, and the Atarks of the eastern forest-steppe frontier.",
+      "headings": [
+        "The Four Tribes"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 6,
+      "text": "## The Eldi (Amber Coast)",
+      "headings": [
+        "The Four Tribes"
+      ],
+      "kind": "heading"
+    },
+    {
+      "index": 7,
+      "text": "The Eldi sit between the Frost Gulf and the Orosh Mountains, making them the primary Runar people in contact with Enuarak to the south. Once a seafaring people, they still dominate maritime trade within the gulf itself, but the rise of the Dragon's Shroud closed off the open sea their ancestors once sailed. Sustained contact with the Enu has made the Eldi the most materially developed of the four peoples; metalwork, luxury goods, and record-keeping are all more commonplace here than elsewhere in the Runar Basin, and Enu religious ideas have had some influence as well. Eldi society is comparatively mercantile, built on trade rather than raiding or subsistence stockpiling.",
+      "headings": [
+        "The Four Tribes",
+        "The Eldi (Amber Coast)"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 8,
+      "text": "It was Eldi shamans who, in pre-history, received the vision that drove part of their people to cross the sea and found a stronghold on what would become Elduin, in anticipation of the Doom.",
+      "headings": [
+        "The Four Tribes",
+        "The Eldi (Amber Coast)"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 9,
+      "text": "## The Suedi (Blighted Shore)",
+      "headings": [
+        "The Four Tribes"
+      ],
+      "kind": "heading"
+    },
+    {
+      "index": 10,
+      "text": "The Suedi occupy the northern edge of the Runar Basin, trading regularly with the Eldi to their south but bordering the monster-infested tundra to the north — the source of the \"blight\" in their shore's name. The monsters that wander into Suedi lands are not world-ending threats, but overgrown, faintly intelligent animals dangerous enough in numbers, or to poorly defended settlements, to have shaped Suedi society around them. Their relationship with the northern hunter-gatherers (the Kazavs) includes both trade and open conflict, worsened by a period of climate warming beginning in the 400s that pushed monsters and Kazavs alike further south, triggering a period of migration and war. These pressures have made the Suedi the most militant of the four Runar people, a tradition exemplified in their invasion of Elduin shortly before the Doom.",
+      "headings": [
+        "The Four Tribes",
+        "The Suedi (Blighted Shore)"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 11,
+      "text": "## The Tvars (Inland)",
+      "headings": [
+        "The Four Tribes"
+      ],
+      "kind": "heading"
+    },
+    {
+      "index": 12,
+      "text": "Enclosed by mountains and by the other three peoples, the Tvars are the most conservative and insular of the Runar, preserving the oldest practices and the least outside influence. Their isolation belies real wealth: sitting at the heart of the forest, they produce the finest amber, furs, and medicinal goods of any Runar people, making them surprisingly prosperous despite, or perhaps because of, their isolation from the wider world.",
+      "headings": [
+        "The Four Tribes",
+        "The Tvars (Inland)"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 13,
+      "text": "## The Atarks (Forest-Steppe Frontier)",
+      "headings": [
+        "The Four Tribes"
+      ],
+      "kind": "heading"
+    },
+    {
+      "index": 14,
+      "text": "Living where the forest gives way to steppe in the east, the Atarks have absorbed a substantial amount of horse culture from their steppe neighbors, without fully becoming a steppe people themselves. This contact runs deep enough that other Runar peoples sometimes view the Atarks as having drifted from \"true\" Runar identity.",
+      "headings": [
+        "The Four Tribes",
+        "The Atarks (Forest-Steppe Frontier)"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 15,
+      "text": "# Neighbors of the Runar Basin",
+      "headings": [],
+      "kind": "heading"
+    },
+    {
+      "index": 16,
+      "text": "The Runar are not isolated. Beyond their four peoples lie:",
+      "headings": [
+        "Neighbors of the Runar Basin"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 17,
+      "text": "- The Kazavs, hunter-gatherer tribes of the monster-infested tundra to the north, in intermittent trade and conflict with the Suedi.\n- Steppe peoples to the east, whose horse culture and religious traditions have been substantially absorbed by the Atarks.\n- Enuarak, beyond the southern mountains, in sustained trade and cultural contact with the Eldi; the main channel through which metalwork, luxury goods, and outside religious ideas reach the Runar Basin.\n- Elduin, once kin across the sea, now permanently cut off by the Dragon's Shroud. No living Runar has crossed to or from the island in generations.",
+      "headings": [
+        "Neighbors of the Runar Basin"
+      ],
+      "kind": "list"
+    },
+    {
+      "index": 18,
+      "text": "# Cosmology: The Three Worlds",
+      "headings": [],
+      "kind": "heading"
+    },
+    {
+      "index": 19,
+      "text": "The Runar understand the cosmos as three layered worlds: the Upper World above the sky, the Walked World of forest, river, coast, and settlement, and the Underworld beyond. The Upper World is held up by the Sky Posts: towering Tvarid Spruce trees, the largest living things in the Frost Gulf, believed to bear the weight of the sky itself just as the timber posts of a longhouse bear its roof. The boundary between the Walked World and the Underworld is always water, but what lies across that boundary differs by tribe:",
+      "headings": [
+        "Cosmology: The Three Worlds"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 20,
+      "text": "- The Eldi and the Suedi hold that the land of the dead lies to the west, across the sea, a belief made unusually concrete by the visible presence of the Dragon's Shroud on the horizon. Sea burial sends the dead directly toward it.\n- The Tvars hold an older belief that the underworld is simply below. The dead descend rather than sail, and Tvar burial in lakes and bogs reflects this. Any still water is a door downward.\n- The Atarks diverge from both: the dead rise into the Upper World rather than crossing water at all. To the Atarks, water is not a passage to death but the dwelling place of living spirits, which is why they treat it with such marked caution; not fear, but reverence for beings already at home there.",
+      "headings": [
+        "Cosmology: The Three Worlds"
+      ],
+      "kind": "list"
+    },
+    {
+      "index": 21,
+      "text": "## The Tvarid Spruce",
+      "headings": [
+        "Cosmology: The Three Worlds"
+      ],
+      "kind": "heading"
+    },
+    {
+      "index": 22,
+      "text": "The Tvarid Spruce is the tallest and oldest living thing in the Frost Gulf, towering over the surrounding canopy and regarded as the king of trees by all four Runar peoples. They are the one point of shared religious reverence across cultures otherwise as different as the Eldi and the Tvars. As the Sky Posts of Runar cosmology, they are harvested rarely if ever; felling one, even in dire need, calls for ritual apology and restitution to the grove's spirits, and groves where several grow together serve as the closest thing the Runar have to shared holy ground.",
+      "headings": [
+        "Cosmology: The Three Worlds",
+        "The Tvarid Spruce"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 23,
+      "text": "# The Giving Ceremonies",
+      "headings": [],
+      "kind": "heading"
+    },
+    {
+      "index": 24,
+      "text": "Across the Runar Basin, wealth is something to be given away publicly rather than simply held, as a demonstration of status and a binding community. The practice is oldest and most elaborate among the Tvars, and each of the other three peoples has reshaped it to suit their own circumstances:",
+      "headings": [
+        "The Giving Ceremonies"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 25,
+      "text": "- Among the Tvars, the ceremony is closest to its original form: a communal feast, often held at a Tvarid Spruce grove, where a household or elder distributes stored wealth (amber, furs, preserved goods) directly to the community. Status is measured by what has been given away over a lifetime, not by what remains in storage.\n- Among the Suedi and the Atarks, the custom has folded into the culture of the warband. A raid leader earns glory and legitimacy not by keeping plunder, but by how thoroughly he enriches his followers with it; authority is rebuilt raid by raid, gift by gift.\n- Among the Eldi, whose mercantile economy runs on trade rather than raiding, the ceremony has become an annual civic ritual: once a year, the leading families share a portion of their accumulated wealth with the community through feasting rather than the direct exchange of goods, publicly accounting for the year's prosperity and reaffirming their right to lead it.",
+      "headings": [
+        "The Giving Ceremonies"
+      ],
+      "kind": "list"
+    },
+    {
+      "index": 26,
+      "text": "In every form, the underlying logic holds: wealth kept quietly is wealth wasted, and a leader's authority is only as strong as their last public act of generosity.",
+      "headings": [
+        "The Giving Ceremonies"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 27,
+      "text": "# Religion, in Brief",
+      "headings": [],
+      "kind": "heading"
+    },
+    {
+      "index": 28,
+      "text": "Runar religion is not a unified institution. It is animist at its core: reverence for holy groves, river spirits, animal spirits, and the stars, with no single overarching pantheon shared by all four peoples. Spirits and minor deities number in the hundreds, some venerated by only a few dozen people in a single valley or village. The Eldi are a partial exception, having developed something closer to a true pantheon in the wake of their pre-Doom migration.",
+      "headings": [
+        "Religion, in Brief"
+      ],
+      "kind": "prose"
+    }
+  ],
+  "run": {
+    "claims": [
+      {
+        "subjectName": "Runar",
+        "subjectType": "society",
+        "predicate": "located_in",
+        "quote": "until they inhabited the entire Runar Basin",
+        "paragraphIndex": 2,
+        "objectName": "Runar Basin",
+        "objectType": "region"
+      },
+      {
+        "subjectName": "Eldi",
+        "subjectType": "society",
+        "predicate": "located_in",
+        "quote": "the Eldi of the Amber Coast",
+        "paragraphIndex": 5,
+        "objectName": "Amber Coast",
+        "objectType": "region"
+      },
+      {
+        "subjectName": "Suedi",
+        "subjectType": "society",
+        "predicate": "located_in",
+        "quote": "the Suedi of the Blighted Shore",
+        "paragraphIndex": 5,
+        "objectName": "Blighted Shore",
+        "objectType": "region"
+      },
+      {
+        "subjectName": "Eldi",
+        "subjectType": "society",
+        "predicate": "economy",
+        "quote": "Eldi society is comparatively mercantile",
+        "paragraphIndex": 7,
+        "valueString": "mercantile"
+      },
+      {
+        "subjectName": "Suedi",
+        "subjectType": "society",
+        "predicate": "enemy_of",
+        "quote": "Their relationship with the northern hunter-gatherers (the Kazavs) includes both trade and open conflict",
+        "paragraphIndex": 10,
+        "objectName": "Kazavs",
+        "objectType": "society"
+      },
+      {
+        "subjectName": "Tvars",
+        "subjectType": "society",
+        "predicate": "produces",
+        "quote": "they produce the finest amber, furs, and medicinal goods of any Runar people",
+        "paragraphIndex": 12,
+        "objectName": "amber",
+        "objectType": "commodity"
+      },
+      {
+        "subjectName": "Tvars",
+        "subjectType": "society",
+        "predicate": "produces",
+        "quote": "they produce the finest amber, furs, and medicinal goods of any Runar people",
+        "paragraphIndex": 12,
+        "objectName": "furs",
+        "objectType": "commodity"
+      },
+      {
+        "subjectName": "Tvarid Spruce",
+        "subjectType": "species",
+        "predicate": "located_in",
+        "quote": "The Tvarid Spruce is the tallest and oldest living thing in the Frost Gulf",
+        "paragraphIndex": 22,
+        "objectName": "Frost Gulf",
+        "objectType": "region"
+      },
+      {
+        "subjectName": "Frost Gulf",
+        "subjectType": "region",
+        "predicate": "climate",
+        "quote": "dominated by iconic temperate rainforests",
+        "paragraphIndex": 1,
+        "valueString": "temperate_rainforest"
+      },
+      {
+        "subjectName": "Elduin",
+        "subjectType": "region",
+        "predicate": "landform",
+        "quote": "the island of Elduin",
+        "paragraphIndex": 2,
+        "valueString": "island"
+      }
+    ],
+    "rejections": [],
+    "model": "claude-sonnet-5-5",
+    "attempts": 1,
+    "responseFormat": null,
+    "usage": {
+      "promptTokens": 0,
+      "completionTokens": 0
+    }
+  }
+}

@@ -904,6 +904,199 @@ export const claimSources = pgTable(
   ],
 )
 
+/* ------------------------------------------------------- extraction history */
+
+export type ExtractionRunStatus = 'succeeded' | 'failed'
+/**
+ * Where a claim was lost. `'validation'` is `parseExtraction()` refusing what
+ * the model emitted; `'write'` is `writeExtraction()` declining to guess at an
+ * entity (its `unwritten` list). Both are a claim the document may well state
+ * and the graph does not hold, which is why they share a table.
+ */
+export type ExtractionIssueStage = 'validation' | 'write'
+
+/**
+ * One row per attempt to extract a document — including the ones that failed.
+ *
+ * Without this, a document that extracted badly is indistinguishable from one
+ * that extracted well: both end up `status = 'extracted'` with some claims
+ * (implementation plan §6). The run is the unit the Library reports on — what
+ * came back, what was kept, and what was dropped and why.
+ *
+ * Runs are append-only history. The *current* state of a document still lives
+ * on `documents` (`status`, `extracted_drive_version`); this table answers
+ * "what happened", not "where are we".
+ */
+export const extractionRuns = pgTable(
+  'extraction_runs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    documentId: uuid('document_id')
+      .notNull()
+      .references(() => documents.id, { onDelete: 'cascade' }),
+
+    status: text('status').$type<ExtractionRunStatus>().notNull(),
+    /** Machine code for a failed run: an `ExtractionFailure` or a provider failure reason. */
+    failureCode: text('failure_code'),
+    /** The sentence shown to the user for a failed run. */
+    failureMessage: text('failure_message'),
+
+    /** The model the settings asked for, and the one the provider says answered (ADR §11). */
+    modelRequested: text('model_requested'),
+    model: text('model'),
+    /** 1 when the first reply validated clean, 2 when the repair round was spent. */
+    attempts: integer('attempts'),
+    responseFormat: text('response_format'),
+    promptTokens: integer('prompt_tokens'),
+    completionTokens: integer('completion_tokens'),
+
+    /** What was read — the same pair `stampDocument` records on the document. */
+    driveVersion: bigint('drive_version', { mode: 'number' }),
+    revisionId: text('revision_id'),
+
+    /** Claims that survived validation, before entity resolution. */
+    claimsExtracted: integer('claims_extracted').notNull().default(0),
+    claimsCreated: integer('claims_created').notNull().default(0),
+    claimsAlreadyPresent: integer('claims_already_present').notNull().default(0),
+    /** Reverse-direction claims generated alongside the extracted ones (§5). */
+    inversesCreated: integer('inverses_created').notNull().default(0),
+    sourcesCreated: integer('sources_created').notNull().default(0),
+    entitiesCreated: integer('entities_created').notNull().default(0),
+
+    startedAt: ts('started_at').notNull().defaultNow(),
+    finishedAt: ts('finished_at'),
+  },
+  (t) => [
+    index('extraction_runs_user_document_idx').on(t.userId, t.documentId, t.startedAt),
+    check('extraction_runs_status', sql`${t.status} in ('succeeded', 'failed')`),
+  ],
+)
+
+/**
+ * A claim the model emitted that did not reach the graph, with the reason.
+ *
+ * `received` is the offending claim as it arrived, kept verbatim: the reason
+ * alone ("'allied_to' is not in the vocabulary") is not actionable without the
+ * sentence it was about, and this is also the evidence for where the vocabulary
+ * is too thin.
+ */
+export const extractionIssues = pgTable(
+  'extraction_issues',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    runId: uuid('run_id')
+      .notNull()
+      .references(() => extractionRuns.id, { onDelete: 'cascade' }),
+
+    stage: text('stage').$type<ExtractionIssueStage>().notNull(),
+    /** A `Rejection['code']` for validation, an `unwritten` code for write. */
+    code: text('code').notNull(),
+    message: text('message').notNull(),
+    received: jsonb('received'),
+    /** Position in the model's output across the run; null for write-stage issues. */
+    position: integer('position'),
+
+    createdAt: ts('created_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('extraction_issues_run_idx').on(t.runId),
+    check('extraction_issues_stage', sql`${t.stage} in ('validation', 'write')`),
+  ],
+)
+
+export type ProposalStatus = 'open' | 'promoted' | 'rejected'
+
+/**
+ * A predicate the model wanted and the vocabulary does not have.
+ *
+ * The closed vocabulary's structured way to fail (ontology-design.md, "How the
+ * vocabulary grows"): rather than forcing a near-synonym or silently dropping
+ * the sentence, the extractor files what it would have needed. The vocabulary
+ * is global and curated, so *promoting* a proposal does not change what the
+ * extractor may write — it records the decision that the registry should grow,
+ * which is then a registry edit and a re-seed.
+ */
+export const predicateProposals = pgTable(
+  'predicate_proposals',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    /** Nulled, not cascaded: a proposal outlives the run and document that raised it. */
+    runId: uuid('run_id').references(() => extractionRuns.id, { onDelete: 'set null' }),
+    documentId: uuid('document_id').references(() => documents.id, { onDelete: 'set null' }),
+    documentName: text('document_name'),
+
+    /** snake_case, as the model proposed it. */
+    name: text('name').notNull(),
+    description: text('description').notNull(),
+    subjectType: text('subject_type'),
+    /** Null when the proposal is for an attribute rather than a relationship. */
+    objectType: text('object_type'),
+    exampleSubject: text('example_subject'),
+    exampleObject: text('example_object'),
+    /** The sentence that prompted it, verbatim, with its ¶ anchor. */
+    quote: text('quote'),
+    paragraphIndex: integer('paragraph_index'),
+
+    status: text('status').$type<ProposalStatus>().notNull().default('open'),
+    decidedAt: ts('decided_at'),
+    createdAt: ts('created_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('predicate_proposals_user_status_idx').on(t.userId, t.status),
+    index('predicate_proposals_user_name_idx').on(t.userId, t.name),
+    check('predicate_proposals_status', sql`${t.status} in ('open', 'promoted', 'rejected')`),
+  ],
+)
+
+/* ---------------------------------------------------------------- conflicts */
+
+/**
+ * `'value'` — two claims give a single-valued predicate different answers.
+ * `'vanished_source'` — a claim cites only documents that have left the
+ * Library (ADR §7a).
+ */
+export type ConflictKind = 'value' | 'vanished_source'
+
+/**
+ * Conflicts the user has looked at and accepted as they stand.
+ *
+ * Conflicts themselves are **derived, not stored**: they are a query over
+ * `claims`, so they can never go stale against the graph they describe, and
+ * resolving one by deleting or editing a claim needs no bookkeeping at all.
+ * The only thing that cannot be derived is a human saying "I know — leave it",
+ * and that is all this table holds.
+ *
+ * `key` identifies the exact situation dismissed: for `'value'` it covers the
+ * subject, the predicate and the set of disagreeing claims, so a *new*
+ * disagreeing claim re-opens the conflict; for `'vanished_source'` it is the
+ * claim id.
+ */
+export const conflictDismissals = pgTable(
+  'conflict_dismissals',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    kind: text('kind').$type<ConflictKind>().notNull(),
+    key: text('key').notNull(),
+    createdAt: ts('created_at').notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('conflict_dismissals_user_kind_key_uq').on(t.userId, t.kind, t.key),
+    check('conflict_dismissals_kind', sql`${t.kind} in ('value', 'vanished_source')`),
+  ],
+)
+
 /* ---------------------------------------------------------------- row types */
 
 export type User = typeof users.$inferSelect
@@ -930,3 +1123,10 @@ export type Claim = typeof claims.$inferSelect
 export type NewClaim = typeof claims.$inferInsert
 export type ClaimSource = typeof claimSources.$inferSelect
 export type NewClaimSource = typeof claimSources.$inferInsert
+export type ExtractionRun = typeof extractionRuns.$inferSelect
+export type NewExtractionRun = typeof extractionRuns.$inferInsert
+export type ExtractionIssue = typeof extractionIssues.$inferSelect
+export type NewExtractionIssue = typeof extractionIssues.$inferInsert
+export type PredicateProposal = typeof predicateProposals.$inferSelect
+export type NewPredicateProposal = typeof predicateProposals.$inferInsert
+export type ConflictDismissal = typeof conflictDismissals.$inferSelect

@@ -1,0 +1,392 @@
+{
+  "seed": "kaldia",
+  "document": {
+    "name": "The Kaldian Empire",
+    "driveFileId": "1APto2NJ6o6qjBJ0TkNjgPR-GEtCKFcJrMvL7Pox0d9Y"
+  },
+  "capturedAt": "2026-11-12T01:45:41.843Z",
+  "modelRequested": "claude-sonnet-5-5",
+  "baseUrl": "offline",
+  "systemPromptSha": "6aa16b4077a1d1b0",
+  "userPromptSha": "3812f1d907526d94",
+  "driveVersion": 400,
+  "headRevisionId": "5725",
+  "seconds": 0.004,
+  "paragraphs": [
+    {
+      "index": 0,
+      "text": "# The Kaldian Empire",
+      "headings": [],
+      "kind": "heading"
+    },
+    {
+      "index": 1,
+      "text": "The Kaldian Empire, also referred to as Imperial Kaldia, the Kalduin Dynasty, Kaldia, or simply the Empire, is the largest nation on Elduin. It covers most of the island’s western half, including the Kaldian Vale, Thalgia, the Interior, the Pale, and much of the Hinter Coast. Due to its size and resources, Kaldia is the most influential faction in Elduinian politics.",
+      "headings": [
+        "The Kaldian Empire"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 2,
+      "text": "History The Kaldian Empire was founded in 918 by Ludwig I Kalduin following a period of civil war that ended the Skrimir Dynasty. After his ascension, Ludwig I signed the Imperial Assembly into existence. The body oversees imperial legislation and serves as an advising council to the Emperor.",
+      "headings": [
+        "The Kaldian Empire"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 3,
+      "text": "Ludwig I’s ascension marked the beginning of the Kalduin Dynasty, the fourth dynasty to rule the Kaldian Vale after the fall of the Elduin Dynasty.",
+      "headings": [
+        "The Kaldian Empire"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 4,
+      "text": "In 935, a marriage alliance between Prince Lukas Kalduin and Princess Edith Akadon added Thalgia to the Empire. As part of this pact, the lords of Thalgia were granted more autonomy than their contemporaries in the Vale and were given the right to elect a Prince of Thalgia to represent them in the Imperial Assembly.",
+      "headings": [
+        "The Kaldian Empire"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 5,
+      "text": "In 992, the Empire won the Pale War against the Kingdom of Swadia. In the aftermath, the Kingdom ceded much of its territory to Kaldia and was placed under the aegis of the Empire. Imperial relations with the lords of Swadia remain tense.",
+      "headings": [
+        "The Kaldian Empire"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 6,
+      "text": "Government & Politics",
+      "headings": [
+        "The Kaldian Empire"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 7,
+      "text": "Kaldian Empire Nation Coat of Arms  Motto: Unite the realms.  Capital Hrimfall Official language Common Religion Western Syrathism Classical Syrathism Government Federal semi-constitutional monarchy Emperor Prime Minister Margrave Ludwig II Kalduin Wilhelm Baelestir Aldo Demard Population Approx. 2.9 million",
+      "headings": [
+        "The Kaldian Empire"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 8,
+      "text": "The Kaldian Empire is a federal, constitutional monarchy made up of 11 states, which consist of one principality, one protectorate, two provinces, three duchies, three municipalities, and one imperial territory. Every state sends representatives to the Imperial Assembly and must obey the laws detailed in the Imperial Charter, Kaldia’s foremost legal document. These laws are enforced by the governors of each state, their bannermen, and their men-at-arms––knights, mercenaries, or other soldiers who serve Kaldian nobles for pay or through feudal obligation. Men-at-arms play an important role in Kaldian society for maintaining order across the Empire in tandem with the Scales.",
+      "headings": [
+        "The Kaldian Empire"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 9,
+      "text": "At the imperial level, power is shared between the Emperor and the Imperial Assembly. The Emperor serves as the Head of State and the supreme authority of the Empire. They command the executive branch of government. The Imperial Assembly is split into two houses, the Upper House and the Lower House, and is led by the Prime Minister, an individual elected by the rest of the Assembly. The Upper House consists entirely of nobles while the Lower House consists of both non-nobles such as merchants, guild masters, and representatives from the Church. Common laborers and even most artisans have little representation in the Imperial Assembly.",
+      "headings": [
+        "The Kaldian Empire"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 10,
+      "text": "At the state level, regional governors and town councils hold power, though they still must default to imperial laws in almost all cases. For individual judgements, however, they are granted enough autonomy to make informed decisions.",
+      "headings": [
+        "The Kaldian Empire"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 11,
+      "text": "Factions Two of the most influential political alliances in the Empire are the Conservatives and the Iconoclasts. The former consists mostly of nobles. They support the traditional beliefs of Elduinian unification and aristocratic supremacy. The Conservatives are known to promote aggressive foreign policy and greater centralisation of power within the Empire.",
+      "headings": [
+        "The Kaldian Empire"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 12,
+      "text": "The Iconoclasts, on the other hand, consist mostly of non-nobles and newly-landed nobles. They believe that by promoting social mobility in Kaldian society, the Empire will flourish. They aren’t as powerful as the Conservatives, but they still hold enough seats in the Lower House to affect legislation. Interestingly, the Iconoclasts have many members within the Kaldian military. Their numbers grew during the Pale War after Count Aldo Demard was made Imperial Margrave.",
+      "headings": [
+        "The Kaldian Empire"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 13,
+      "text": "Culture & Society Since the fall of the Elduin Dynasty, the Kaldian people have been characterized by their belief in unity, military valor, patriotism, and respect for authority. Individuals are encouraged to be loyal to the Empire and proud of their Kaldian heritage. Many towns and cities across the Empire hold annual festivals to celebrate Kaldian culture. These celebrations often feature performances showcasing Kaldian legends and history.",
+      "headings": [
+        "The Kaldian Empire"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 14,
+      "text": "An important institution in Kaldian society is the military. Service is required for most imperial citizens, and is seen as an avenue for winning glory for one’s family and one’s country. Part of why the Kaldian people are supportive of war is the prospect of conquest and the seizing of foreign goods to enrich the Empire. In addition to an opportunity to gain honor, the military is one of the few institutions in the Empire that allow for easy social mobility. Such an incentive is one of many reasons why the Kaldian people place so much value in their nation’s military.",
+      "headings": [
+        "The Kaldian Empire"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 15,
+      "text": "Most Kaldians place a lot of value in order and the stability of the Empire. To them, the Dark Age is seen as the lowest point in human history. A strong central government is seen as the only safeguard against such an apocalypse. As such, a betrayal of one’s nation is seen as one of the worst sins a Kaldian can perform.",
+      "headings": [
+        "The Kaldian Empire"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 16,
+      "text": "Economy The Kaldian Vale is a breadbasket, home to a vast swath of farmland that sources enough grain to feed an empire. Herds of cattle and sheep roam the fields, granting the Empire a bountiful source of hide, wool, and milk. Most imperial lumber is collected from the Duchy of Korsburg, while its ores and quarried stone are primarily harvested from the Breakback Cliffs and Farrock Hills.",
+      "headings": [
+        "The Kaldian Empire"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 17,
+      "text": "The Empire’ dominions also provide no shortage of natural resources. Thalgia has enough fields and forests to support itself as an independent nation. Meanwhile, the Interior is home to monsters whose exotic body parts often sell for high prices in markets both within the Empire and abroad.",
+      "headings": [
+        "The Kaldian Empire"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 18,
+      "text": "Industries As a backbone to the formidable imperial military, the Empire has an expansive smithing industry. Foundries and forges can be found in almost every Kaldian settlement to provide both tools and weapons to its people. Nowhere else are smiths more valued than in the Interior, where the citizenry must keep themselves to defend against the beasts of Riftwald Forest.",
+      "headings": [
+        "The Kaldian Empire"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 19,
+      "text": "An important institution in the Interior is the monster hunting industry. Hundreds of monster hunters work in the Province of Innenbeck as both private contractors as well as sworn men-at-arms. They are viewed with respect for their role in keeping the commonfolk safe. Additionally, the martial nature of their work gives them similar credit to individuals serving in the imperial military.",
+      "headings": [
+        "The Kaldian Empire"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 20,
+      "text": "Currency Since the founding of the Kalduin Dynasty, the Empire has been minting its own currency independent from the other nations of Elduin. Kaldia uses five types of coins: copper asars (1 cp), silver denars (1 sp), electrum talents (5 sp), gold aurons (1 gp), and gold solidi (10 gp). After the Pale War, Swadia began adopting imperial currency, increasing imperial purchasing power.",
+      "headings": [
+        "The Kaldian Empire"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 21,
+      "text": "Economic Inequality As a side effect of the Empire’s semi-feudal social structure, there is a great disparity in wealth between those at the top of society and those at the bottom. Although serfdom was abolished at the start of the Kalduin Dynasty, most commonfolk still don’t have the means to climb the social ladder, consigning most to menial labor such as farm work and simple workshop jobs.",
+      "headings": [
+        "The Kaldian Empire"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 22,
+      "text": "Artisans and merchants stand between the commonfolk and the nobility. They live comfortable lives and enjoy many of the same economic privileges as nobles. They can travel when they want and can even own land.",
+      "headings": [
+        "The Kaldian Empire"
+      ],
+      "kind": "prose"
+    },
+    {
+      "index": 23,
+      "text": "Finally, there’s the nobility. They have no need to work; their income comes from the vast tracts of land they own. Not all nobles live in luxury; many live more austere lifestyles than the wealthiest merchants. Even still, the average noble enjoys significantly more privileges than the average Kaldian.",
+      "headings": [
+        "The Kaldian Empire"
+      ],
+      "kind": "prose"
+    }
+  ],
+  "run": {
+    "claims": [
+      {
+        "subjectName": "Kaldian Empire",
+        "subjectType": "faction",
+        "predicate": "located_in",
+        "quote": "is the largest nation on Elduin",
+        "paragraphIndex": 1,
+        "objectName": "Elduin",
+        "objectType": "region"
+      },
+      {
+        "subjectName": "Ludwig I Kalduin",
+        "subjectType": "character",
+        "predicate": "founded",
+        "quote": "The Kaldian Empire was founded in 918 by Ludwig I Kalduin",
+        "paragraphIndex": 2,
+        "objectName": "Kaldian Empire",
+        "objectType": "faction"
+      },
+      {
+        "subjectName": "Kaldian Empire",
+        "subjectType": "faction",
+        "predicate": "founded_on",
+        "quote": "The Kaldian Empire was founded in 918",
+        "paragraphIndex": 2,
+        "valueTime": "918",
+        "valueOrder": 917
+      },
+      {
+        "subjectName": "Ludwig I Kalduin",
+        "subjectType": "character",
+        "predicate": "founded",
+        "quote": "Ludwig I signed the Imperial Assembly into existence",
+        "paragraphIndex": 2,
+        "objectName": "Imperial Assembly",
+        "objectType": "faction"
+      },
+      {
+        "subjectName": "Lukas Kalduin",
+        "subjectType": "character",
+        "predicate": "title",
+        "quote": "Prince Lukas Kalduin",
+        "paragraphIndex": 4,
+        "valueString": "Prince"
+      },
+      {
+        "subjectName": "Edith Akadon",
+        "subjectType": "character",
+        "predicate": "title",
+        "quote": "Princess Edith Akadon",
+        "paragraphIndex": 4,
+        "valueString": "Princess"
+      },
+      {
+        "subjectName": "Lukas Kalduin",
+        "subjectType": "character",
+        "predicate": "married_to",
+        "quote": "a marriage alliance between Prince Lukas Kalduin and Princess Edith Akadon",
+        "paragraphIndex": 4,
+        "objectName": "Edith Akadon",
+        "objectType": "character"
+      },
+      {
+        "subjectName": "Kaldian Empire",
+        "subjectType": "faction",
+        "predicate": "rules",
+        "quote": "added Thalgia to the Empire",
+        "paragraphIndex": 4,
+        "objectName": "Thalgia",
+        "objectType": "region"
+      },
+      {
+        "subjectName": "Pale War",
+        "subjectType": "event",
+        "predicate": "occurred_on",
+        "quote": "In 992, the Empire won the Pale War",
+        "paragraphIndex": 5,
+        "valueTime": "992",
+        "valueOrder": 991
+      },
+      {
+        "subjectName": "Pale War",
+        "subjectType": "event",
+        "predicate": "outcome",
+        "quote": "the Empire won the Pale War against the Kingdom of Swadia",
+        "paragraphIndex": 5,
+        "valueString": "The Empire won the Pale War against the Kingdom of Swadia"
+      },
+      {
+        "subjectName": "Kaldian Empire",
+        "subjectType": "faction",
+        "predicate": "participated_in",
+        "quote": "the Empire won the Pale War",
+        "paragraphIndex": 5,
+        "objectName": "Pale War",
+        "objectType": "event"
+      },
+      {
+        "subjectName": "Kingdom of Swadia",
+        "subjectType": "faction",
+        "predicate": "participated_in",
+        "quote": "the Pale War against the Kingdom of Swadia",
+        "paragraphIndex": 5,
+        "objectName": "Pale War",
+        "objectType": "event"
+      },
+      {
+        "subjectName": "Kaldian Empire",
+        "subjectType": "faction",
+        "predicate": "motto",
+        "quote": "Motto: Unite the realms.",
+        "paragraphIndex": 7,
+        "valueString": "Unite the realms."
+      },
+      {
+        "subjectName": "Kaldian Empire",
+        "subjectType": "faction",
+        "predicate": "has_capital",
+        "quote": "Capital Hrimfall",
+        "paragraphIndex": 7,
+        "objectName": "Hrimfall",
+        "objectType": "settlement"
+      },
+      {
+        "subjectName": "Kaldian Empire",
+        "subjectType": "faction",
+        "predicate": "government_type",
+        "quote": "Government Federal semi-constitutional monarchy",
+        "paragraphIndex": 7,
+        "valueString": "Federal semi-constitutional monarchy"
+      },
+      {
+        "subjectName": "Kaldian Empire",
+        "subjectType": "faction",
+        "predicate": "population",
+        "quote": "Population Approx. 2.9 million",
+        "paragraphIndex": 7,
+        "valueInt": 2900000
+      },
+      {
+        "subjectName": "Ludwig II Kalduin",
+        "subjectType": "character",
+        "predicate": "leads",
+        "quote": "Ludwig II Kalduin",
+        "paragraphIndex": 7,
+        "objectName": "Kaldian Empire",
+        "objectType": "faction"
+      },
+      {
+        "subjectName": "Aldo Demard",
+        "subjectType": "character",
+        "predicate": "title",
+        "quote": "Count Aldo Demard was made Imperial Margrave",
+        "paragraphIndex": 12,
+        "valueString": "Imperial Margrave"
+      },
+      {
+        "subjectName": "Kaldian Vale",
+        "subjectType": "region",
+        "predicate": "produces",
+        "quote": "sources enough grain to feed an empire",
+        "paragraphIndex": 16,
+        "objectName": "grain",
+        "objectType": "commodity"
+      },
+      {
+        "subjectName": "Duchy of Korsburg",
+        "subjectType": "region",
+        "predicate": "produces",
+        "quote": "Most imperial lumber is collected from the Duchy of Korsburg",
+        "paragraphIndex": 16,
+        "objectName": "lumber",
+        "objectType": "commodity"
+      }
+    ],
+    "rejections": [],
+    "model": "claude-sonnet-5-5",
+    "attempts": 1,
+    "responseFormat": null,
+    "usage": {
+      "promptTokens": 0,
+      "completionTokens": 0
+    }
+  }
+}
