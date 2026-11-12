@@ -23,7 +23,9 @@
     "db:seed:runar": "tsx --tsconfig tsconfig.json scripts/seed-runar.ts",
     "db:studio": "drizzle-kit studio",
     "extract": "tsx --conditions=react-server --tsconfig tsconfig.json scripts/extract-document.ts",
-    "extract:capture": "tsx --conditions=react-server --tsconfig tsconfig.json scripts/capture-extraction.ts"
+    "extract:capture": "tsx --conditions=react-server --tsconfig tsconfig.json scripts/capture-extraction.ts",
+    "extract:score": "tsx --conditions=react-server --tsconfig tsconfig.json scripts/score-extraction.ts",
+    "db:backfill:inverses": "tsx --conditions=react-server --tsconfig tsconfig.json scripts/backfill-inverses.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
