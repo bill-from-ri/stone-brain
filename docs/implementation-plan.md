@@ -224,30 +224,45 @@ The reason the ground truth exists: measure how well the configured model
 (Gemini, for now) extracts, against claims a person read out of the same
 documents. Independent of §7 — it needs one model, not several.
 
-- [ ] Decide what counts as a match (same subject, predicate and object/value;
-  whether a paraphrased quote or neighbouring paragraph still counts)
-- [ ] Run extraction over the three seeded documents without writing, and score
-  precision and recall per document and per predicate
-- [ ] Record the baseline before §5 changes what extraction writes
+- [x] Decide what counts as a match: same subject, predicate and object/value, compared in
+  the registry's declared direction. A paraphrased quote fails; a verbatim quote that
+  overlaps the ground truth's passes
+- [x] Run extraction over the three seeded documents without writing, and score
+  precision and recall per document and per predicate (`npm run extract:capture`, then
+  `npm run extract:score -- <run-label>`)
+- [x] Record the baseline before §5 changes what extraction writes
 - [ ] Budget: 3–6 requests of the 20/day free tier per full run
+
+**Baseline (2026-11-11).** Captured from Claude Sonnet rather than Gemini, through
+`extract:capture`'s `--dump-prompts` / `--from-replies` mode — one attempt, no repair
+round: precision 63%, recall 25% over the three seeds, every quote verbatim. The reading,
+and the one entity-typing mistake behind most of the Kaldian misses, is in
+[extraction-scoring.md](extraction-scoring.md). A Gemini capture has not been scored yet;
+the scorer does not care which model a fixture came from.
 
 ### 5. Inverse claims
 
 Relationships are directional, and `predicates.inverse_name` is already populated. Rather than asking the model for both directions, we generate the reverse claim ourselves.
 
-- [ ] Materialise the inverse of every relationship claim on write
-- [ ] Dedupe against the fingerprint index so a symmetric pair does not double up
-- [ ] Decide whether editing or deleting one direction in the UI carries the other with it
-- [ ] Bring the ground truth along: `loadSeed` writes only the labelled direction, so either
-  materialise inverses for seeds too, or have §4b's scoring compare one canonical direction
+- [x] Materialise the inverse of every relationship claim on write — extraction, hand entry
+  and the seed loader all go through `inverseOf()`; the inverse carries the same provenance
+  and citations as the claim it mirrors
+- [x] Dedupe against the fingerprint index so a symmetric pair does not double up
+- [x] Decided: editing or deleting one direction always carries the other with it
+- [x] Bring the ground truth along: `loadSeed` materialises inverses too, *and* §4b's scoring
+  compares one canonical direction. `npm run db:backfill:inverses` repairs existing data
 
 ### 6. Surfacing what was rejected
 
 `parseExtraction()` returns structured rejections. If nothing displays them, a document that extracted badly looks identical to one that extracted well.
 
-- [ ] Store or report the rejections from each run
-- [ ] Show them on the document, with the reason — this is also how we find out the vocabulary is too thin
-- [ ] Predicate proposals queue: let the model propose a missing predicate, and let the user promote or reject it (see ontology-design.md)
+- [x] Store the rejections from each run: `extraction_runs` records every attempt (succeeded,
+  failed or interrupted) and `extraction_issues` every claim that was dropped, whether by
+  validation or by entity resolution
+- [x] Show them on the document, with the reason — this is also how we find out the vocabulary is too thin
+- [x] Predicate proposals queue: the model may file a `proposed_predicates` entry instead of
+  forcing a near-synonym; the queue lives in Settings. Promoting records the decision — the
+  vocabulary is global, so growing it is still a registry edit and a re-seed (see ontology-design.md)
 
 ### 7. Model comparison — deferred
 
@@ -261,10 +276,10 @@ Since we do not control the model, the goal is not to pick one but to confirm th
 
 ### 8. Frontend wiring
 
-- [ ] Extract button on a document, with progress and result
-- [ ] Library shows Verified status and the number of claims per document
-- [ ] Flag claims whose source document has been removed from the Library, and surface them (decisions §7a). This is the replacement for Phase 1’s All/Removed toggle and needs no contradiction detection, so it lands here rather than in Phase 3
-- [ ] Re-extract prompt when `drive_version` has moved past the version last extracted at —
+- [x] Extract button on a document, with progress and result
+- [x] Library shows Verified status and the number of claims per document, and a document can be marked verified
+- [x] Flag claims whose source document has been removed from the Library, and surface them (decisions §7a). Built with Phase 3 as the vanished-source conflict kind
+- [x] Re-extract prompt when `drive_version` has moved past the version last extracted at —
   *not* against `extracted_revision_id`, which is a different scale (decisions §6)
 
 ### 9. Unattended runs
@@ -279,11 +294,15 @@ To avoid getting rate-limited, we won’t support a button that lets the user pr
 
 With support for Claims implemented, we can add conflict-detection. Basically, if two Claims involve the same subject and relationship/attribute but different objects/values, we get a collision. Some of these might not be collisions, so we’ll want to gate carefully (e.g. a state might have two different rulers at two different times and a character might have multiple spouses depending on their culture).
 
-- [ ] Implement system for finding all conflicts in our Claims table  
-- [ ] Fold the vanished-source flag from Phase 2 into the Conflicts view as a distinct conflict kind, alongside the contradictory-value kind  
-- [ ] Wire up logic to surface conflicts to the user  
-- [ ] Wire up logic to resolve conflicts (either choose one or manually/generatively incorporate one into the other)  
-- [ ] Wire conflicts into Library and Claims frontend components
+- [x] Implement system for finding all conflicts in our Claims table — derived by query, never
+  stored. Only single-valued predicates can conflict (the registry now says which *direction*
+  of a relationship is single-valued), and claims tied to different periods, or to objects of
+  different entity types, do not compete  
+- [x] Fold the vanished-source flag from Phase 2 into the Conflicts view as a distinct conflict kind, alongside the contradictory-value kind  
+- [x] Wire up logic to surface conflicts to the user  
+- [x] Wire up logic to resolve conflicts: keep one side, edit a side by hand, or dismiss as
+  not a conflict (undoable). Generative merge is deferred  
+- [x] Wire conflicts into Library and Claims frontend components
 
 # Phase 4: Assistant
 
@@ -297,6 +316,6 @@ Here we define the one agentic piece of our project. The Assistant can read the 
 
 After the core functionality is built, I want to release this thing on Vercel so it’s out before we start iterating on additional features. 
 
-- [ ] Create a homepage  
+- [x] Create a homepage — a public landing page for signed-out visitors at `/`, and the in-app Home rebuilt on real data  
 - [ ] Clean up any questionable UI or buggy behaviors  
 - [ ] Deploy
