@@ -22,9 +22,9 @@ import { Modal } from '@/components/shared/Modal'
  * conflict disappearing is something only a re-derivation can say for sure.
  */
 
-type Outcome = { ok: true } | { ok: false; error: string }
+export type Outcome = { ok: true } | { ok: false; error: string }
 
-async function send(url: string, method: 'POST' | 'DELETE', body: object): Promise<Outcome> {
+export async function send(url: string, method: 'POST' | 'DELETE', body: object): Promise<Outcome> {
   const res = await fetch(url, {
     method,
     headers: { 'content-type': 'application/json' },
@@ -35,7 +35,7 @@ async function send(url: string, method: 'POST' | 'DELETE', body: object): Promi
 }
 
 /** busy / error / run, shared by every action below. */
-function useAction() {
+export function useAction() {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)

@@ -10,10 +10,30 @@ import '@/styles/conflicts.css'
  *
  * Presentational and server-safe — no state, no handlers — so a server
  * component can render it, and with `href` it is itself the way to the
- * conflict. The two kinds are coloured differently because they ask different
+ * conflict. The kinds are coloured differently because they ask different
  * things of the user: a contradiction is a question about the world, a
- * vanished source a question about a citation.
+ * vanished source a question about a citation, a possible duplicate (muted —
+ * it is a resemblance, not an error) a question about a name.
  */
+/** Each kind's default label, tooltip and icon. */
+const KIND_COPY: Record<ConflictKind, { label: string; tooltip: string; icon: string }> = {
+  value: {
+    label: 'Conflict',
+    tooltip: 'Disagrees with another claim',
+    icon: 'ph-bold ph-warning-diamond',
+  },
+  vanished_source: {
+    label: 'Source gone',
+    tooltip: 'Every document this was read from has left the Library',
+    icon: 'ph-bold ph-link-break',
+  },
+  duplicate: {
+    label: 'Duplicate?',
+    tooltip: 'May be the same thing as another entity',
+    icon: 'ph-bold ph-copy-simple',
+  },
+}
+
 export function ConflictBadge({
   kind = 'value',
   count,
@@ -30,18 +50,16 @@ export function ConflictBadge({
   /** Tooltip. Defaults to a sentence naming the kind. */
   title?: string
 }) {
-  const text = count !== undefined ? String(count) : (label ?? (kind === 'value' ? 'Conflict' : 'Source gone'))
+  const text = count !== undefined ? String(count) : (label ?? KIND_COPY[kind].label)
   const tooltip =
     title ??
     (count !== undefined
       ? `${count} open ${count === 1 ? 'conflict' : 'conflicts'}`
-      : kind === 'value'
-        ? 'Disagrees with another claim'
-        : 'Every document this was read from has left the Library')
+      : KIND_COPY[kind].tooltip)
 
   const body = (
     <>
-      <i className={kind === 'value' ? 'ph-bold ph-warning-diamond' : 'ph-bold ph-link-break'} aria-hidden />
+      <i className={KIND_COPY[kind].icon} aria-hidden />
       {text}
     </>
   )

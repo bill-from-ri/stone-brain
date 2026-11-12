@@ -12,6 +12,7 @@ import {
   loadConflicts,
   restoreConflict,
   type Conflict,
+  type DuplicateConflict,
   type ValueConflict,
   type VanishedSourceConflict,
 } from './load'
@@ -126,6 +127,7 @@ async function both(forward: ClaimSpec, inversePredicate: string) {
 const values = (all: Conflict[]) => all.filter((c): c is ValueConflict => c.kind === 'value')
 const vanished = (all: Conflict[]) =>
   all.filter((c): c is VanishedSourceConflict => c.kind === 'vanished_source')
+const duplicates = (all: Conflict[]) => all.filter((c): c is DuplicateConflict => c.kind === 'duplicate')
 
 describe('value conflicts', () => {
   let ashfall: string
@@ -336,5 +338,66 @@ describe('vanished sources', () => {
     await restoreConflict(db, userId, conflict!)
     const [restored] = vanished(await loadConflicts(db, userId))
     expect(restored!.dismissed).toBe(false)
+  })
+})
+
+describe('possible duplicates', () => {
+  let interior: string
+  let basin: string
+  let gabelford: string
+
+  beforeEach(async () => {
+    interior = await entity('Interior', 'region')
+    basin = await entity('Interior Basin', 'region')
+    gabelford = await entity('Gabelford', 'settlement')
+  })
+
+  const within = (region: string) =>
+    ({ subject: gabelford, subjectType: 'settlement', predicate: 'located_in', object: region, objectType: 'region' }) as const
+
+  it('lists a pair after the other kinds, with counts, documents and shared neighbours', async () => {
+    const [inInterior] = await both(within(interior), 'contains')
+    const [, basinContains] = await both(within(basin), 'contains')
+    await cite(inInterior, doc.live)
+    await cite(basinContains, doc.gone)
+
+    const all = await loadConflicts(db, userId)
+    const [pair] = duplicates(all)
+    expect(all.at(-1)).toBe(pair)
+    expect(pair).toMatchObject({
+      kind: 'duplicate',
+      dismissed: false,
+      crossType: false,
+      reasons: [{ code: 'generic_word' }],
+      sharedNeighbours: [{ id: gabelford, name: 'Gabelford', entityType: 'settlement' }],
+    })
+    expect(pair!.key).toBe([interior, basin].sort().join('|'))
+    // Both directions counted. Which survives is detect.test.ts's business.
+    const byName = new Map(pair!.entities.map((e) => [e.name, e]))
+    expect(byName.get('Interior')!.claimCount).toBe(2)
+    expect(byName.get('Interior Basin')).toMatchObject({
+      claimCount: 2,
+      documents: [{ id: doc.gone, name: 'Old Chronicle' }],
+    })
+    expect(documentIdsOf(pair!)).toEqual(new Set([doc.live, doc.gone]))
+    // A naming question marks no claim.
+    expect(claimIdsOf(pair!)).toEqual([])
+  })
+
+  it('dismisses by the exact pair, and restores', async () => {
+    const [before] = duplicates(await loadConflicts(db, userId))
+    await dismissConflict(db, userId, 'duplicate', before!.key)
+    const [after] = duplicates(await loadConflicts(db, userId))
+    expect(after!.dismissed).toBe(true)
+
+    await restoreConflict(db, userId, after!)
+    const [restored] = duplicates(await loadConflicts(db, userId))
+    expect(restored!.dismissed).toBe(false)
+  })
+
+  it("never pairs another user's entities with this one's", async () => {
+    await entity('Interior Basin', 'region', otherUserId)
+    expect(duplicates(await loadConflicts(db, userId))).toHaveLength(1)
+    expect(duplicates(await loadConflicts(db, otherUserId))).toEqual([])
   })
 })

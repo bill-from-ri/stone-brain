@@ -31,10 +31,11 @@ export type EditSupport = {
   signatures: SignatureRow[]
 }
 
-type Position = { index: number; total: number; prev: Route | null; next: Route | null }
+/** Where the open conflict sits in the inbox's list, for the stepper. */
+export type Position = { index: number; total: number; prev: Route | null; next: Route | null }
 
 /** "Conflict 2 of 6", with Previous / Next — the prototype's header row. */
-function Stepper({ kicker, position }: { kicker: string; position: Position }) {
+export function Stepper({ kicker, position }: { kicker: string; position: Position }) {
   return (
     <div className="sb-cf-kicker-row">
       <div className="sb-detail-kicker">

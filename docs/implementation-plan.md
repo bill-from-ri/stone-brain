@@ -303,6 +303,15 @@ With support for Claims implemented, we can add conflict-detection. Basically, i
 - [x] Wire up logic to resolve conflicts: keep one side, edit a side by hand, or dismiss as
   not a conflict (undoable). Generative merge is deferred  
 - [x] Wire conflicts into Library and Claims frontend components
+- [x] Possible duplicates as a third conflict kind (`src/lib/duplicates`): pairs of entities
+  whose names say "one thing, two spellings" — a plural, a title in front, the same words
+  reordered, a generic place word added, or one recorded as the other's variant — found by
+  deterministic rules, at least one side a draft, ranked by entities connected to both.
+  Settled by **Merge** (one transaction: twin claims folded with their citations, the rest
+  repointed, cross-type claims recast where the registry allows, anything else blocks; the
+  dropped name becomes a variant) or **Not the same** (an undoable dismissal). Write-time
+  matching on the same rules, so an extraction suggests a merge instead of minting a draft,
+  is next
 
 # Phase 4: Assistant
 

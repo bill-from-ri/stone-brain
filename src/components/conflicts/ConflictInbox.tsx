@@ -17,9 +17,11 @@ export function inboxHref(view: InboxView, conflictId?: string): Route {
 /**
  * The left column, from the prototype's "Conflict inbox" (lines 518-536).
  *
- * Contradictions are listed before missing sources, under their own headings:
- * the two kinds ask for different decisions, and a list that interleaved them
- * would make every item a guess about which one it is. Dismissed conflicts are
+ * Contradictions are listed before missing sources, and possible duplicates
+ * last, each under its own heading: the three kinds ask for different
+ * decisions, and a list that interleaved them would make every item a guess
+ * about which one it is. Duplicates go last because they are the weakest
+ * signal — a resemblance between names, not a disagreement in the claims. Dismissed conflicts are
  * a second tab rather than hidden, because "not a conflict" has to be
  * reversible to be safe to click.
  *
@@ -42,6 +44,7 @@ export function ConflictInbox({
 }) {
   const value = conflicts.filter((c) => c.kind === 'value')
   const vanished = conflicts.filter((c) => c.kind === 'vanished_source')
+  const duplicates = conflicts.filter((c) => c.kind === 'duplicate')
 
   return (
     <aside className="sb-cf-inbox" aria-label="Conflicts">
@@ -74,6 +77,7 @@ export function ConflictInbox({
         )}
         <Group title="Contradictions" conflicts={value} view={view} selectedId={selectedId} />
         <Group title="Missing sources" conflicts={vanished} view={view} selectedId={selectedId} />
+        <Group title="Possible duplicates" conflicts={duplicates} view={view} selectedId={selectedId} />
       </div>
 
       <div className="sb-cf-inbox-foot">

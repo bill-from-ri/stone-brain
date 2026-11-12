@@ -1070,8 +1070,10 @@ export const predicateProposals = pgTable(
  * `'value'` — two claims give a single-valued predicate different answers.
  * `'vanished_source'` — a claim cites only documents that have left the
  * Library (ADR §7a).
+ * `'duplicate'` — two entities that look like one thing under two names
+ * (`src/lib/duplicates`). Its key is the pair of entity ids, sorted.
  */
-export type ConflictKind = 'value' | 'vanished_source'
+export type ConflictKind = 'value' | 'vanished_source' | 'duplicate'
 
 /**
  * Conflicts the user has looked at and accepted as they stand.
@@ -1100,7 +1102,7 @@ export const conflictDismissals = pgTable(
   },
   (t) => [
     uniqueIndex('conflict_dismissals_user_kind_key_uq').on(t.userId, t.kind, t.key),
-    check('conflict_dismissals_kind', sql`${t.kind} in ('value', 'vanished_source')`),
+    check('conflict_dismissals_kind', sql`${t.kind} in ('value', 'vanished_source', 'duplicate')`),
   ],
 )
 

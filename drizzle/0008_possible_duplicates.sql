@@ -1,0 +1,2 @@
+ALTER TABLE "conflict_dismissals" DROP CONSTRAINT "conflict_dismissals_kind";--> statement-breakpoint
+ALTER TABLE "conflict_dismissals" ADD CONSTRAINT "conflict_dismissals_kind" CHECK ("conflict_dismissals"."kind" in ('value', 'vanished_source', 'duplicate'));

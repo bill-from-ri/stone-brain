@@ -60,7 +60,9 @@ export function ClaimDetail({
         <div className={`sb-cf-flag sb-cf-flag--${claim.conflict.kind}`} role="note">
           {claim.conflict.kind === 'value'
             ? 'Another claim gives this a different answer for the same time. '
-            : 'Every document this claim was read from has left the Library. '}
+            : claim.conflict.kind === 'vanished_source'
+              ? 'Every document this claim was read from has left the Library. '
+              : 'An entity on this claim may be the same thing as another. '}
           <Link href={conflictHref(claim.conflict.conflictId)}>Resolve in Conflicts</Link>
         </div>
       )}

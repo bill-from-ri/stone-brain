@@ -1,4 +1,5 @@
 import type { Conflict, ConflictClaim, ValueConflict } from '@/db/queries/conflicts'
+import type { DuplicateConflict, DuplicateReasonCode } from '@/lib/duplicates/types'
 import { predicateText } from '@/components/shared/predicate'
 
 /**
@@ -27,6 +28,7 @@ export function sentenceOf(claim: ConflictClaim): string {
 
 export function titleOf(conflict: Conflict): string {
   if (conflict.kind === 'vanished_source') return sentenceOf(conflict.claim)
+  if (conflict.kind === 'duplicate') return conflict.entities.map((e) => e.name).join(' · ')
   return `${conflict.subject.name} — ${predicateText(conflict.predicate.label)}`
 }
 
@@ -36,6 +38,7 @@ export function metaOf(conflict: Conflict): string {
     const names = [...new Set(conflict.claim.sources.map((s) => s.documentName ?? 'an unknown document'))]
     return `Source gone: ${names.join(', ')}`
   }
+  if (conflict.kind === 'duplicate') return duplicateMeta(conflict)
   return conflict.sides.map((s) => answerOf(s.claims[0]!)).join(' vs. ')
 }
 
@@ -61,4 +64,28 @@ export function provenanceLabel(createdBy: string): string {
   if (createdBy === 'seed') return 'Seeded by hand'
   if (createdBy === 'llm') return 'Extracted'
   return 'Entered by hand'
+}
+
+/**
+ * Each reason in a few words, for the inbox line, where the full sentence the
+ * check writes (`DuplicateReason.text`) will not fit.
+ */
+const REASON_SHORT: Record<DuplicateReasonCode, string> = {
+  variant: 'listed as a variant',
+  plural: 'differ by a plural',
+  title: 'differ by a title',
+  word_order: 'same words reordered',
+  generic_word: 'differ by a place word',
+}
+
+/**
+ * "species · differ by a plural", or "region / society · same words
+ * reordered" for a pair of two types — the type comes first because two
+ * types is itself the thing to notice before merging.
+ */
+function duplicateMeta(conflict: DuplicateConflict): string {
+  const [a, b] = conflict.entities
+  const types = conflict.crossType ? `${a.entityType} / ${b.entityType}` : a.entityType
+  const why = conflict.reasons.map((r) => REASON_SHORT[r.code]).join(', ')
+  return why ? `${types} · ${why}` : types
 }

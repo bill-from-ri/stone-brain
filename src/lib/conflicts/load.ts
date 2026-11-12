@@ -1,8 +1,10 @@
-import { aliasedTable, and, asc, eq, inArray, sql } from 'drizzle-orm'
+import { aliasedTable, and, asc, eq, inArray, or, sql } from 'drizzle-orm'
 import type { NeonDatabase } from 'drizzle-orm/neon-serverless'
 import * as schema from '@/db/schema'
 import { claimSources, claims, conflictDismissals, documents, entities, predicates } from '@/db/schema'
 import type { ConflictKind } from '@/db/schema'
+import { findDuplicatePairs, rankDuplicates } from '@/lib/duplicates/detect'
+import type { DuplicateConflict, DuplicateEntity } from '@/lib/duplicates/types'
 import {
   conflictId,
   detectValueConflicts,
@@ -106,18 +108,33 @@ export type VanishedSourceConflict = ConflictBase & {
   partnerId: string | null
 }
 
-export type Conflict = ValueConflict | VanishedSourceConflict
+export type Conflict = ValueConflict | VanishedSourceConflict | DuplicateConflict
+export type { DuplicateConflict } from '@/lib/duplicates/types'
 
-/** Every claim id a conflict is about, its reverse directions included. */
+/**
+ * Every claim id a conflict is about, its reverse directions included.
+ *
+ * None for a possible duplicate: it is about two entities, and every claim
+ * on either is no more in question than it was before the names were noticed.
+ * Marking them would flag half the graph's rows for a naming question.
+ */
 export function claimIdsOf(conflict: Conflict): string[] {
+  if (conflict.kind === 'duplicate') return []
   if (conflict.kind === 'vanished_source') {
     return conflict.partnerId ? [conflict.claim.id, conflict.partnerId] : [conflict.claim.id]
   }
   return [...conflict.sides.flatMap((s) => s.claims.map((c) => c.id)), ...conflict.mirrorIds]
 }
 
-/** Every document a conflict's claims cite, removed or not. */
+/**
+ * Every document a conflict's claims cite, removed or not. For a possible
+ * duplicate, the documents behind either entity — the places a person would
+ * read to decide whether the two are one.
+ */
 export function documentIdsOf(conflict: Conflict): Set<string> {
+  if (conflict.kind === 'duplicate') {
+    return new Set(conflict.entities.flatMap((e) => e.documents.map((d) => d.id)))
+  }
   const claimsIn =
     conflict.kind === 'vanished_source' ? [conflict.claim] : conflict.sides.flatMap((s) => s.claims)
   const ids = new Set<string>()
@@ -131,18 +148,20 @@ const subject = aliasedTable(entities, 'subject')
 const object = aliasedTable(entities, 'object')
 
 /**
- * Every conflict for a user, open and dismissed, value conflicts first.
+ * Every conflict for a user, open and dismissed: value conflicts, then
+ * vanished sources, then possible duplicates.
  *
- * Three narrow reads rather than one wide one. The candidate filters run in
+ * Narrow reads rather than one wide one. The candidate filters run in
  * SQL so the rows that reach detection are already few: a value conflict needs
  * two claims on one subject and one single-valued predicate, and a vanished
  * source needs a claim whose every citation is gone. Most of a healthy graph
  * is neither, and never leaves the database.
  */
 export async function loadConflicts(db: Db, userId: string): Promise<Conflict[]> {
-  const [valueRows, vanishedRows, dismissals] = await Promise.all([
+  const [valueRows, vanishedRows, duplicates, dismissals] = await Promise.all([
     valueCandidates(db, userId),
     vanishedCandidates(db, userId),
+    loadDuplicates(db, userId),
     db
       .select({ kind: conflictDismissals.kind, key: conflictDismissals.key })
       .from(conflictDismissals)
@@ -208,7 +227,151 @@ export async function loadConflicts(db: Db, userId: string): Promise<Conflict[]>
     partnerId,
   }))
 
-  return [...value, ...vanished]
+  const dismissedDuplicates = new Set(
+    dismissals.filter((d) => d.kind === 'duplicate').map((d) => d.key),
+  )
+  for (const d of duplicates) d.dismissed = dismissedDuplicates.has(d.key)
+
+  return [...value, ...vanished, ...duplicates]
+}
+
+/* --------------------------------------------------------------- duplicates */
+
+/**
+ * Possible duplicates, ranked, with what the screen shows of each entity.
+ *
+ * Detection itself runs over every entity — names are all it reads, and a
+ * world has a few hundred — but the costly parts are fetched only for the
+ * entities in a pair: the relationship edges that find shared neighbours, and
+ * the documents behind each. A graph with no duplicates pays for one read.
+ *
+ * `dismissed` is left false here; `loadConflicts` applies dismissals, which it
+ * has already read for the other kinds.
+ */
+async function loadDuplicates(db: Db, userId: string): Promise<DuplicateConflict[]> {
+  const rows = await db
+    .select({
+      id: entities.id,
+      name: entities.name,
+      entityType: entities.entityType,
+      nameVariants: entities.nameVariants,
+      canonicity: entities.canonicity,
+      createdBy: entities.createdBy,
+      createdAt: entities.createdAt,
+      // Both directions of a relationship count, which is what the screen
+      // means by "claims on it": every row the World lists for it. The outer
+      // table is named literally: interpolated, `entities.id` renders as a
+      // bare `id`, which binds to `c.id` inside the subquery and counts
+      // nothing (the same trap as `sourceCount` in db/queries/claims.ts).
+      claimCount: sql<number>`(
+        select count(*)::int from claims c
+        where c.user_id = entities.user_id
+          and (c.subject_id = entities.id or c.object_id = entities.id)
+      )`,
+    })
+    .from(entities)
+    .where(eq(entities.userId, userId))
+
+  const pairs = findDuplicatePairs(rows)
+  if (pairs.length === 0) return []
+
+  const ids = [...new Set(pairs.flatMap((p) => p.entities.map((e) => e.id)))]
+  const [edges, cited] = await Promise.all([
+    // Both ends, rather than trusting every relationship to have its reverse
+    // materialised: a neighbour is a neighbour whichever direction says so.
+    db
+      .select({ subjectId: claims.subjectId, objectId: sql<string>`${claims.objectId}` })
+      .from(claims)
+      .where(
+        and(
+          eq(claims.userId, userId),
+          sql`${claims.objectId} is not null`,
+          or(inArray(claims.subjectId, ids), inArray(claims.objectId, ids)),
+        ),
+      ),
+    documentsBehind(db, userId, ids),
+  ])
+
+  const names = new Map<string, { id: string; name: string; entityType: string }>()
+  const neighbourIds = new Set<string>()
+  const ranked = rankDuplicates(pairs, edges)
+  for (const p of ranked) for (const id of p.sharedNeighbourIds) neighbourIds.add(id)
+  if (neighbourIds.size > 0) {
+    const neighbours = await db
+      .select({ id: entities.id, name: entities.name, entityType: entities.entityType })
+      .from(entities)
+      .where(and(eq(entities.userId, userId), inArray(entities.id, [...neighbourIds])))
+    for (const n of neighbours) names.set(n.id, n)
+  }
+
+  const shown = (e: (typeof rows)[number]): DuplicateEntity => ({
+    id: e.id,
+    name: e.name,
+    entityType: e.entityType,
+    nameVariants: e.nameVariants,
+    canonicity: e.canonicity,
+    createdBy: e.createdBy,
+    claimCount: e.claimCount,
+    documents: cited.get(e.id) ?? [],
+  })
+
+  return ranked.map((p) => ({
+    kind: 'duplicate',
+    id: conflictId('duplicate', p.key),
+    key: p.key,
+    dismissed: false,
+    entities: [shown(p.entities[0]), shown(p.entities[1])],
+    reasons: p.reasons,
+    sharedNeighbours: p.sharedNeighbourIds.flatMap((id) => {
+      const n = names.get(id)
+      return n ? [n] : []
+    }),
+    crossType: p.crossType,
+  }))
+}
+
+/**
+ * Entity id → the documents its claims cite, by live name where the document
+ * is still known, else the snapshot. Both ends are read: a reverse direction
+ * normally carries its mirror's citations, but a row written before that rule
+ * — or by hand — may not, and a document missing here is one the person is
+ * not pointed to.
+ */
+async function documentsBehind(db: Db, userId: string, entityIds: string[]) {
+  const rows = await db
+    .selectDistinct({
+      subjectId: claims.subjectId,
+      objectId: claims.objectId,
+      documentId: sql<string>`${claimSources.documentId}`,
+      name: sql<string>`coalesce(${documents.name}, ${claimSources.documentName}, '')`,
+    })
+    .from(claimSources)
+    .innerJoin(claims, eq(claims.id, claimSources.claimId))
+    .leftJoin(documents, eq(documents.id, claimSources.documentId))
+    .where(
+      and(
+        eq(claimSources.userId, userId),
+        or(inArray(claims.subjectId, entityIds), inArray(claims.objectId, entityIds)),
+        sql`${claimSources.documentId} is not null`,
+      ),
+    )
+
+  const wanted = new Set(entityIds)
+  const byEntity = new Map<string, Map<string, string>>()
+  for (const row of rows) {
+    for (const id of [row.subjectId, row.objectId]) {
+      if (!id || !wanted.has(id)) continue
+      const docs = byEntity.get(id) ?? new Map<string, string>()
+      byEntity.set(id, docs)
+      docs.set(row.documentId, row.name)
+    }
+  }
+  return new Map(
+    [...byEntity].map(([id, docs]) => [
+      id,
+      [...docs].map(([docId, name]) => ({ id: docId, name })).sort((a, b) => a.name.localeCompare(b.name)),
+    ]),
+  )
 }
 
 /** The columns both candidate queries read, so both build the same claim. */
@@ -461,7 +624,8 @@ export async function dismissConflict(db: Db, userId: string, kind: ConflictKind
  * goes — the one hiding it may have been made over a larger set (see
  * `isValueConflictDismissed`), and leaving that in place would make "reopen"
  * a button that does nothing. For a vanished source, either direction's id may
- * be the one that was stored.
+ * be the one that was stored. A possible duplicate's dismissal is its key
+ * exactly: the pair, sorted.
  */
 export async function restoreConflict(
   db: Db,
@@ -473,11 +637,11 @@ export async function restoreConflict(
     .from(conflictDismissals)
     .where(and(eq(conflictDismissals.userId, userId), eq(conflictDismissals.kind, conflict.kind)))
 
-  const covering = rows.filter((row) =>
-    conflict.kind === 'value'
-      ? isValueConflictDismissed(conflict.key, [row.key])
-      : row.key === conflict.key || row.key === conflict.partnerId,
-  )
+  const covering = rows.filter((row) => {
+    if (conflict.kind === 'value') return isValueConflictDismissed(conflict.key, [row.key])
+    if (conflict.kind === 'duplicate') return row.key === conflict.key
+    return row.key === conflict.key || row.key === conflict.partnerId
+  })
   if (covering.length === 0) return
 
   await db.delete(conflictDismissals).where(

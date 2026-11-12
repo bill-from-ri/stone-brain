@@ -11,6 +11,9 @@ import { deleteClaim } from '@/lib/ontology/claim-writes'
  *                disagree with it (each with its reverse direction).
  *   - `delete` — a vanished source: delete the unsupported claim.
  *
+ * A possible duplicate is not settled here: it has no claims to keep or
+ * delete, and is answered by a merge (`/api/entities/merge`) or a dismissal.
+ *
  * Editing a side instead goes through `PATCH /api/claims/[id]`, which is the
  * ordinary claim edit — a conflict needs nothing special to be fixed by giving
  * one side its dates. Accepting a conflict as it stands is a dismissal, and
@@ -46,6 +49,12 @@ export async function POST(request: NextRequest) {
   const body = parsed.data
   const conflict = (await getConflictsFresh(userId)).find((c) => c.id === body.conflictId)
   if (!conflict) return NextResponse.json({ ok: false, error: STALE }, { status: 409 })
+  if (conflict.kind === 'duplicate') {
+    return NextResponse.json(
+      { ok: false, error: 'Merge the two, or mark them as not the same, to settle a possible duplicate.' },
+      { status: 422 },
+    )
+  }
 
   /*
    * Not one transaction. Each deletion goes through `deleteClaim`, which owns

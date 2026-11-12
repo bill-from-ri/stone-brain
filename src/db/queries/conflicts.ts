@@ -30,13 +30,14 @@ export type {
   ConflictClaim,
   ConflictSide,
   ConflictSource,
+  DuplicateConflict,
   ValueConflict,
   VanishedSourceConflict,
 } from '@/lib/conflicts/load'
 
 const conflictsFor = cache((userId: string) => loadConflicts(db, userId))
 
-/** Every conflict, open and dismissed: value conflicts first, then vanished sources. */
+/** Every conflict, open and dismissed: value conflicts, then vanished sources, then possible duplicates. */
 export async function getConflicts(userId: string): Promise<Conflict[]> {
   return conflictsFor(userId)
 }
@@ -64,7 +65,8 @@ export async function getConflictCountsByDocument(userId: string): Promise<Map<s
 export type ClaimConflictMark = { kind: ConflictKind; conflictId: string }
 
 /**
- * Claim id → the open conflict it is part of. A claim on both kinds — a
+ * Claim id → the open conflict it is part of. Possible duplicates mark no
+ * claim (see `claimIdsOf`). A claim on both other kinds — a
  * contested ruler whose document has also vanished — is marked with the value
  * conflict, which is the one that needs a decision about the world rather than
  * about a citation.

@@ -132,6 +132,11 @@
   background: var(--warn);
 }
 
+/* A possible duplicate is a resemblance, not an error: muted, not red. */
+.sb-cf-dot--duplicate {
+  background: var(--muted);
+}
+
 .sb-cf-inbox-foot {
   padding: 11px 16px;
   border-top: 1px solid var(--line);
@@ -340,6 +345,15 @@ a.sb-conflict-badge--vanished_source:hover {
   color: var(--gold-pale);
 }
 
+.sb-conflict-badge--duplicate {
+  background: var(--panel);
+  color: var(--muted);
+}
+
+a.sb-conflict-badge--duplicate:hover {
+  color: var(--ink);
+}
+
 /* In the nav rail the badge is the count; collapsed, the rail is icons only
    and the count moves into the tooltip. */
 .sb-rail-item .sb-conflict-badge {
@@ -367,8 +381,216 @@ a.sb-conflict-badge--vanished_source:hover {
   color: var(--gold-pale);
 }
 
+.sb-cf-flag--duplicate {
+  background: var(--panel);
+  color: var(--muted);
+}
+
 .sb-cf-flag a {
   color: inherit;
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+/* ── a possible duplicate ── */
+
+.sb-dup-reasons {
+  margin: 12px 0 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ink);
+  max-width: 640px;
+}
+
+/* The pair always sits two across while there is room, and stacks below it:
+   min() keeps a card from forcing the page wider than a phone. */
+.sb-dup-sides {
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+}
+
+.sb-dup-suggested {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--gold-lite);
+}
+
+.sb-dup-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 12px;
+  margin: 12px 0 0;
+  font-size: 12.5px;
+}
+
+.sb-dup-facts dt {
+  color: var(--faint);
+}
+
+.sb-dup-facts dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.sb-dup-docs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sb-dup-docs li + li {
+  margin-top: 3px;
+}
+
+.sb-dup-shared {
+  margin-top: 22px;
+}
+
+.sb-dup-shared-none {
+  font-size: 12.5px;
+  margin: 8px 0 0;
+}
+
+.sb-dup-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.sb-dup-chip {
+  display: inline-flex;
+  gap: 6px;
+  align-items: baseline;
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--ink);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.sb-dup-chip:hover {
+  background: var(--panel);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.sb-dup-merge {
+  margin-top: 26px;
+  padding: 15px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.sb-dup-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.sb-dup-choice legend {
+  padding: 0;
+  margin-bottom: 8px;
+}
+
+.sb-dup-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 11px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  font-size: 12.5px;
+  cursor: pointer;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.sb-dup-option:hover {
+  background: var(--panel);
+}
+
+.sb-dup-option--on,
+.sb-dup-option--on:hover {
+  background: var(--gold-dim);
+  border-color: var(--gold-line);
+}
+
+.sb-dup-option input {
+  accent-color: var(--gold);
+  margin: 0;
+}
+
+.sb-dup-preview {
+  margin-top: 14px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.sb-dup-preview p {
+  margin: 0;
+}
+
+.sb-dup-preview .btn {
+  height: 24px;
+  font-size: 12px;
+}
+
+.sb-dup-plan {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  overflow-wrap: anywhere;
+}
+
+.sb-dup-recast {
+  margin-top: 14px;
+}
+
+.sb-dup-blockers {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 7px;
+  background: var(--bad-dim);
+  color: #e7b3ad;
+}
+
+.sb-dup-blockers strong {
+  font-weight: 500;
+}
+
+.sb-dup-blocker-why {
+  color: #e08c86;
+}
+
+/* The screen itself is two columns; on a phone the inbox goes above the
+   selected conflict instead of beside it. */
+@media (max-width: 720px) {
+  .sb-conflicts {
+    flex-direction: column;
+  }
+
+  .sb-cf-main {
+    min-height: 0;
+  }
+
+  .sb-cf-inbox {
+    width: auto;
+    max-height: 40dvh;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .sb-cf-body {
+    padding: 18px 16px 32px;
+  }
 }

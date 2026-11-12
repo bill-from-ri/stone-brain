@@ -6,6 +6,7 @@ import {
   VanishedSourceView,
   type EditSupport,
 } from '@/components/conflicts/ConflictView'
+import { DuplicateView } from '@/components/conflicts/DuplicateView'
 import { EmptyState } from '@/components/shared/RecordTable'
 import {
   getClaims,
@@ -25,11 +26,12 @@ export const metadata: Metadata = { title: 'Conflicts' }
  * Conflicts: everywhere the graph disagrees with itself, and the one place to
  * settle it.
  *
- * Two kinds, kept visibly apart because they ask different questions. A
+ * Three kinds, kept visibly apart because they ask different questions. A
  * *contradiction* is two claims giving a single-valued predicate different
  * answers at the same time — a question about the world. A *missing source*
  * is a claim whose every document has left the Library (ADR §7a) — a question
- * about whether to go on believing it.
+ * about whether to go on believing it. A *possible duplicate* is two entities
+ * whose names say they are one thing — a question about whether to merge them.
  *
  * Nothing on this screen is stored except a dismissal. The list is derived
  * from the claims on every render, so resolving a conflict is just changing a
@@ -80,7 +82,8 @@ export default async function ConflictsPage({
               title="Your world is consistent."
               note={
                 <>
-                  No two claims disagree, and every extracted claim still has a document behind it.
+                  No two claims disagree, every extracted claim still has a document behind it, and
+                  no two entities look like one thing under two names.
                   {dismissed.length > 0 &&
                     ` ${dismissed.length} dismissed ${dismissed.length === 1 ? 'conflict is' : 'conflicts are'} under Dismissed.`}
                 </>
@@ -120,6 +123,14 @@ async function Selected({
 
   if (conflict.kind === 'vanished_source') {
     return <VanishedSourceView conflict={conflict} position={position} />
+  }
+
+  if (conflict.kind === 'duplicate') {
+    // After a merge this pair is gone: go on to the next item, or back to the
+    // tab itself, which opens whatever is first.
+    return (
+      <DuplicateView conflict={conflict} position={position} next={position.next ?? inboxHref(view)} />
+    )
   }
 
   /*
