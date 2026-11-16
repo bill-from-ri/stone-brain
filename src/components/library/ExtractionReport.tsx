@@ -1,6 +1,13 @@
 import Link from 'next/link'
 import type { Route } from 'next'
-import type { DocumentClaim, DocumentProposal, FinishedRun, RunIssue } from '@/db/queries/extraction'
+import type {
+  DocumentClaim,
+  DocumentProposal,
+  FinishedRun,
+  RunIssue,
+  RunRetraction,
+} from '@/db/queries/extraction'
+import type { RetractedClaim } from '@/lib/ontology/extraction-write'
 import { viewIssue } from '@/lib/extraction/issues'
 import { LocalTime } from '@/components/shared/LocalTime'
 import { predicateText } from '@/components/shared/predicate'
@@ -101,6 +108,8 @@ export function LastRun({ run }: { run: FinishedRun }) {
   }
 
   const dropped = run.issues.length
+  // A re-extraction: the model was shown the document's existing claims.
+  const revised = run.claimsKept > 0 || run.claimsRetracted > 0 || run.retractions.length > 0
 
   return (
     <div className="sb-x-section">
@@ -109,6 +118,7 @@ export function LastRun({ run }: { run: FinishedRun }) {
       </div>
       <div className={`sb-x-box ${dropped > 0 ? 'sb-x-box--warn' : ''}`}>
         <p>
+          {revised && `${run.claimsKept} kept · ${run.claimsRetracted} retracted · `}
           {run.claimsCreated} new · {run.claimsAlreadyPresent} already present ·{' '}
           {dropped === 0 ? 'none dropped' : `${dropped} dropped`}
         </p>
@@ -118,7 +128,58 @@ export function LastRun({ run }: { run: FinishedRun }) {
         </p>
       </div>
 
+      {run.retractions.length > 0 && <Retractions retractions={run.retractions} />}
       {dropped > 0 && <DroppedClaims issues={run.issues} />}
+    </div>
+  )
+}
+
+const OUTCOME_LABEL: Record<RunRetraction['outcome'], string> = {
+  deleted: 'Removed',
+  citation_removed: 'Citation withdrawn — another document still states it',
+  held: 'Kept',
+}
+
+/**
+ * What a re-extraction said no longer holds, with the model's reason and what
+ * the write path did about it. Shown before the dropped list: these are
+ * decisions the run made about the graph, where dropped claims are ones it
+ * failed to make.
+ */
+function Retractions({ retractions }: { retractions: RunRetraction[] }) {
+  return (
+    <div style={{ marginTop: 10 }}>
+      <p className="sb-x-note" style={{ marginBottom: 8 }}>
+        The model said the document no longer supports these:
+      </p>
+      <div className="sb-x-cards">
+        {retractions.map((r) => {
+          const claim = r.claim as RetractedClaim
+          const quote = claim.quotes?.[0]
+          return (
+            <div key={r.id} className="sb-x-card">
+              <Tuple
+                subject={claim.subject}
+                predicate={claim.predicate}
+                object={claim.object ?? claim.value}
+                raw
+              />
+              <div className="sb-x-reason">
+                {OUTCOME_LABEL[r.outcome]} — {r.reason}
+                {r.detail ? ` ${r.detail}` : ''}
+              </div>
+              {quote?.quote && (
+                <div className="sb-x-quote">
+                  “{quote.quote}”
+                  {quote.paragraphIndex !== null && (
+                    <span className="sb-faint"> ¶ {quote.paragraphIndex}</span>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

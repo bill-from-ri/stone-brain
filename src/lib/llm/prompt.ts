@@ -1,4 +1,5 @@
 import { renderForPrompt, type Paragraph } from '@/lib/drive/markdown'
+import type { ExistingClaim } from '@/lib/ontology/existing-claims'
 import { describeVocabulary, type CompiledOntology, type Rejection } from '@/lib/ontology/extraction'
 
 /**
@@ -103,14 +104,105 @@ export function extractionSystemPrompt(ontology: CompiledOntology): string {
  * index straight into `toParagraphs()` — which is the whole reason the model is
  * shown them rather than asked to count blocks itself.
  */
-export function extractionUserPrompt(documentName: string, paragraphs: Paragraph[]): string {
+export function extractionUserPrompt(
+  documentName: string,
+  paragraphs: Paragraph[],
+  existing: ExistingClaim[] = [],
+): string {
+  const document = [`DOCUMENT: ${documentName}`, '', renderForPrompt(paragraphs), '']
+
+  if (existing.length === 0) {
+    return [...document, 'Extract every claim this document states that the vocabulary can express.'].join(
+      '\n',
+    )
+  }
+
+  return [...document, existingClaimsSection(existing)].join('\n')
+}
+
+/**
+ * The re-extraction half of the user prompt: what the graph already holds from
+ * this document, and how to answer about it.
+ *
+ * The rule that matters is "do not re-emit a claim that still holds". It is
+ * what keeps a re-extraction from re-reading unchanged text differently: a
+ * claim the model leaves alone is kept exactly as stored, so the only way for
+ * it to change is for the model to say so, by handle, with a reason. Silence
+ * never retracts — that is the guard the additive rule used to provide, and
+ * it still holds.
+ *
+ * Kept in the user prompt rather than the system prompt so a first extraction
+ * sends exactly what it always has.
+ */
+function existingClaimsSection(existing: ExistingClaim[]): string {
   return [
-    `DOCUMENT: ${documentName}`,
+    'EXISTING CLAIMS',
     '',
-    renderForPrompt(paragraphs),
+    'This document was extracted before, from an earlier version. These are the claims',
+    'already recorded from it. Each is shown once, in one direction.',
     '',
-    'Extract every claim this document states that the vocabulary can express.',
+    ...existing.map(renderExistingClaim),
+    '',
+    'This is a re-extraction. Read the whole document as it is now, then:',
+    '',
+    '- A listed claim the document still supports: do nothing. Do NOT re-emit it — it is',
+    '  kept as it is.',
+    '- A listed claim the document no longer supports, or now states differently: add',
+    '  { "claim": "<handle>", "reason": "<one sentence>" } to a "retract" array in your',
+    '  reply. If the document now states it differently, also emit the corrected claim',
+    '  in "claims" as usual.',
+    '- A claim the document states that is not listed: emit it in "claims" as usual.',
+    '',
+    'A claim marked "quote not found" cites text that is no longer in the document, so',
+    'check it carefully — but the fact may still be stated elsewhere in other words, in',
+    'which case keep it. Only retract a claim the current document contradicts or no',
+    'longer states anywhere. Retract only listed handles.',
   ].join('\n')
+}
+
+function renderExistingClaim(claim: ExistingClaim): string {
+  const end = claim.objectName
+    ? `${claim.objectName} (${claim.objectType})`
+    : JSON.stringify(claim.value ?? '')
+  const period = [
+    claim.startTime ? `from ${claim.startTime}` : '',
+    claim.endTime ? `until ${claim.endTime}` : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+  const sources = claim.members[0]?.sources ?? []
+  const cited = sources
+    .map((s) => {
+      const where = s.paragraphIndex === null ? '' : `¶${s.paragraphIndex} `
+      const quote = s.quote ? JSON.stringify(s.quote) : '(no quote)'
+      const moved =
+        s.foundAt === null
+          ? ' [quote not found]'
+          : s.foundAt !== s.paragraphIndex
+            ? ` [now in ¶${s.foundAt}]`
+            : ''
+      return `${where}${quote}${moved}`
+    })
+    .join('; ')
+
+  return [
+    `${claim.handle}. ${claim.subjectName} (${claim.subjectType}) ${claim.predicate} ${end}`,
+    period ? ` ${period}` : '',
+    cited ? ` — ${cited}` : '',
+  ].join('')
+}
+
+/** A rejection of a `retract` entry rather than of a claim. */
+function isRetractionEntry(rejection: Rejection): boolean {
+  if (rejection.code === 'unknown_claim') return true
+  const received = rejection.received as Record<string, unknown> | null
+  return (
+    received !== null &&
+    typeof received === 'object' &&
+    'claim' in received &&
+    !('predicate' in received)
+  )
 }
 
 /** How many rejections are worth sending back; beyond this the run is not salvageable by nagging. */
@@ -151,6 +243,11 @@ export function repairPrompt(rejections: Rejection[]): string {
     'document says, drop it rather than forcing it into a predicate that does not',
     'mean the same thing. Returning fewer claims is the correct answer here. A fact',
     'the vocabulary has no predicate for may go in "proposed_predicates" instead.',
+    // Only when one was rejected: a first extraction has no "retract" field,
+    // and naming it unprompted invites the model to use it.
+    shown.some(isRetractionEntry)
+      ? 'A rejected retraction may be resent in "retract" with a listed handle, or dropped.'
+      : '',
   ]
     .filter((line) => line !== '')
     .join('\n')

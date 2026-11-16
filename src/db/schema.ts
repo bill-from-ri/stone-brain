@@ -972,6 +972,21 @@ export const extractionRuns = pgTable(
     inversesCreated: integer('inverses_created').notNull().default(0),
     sourcesCreated: integer('sources_created').notNull().default(0),
     entitiesCreated: integer('entities_created').notNull().default(0),
+    /**
+     * Claims the model retracted on a re-extraction that this run removed — the
+     * claim deleted, or this document's citation of it withdrawn. Retractions
+     * that were held back (canon, hand-made) are in `claim_retractions` but not
+     * counted here, because nothing changed.
+     */
+    claimsRetracted: integer('claims_retracted').notNull().default(0),
+    /**
+     * Existing claims a re-extraction was shown and left standing — the ones
+     * it did not mention, plus any retraction that was held. Zero on a first
+     * extraction. Counted as facts, one per direction pair, as the model saw
+     * them. Without it a re-extraction that rightly changed nothing would read
+     * as "found nothing".
+     */
+    claimsKept: integer('claims_kept').notNull().default(0),
 
     startedAt: ts('started_at').notNull().defaultNow(),
     finishedAt: ts('finished_at'),
@@ -1014,6 +1029,59 @@ export const extractionIssues = pgTable(
   (t) => [
     index('extraction_issues_run_idx').on(t.runId),
     check('extraction_issues_stage', sql`${t.stage} in ('validation', 'write')`),
+  ],
+)
+
+/**
+ * What a retraction did — see `applyRevision` in extraction-write.ts.
+ *
+ *   - `deleted`: the claim's only citation was this document, so it is gone.
+ *   - `citation_removed`: another document still cites it, so only this
+ *     document's citation went; the claim stands on the other one.
+ *   - `held`: nothing changed — the claim is canon or was made by a person, or
+ *     the same run re-asserted it.
+ */
+export type RetractionOutcome = 'deleted' | 'citation_removed' | 'held'
+
+/**
+ * Every claim a re-extraction retracted, with the model's reason and the claim
+ * as it was.
+ *
+ * The audit log for the one path where extraction removes something. `claim_id`
+ * is deliberately not a foreign key: for a `deleted` row the claim no longer
+ * exists, and the snapshot in `claim` is the only record of what was said.
+ * Not an `extraction_issues` row, because those are claims a run *lost*; a
+ * retraction is a decision the run made.
+ */
+export const claimRetractions = pgTable(
+  'claim_retractions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    runId: uuid('run_id')
+      .notNull()
+      .references(() => extractionRuns.id, { onDelete: 'cascade' }),
+    documentId: uuid('document_id').references(() => documents.id, { onDelete: 'set null' }),
+
+    claimId: uuid('claim_id').notNull(),
+    outcome: text('outcome').$type<RetractionOutcome>().notNull(),
+    /** The model's one-sentence reason for retracting. */
+    reason: text('reason').notNull(),
+    /** Why a `held` retraction was not applied; null otherwise. */
+    detail: text('detail'),
+    /** The claim as it read before the retraction: ends, predicate, value, quote. */
+    claim: jsonb('claim').notNull(),
+
+    createdAt: ts('created_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('claim_retractions_run_idx').on(t.runId),
+    check(
+      'claim_retractions_outcome',
+      sql`${t.outcome} in ('deleted', 'citation_removed', 'held')`,
+    ),
   ],
 )
 
@@ -1132,6 +1200,7 @@ export type Claim = typeof claims.$inferSelect
 export type NewClaim = typeof claims.$inferInsert
 export type ClaimSource = typeof claimSources.$inferSelect
 export type NewClaimSource = typeof claimSources.$inferInsert
+export type ClaimRetraction = typeof claimRetractions.$inferSelect
 export type ExtractionRun = typeof extractionRuns.$inferSelect
 export type NewExtractionRun = typeof extractionRuns.$inferInsert
 export type ExtractionIssue = typeof extractionIssues.$inferSelect

@@ -5,6 +5,8 @@ import { beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import type { NeonDatabase } from 'drizzle-orm/neon-serverless'
 import * as schema from '@/db/schema'
 import { applyMigrations, seedCatalog } from '@/test/catalog'
+import type { Paragraph } from '@/lib/drive/markdown'
+import { loadExistingClaims } from './existing-claims'
 import type { ExtractedClaim } from './extraction'
 import { writeExtraction, type ExtractionContext } from './extraction-write'
 
@@ -628,5 +630,215 @@ describe('scoping', () => {
       .where(eq(schema.claims.userId, otherUserId))
 
     expect(count!.n).toBe(0)
+  })
+})
+
+describe('re-extraction', () => {
+  /** The current text: paragraph `at` holds each given line, the rest are filler. */
+  const paragraphsWith = (lines: Record<number, string>): Paragraph[] =>
+    Array.from({ length: 8 }, (_, index) => ({
+      index,
+      text: lines[index] ?? `Filler paragraph ${index}.`,
+      headings: [],
+      kind: 'prose' as const,
+    }))
+
+  const load = (paragraphs: Paragraph[]) => loadExistingClaims(db, userId, documentId, paragraphs)
+
+  async function secondDocument(): Promise<string> {
+    const docs = await pg.query<{ id: string }>(
+      `insert into documents (user_id, drive_file_id, name, mime_type, raw)
+       values ($1, 'drive-2', 'Annals of Ashfall', 'application/vnd.google-apps.document', '{}')
+       returning id`,
+      [userId],
+    )
+    return docs.rows[0]!.id
+  }
+
+  it('shows each fact once, with its inverse riding along', async () => {
+    await writeExtraction(db, userId, [rulesClaim()], context())
+
+    const existing = await load(paragraphsWith({ 4: 'Sera Vane rules Ashfall.' }))
+
+    expect(existing).toHaveLength(1)
+    // Either direction may be the one shown; it is the same fact.
+    const shown = existing[0]!
+    expect(shown.handle).toBe('c1')
+    expect([
+      [shown.subjectName, shown.predicate, shown.objectName],
+    ]).toContainEqual(
+      shown.predicate === 'rules' ? ['Sera Vane', 'rules', 'Ashfall'] : ['Ashfall', 'ruled_by', 'Sera Vane'],
+    )
+    expect(existing[0]!.members).toHaveLength(2)
+    expect(existing[0]!.members[0]!.sources[0]).toMatchObject({ paragraphIndex: 4, foundAt: 4 })
+  })
+
+  it('reports where a quote is now, or that it is gone', async () => {
+    await writeExtraction(db, userId, [rulesClaim()], context())
+
+    const moved = await load(paragraphsWith({ 6: 'Sera Vane rules Ashfall.' }))
+    expect(moved[0]!.members[0]!.sources[0]!.foundAt).toBe(6)
+
+    const gone = await load(paragraphsWith({ 4: 'Sera Vane abdicated.' }))
+    expect(gone[0]!.members[0]!.sources[0]!.foundAt).toBeNull()
+  })
+
+  it('keeps every claim the model did not mention, exactly as stored', async () => {
+    await writeExtraction(db, userId, [rulesClaim()], context())
+    const before = await claimRows()
+    const existing = await load(paragraphsWith({ 4: 'Sera Vane rules Ashfall.' }))
+
+    const result = await writeExtraction(db, userId, [], context(), { existing, retractions: [] })
+
+    expect(result.claimsRetracted).toBe(0)
+    expect(await claimRows()).toEqual(before)
+    expect(await sourceRows()).toHaveLength(2)
+  })
+
+  it('deletes a retracted draft, both directions, when this document was its only source', async () => {
+    await writeExtraction(db, userId, [rulesClaim()], context())
+    const existing = await load(paragraphsWith({ 4: 'Sera Vane abdicated.' }))
+
+    const result = await writeExtraction(db, userId, [], context(), {
+      existing,
+      retractions: [{ handle: 'c1', reason: 'She abdicated.' }],
+    })
+
+    expect(result.claimsRetracted).toBe(1)
+    expect(result.retractions).toEqual([
+      expect.objectContaining({
+        handle: 'c1',
+        outcome: 'deleted',
+        reason: 'She abdicated.',
+        claim: expect.objectContaining({ predicate: expect.stringMatching(/^(rules|ruled_by)$/) }),
+      }),
+    ])
+    expect(await claimRows()).toHaveLength(0)
+    expect(await sourceRows()).toHaveLength(0)
+  })
+
+  it('only withdraws this document’s citation when another document still states it', async () => {
+    const other = await secondDocument()
+    await writeExtraction(db, userId, [rulesClaim()], context())
+    await writeExtraction(db, userId, [rulesClaim()], context({ documentId: other, documentName: 'Annals' }))
+    const existing = await load(paragraphsWith({ 4: 'Sera Vane abdicated.' }))
+
+    const result = await writeExtraction(db, userId, [], context(), {
+      existing,
+      retractions: [{ handle: 'c1', reason: 'She abdicated.' }],
+    })
+
+    expect(result.retractions[0]!.outcome).toBe('citation_removed')
+    expect(result.claimsRetracted).toBe(1)
+    expect(await claimRows()).toHaveLength(2)
+    const sources = await sourceRows()
+    expect(sources).toHaveLength(2)
+    expect(sources.every((s) => s.documentId === other)).toBe(true)
+  })
+
+  it('never removes a canon claim, and says why', async () => {
+    await writeExtraction(db, userId, [rulesClaim()], context())
+    await pg.query(`update claims set canonicity = 'canon'`)
+    const existing = await load(paragraphsWith({ 4: 'Sera Vane abdicated.' }))
+
+    const result = await writeExtraction(db, userId, [], context(), {
+      existing,
+      retractions: [{ handle: 'c1', reason: 'She abdicated.' }],
+    })
+
+    expect(result.claimsRetracted).toBe(0)
+    expect(result.retractions[0]).toMatchObject({ outcome: 'held' })
+    expect(result.retractions[0]!.detail).toContain('canon')
+    expect(await claimRows()).toHaveLength(2)
+    expect(await sourceRows()).toHaveLength(2)
+  })
+
+  it('never removes a claim a person wrote', async () => {
+    await writeExtraction(db, userId, [rulesClaim()], context())
+    await pg.query(`update claims set created_by = 'user'`)
+    const existing = await load(paragraphsWith({}))
+
+    const result = await writeExtraction(db, userId, [], context(), {
+      existing,
+      retractions: [{ handle: 'c1', reason: 'Gone.' }],
+    })
+
+    expect(result.retractions[0]!.outcome).toBe('held')
+    expect(await claimRows()).toHaveLength(2)
+  })
+
+  it('keeps a claim the same run both retracted and re-asserted', async () => {
+    await writeExtraction(db, userId, [rulesClaim()], context())
+    const existing = await load(paragraphsWith({ 4: 'Sera Vane rules Ashfall.' }))
+
+    const result = await writeExtraction(db, userId, [rulesClaim()], context(), {
+      existing,
+      retractions: [{ handle: 'c1', reason: 'Confused.' }],
+    })
+
+    expect(result.retractions[0]!.outcome).toBe('held')
+    expect(await claimRows()).toHaveLength(2)
+  })
+
+  it('revises a claim: the corrected one in, the old one out', async () => {
+    await writeExtraction(db, userId, [rulesClaim()], context())
+    const existing = await load(paragraphsWith({ 4: 'Sera Vane ruled Ashfall until 412 AR.' }))
+
+    const result = await writeExtraction(
+      db,
+      userId,
+      [rulesClaim({ endTime: '412 AR', quote: 'Sera Vane ruled Ashfall until 412 AR.' })],
+      context(),
+      { existing, retractions: [{ handle: 'c1', reason: 'Her rule now ends in 412 AR.' }] },
+    )
+
+    expect(result.claimsCreated).toBe(1)
+    expect(result.claimsRetracted).toBe(1)
+    const rows = await claimRows()
+    // The bounded claim and its inverse; the unbounded pair is gone.
+    expect(rows).toHaveLength(2)
+    expect(rows.every((r) => r.endTime === '412 AR')).toBe(true)
+  })
+
+  it('re-points a kept citation, and its inverse’s, at the paragraph its quote moved to', async () => {
+    await writeExtraction(db, userId, [rulesClaim()], context())
+    const existing = await load(paragraphsWith({ 6: 'Sera Vane rules Ashfall.' }))
+
+    const result = await writeExtraction(db, userId, [], context({ headRevisionId: 'rev-43' }), {
+      existing,
+      retractions: [],
+    })
+
+    expect(result.sourcesRelocated).toBe(2)
+    const sources = await sourceRows()
+    expect(sources).toHaveLength(2)
+    for (const s of sources) {
+      expect(s.paragraphIndex).toBe(6)
+      expect(s.documentRevisionId).toBe('rev-43')
+    }
+  })
+
+  it('folds a moved citation into one the claim already has there', async () => {
+    await writeExtraction(db, userId, [rulesClaim()], context())
+    const existing = await load(paragraphsWith({ 6: 'Sera Vane rules Ashfall.' }))
+
+    // The model also re-emitted the claim from its new paragraph.
+    await writeExtraction(db, userId, [rulesClaim({ paragraphIndex: 6 })], context(), {
+      existing,
+      retractions: [],
+    })
+
+    const sources = await sourceRows()
+    expect(sources).toHaveLength(2)
+    expect(sources.every((s) => s.paragraphIndex === 6)).toBe(true)
+  })
+
+  it('leaves a citation whose quote is nowhere where it was', async () => {
+    await writeExtraction(db, userId, [rulesClaim()], context())
+    const existing = await load(paragraphsWith({}))
+
+    await writeExtraction(db, userId, [], context(), { existing, retractions: [] })
+
+    expect((await sourceRows()).every((s) => s.paragraphIndex === 4)).toBe(true)
   })
 })

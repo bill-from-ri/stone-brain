@@ -134,8 +134,9 @@ otherwise every caller that merely wanted to *check* a name (a search box, a
 duplicate warning) could grow the graph. What it mints is `canonicity: 'draft'`,
 `created_by: 'llm'`, with the source document and the model on the row.
 
-**Re-extraction is additive**, per the decision: new claims inserted, existing
-ones no-ops, nothing removed. A conflict action that provably changes nothing
+**Writing claims is additive**, per the decision: new claims inserted, existing
+ones no-ops. *(Superseded in part by "Re-extraction" under §8: a re-extraction may
+now retract a claim by name, never by omission.)* A conflict action that provably changes nothing
 (`set subject_id = excluded.subject_id`, identical by definition under a
 fingerprint collision) returns ids for rows that already existed, so a claim a
 person promoted to canon keeps its canonicity and its authorship.
@@ -281,6 +282,38 @@ Since we do not control the model, the goal is not to pick one but to confirm th
 - [x] Flag claims whose source document has been removed from the Library, and surface them (decisions §7a). Built with Phase 3 as the vanished-source conflict kind
 - [x] Re-extract prompt when `drive_version` has moved past the version last extracted at —
   *not* against `extracted_revision_id`, which is a different scale (decisions §6)
+- [x] Re-extraction sees the document's existing claims and can retract or revise them
+
+**Re-extraction.** Same run as a first extraction: the whole current document, the
+same system prompt, the same write path. The one extra input is the claims the
+document already holds (`src/lib/ontology/existing-claims.ts`), listed after the
+paragraphs with handles `c1…cN`, one direction per fact, each with its quote and a
+`[quote not found]` / `[now in ¶n]` marker from a deterministic search of the
+current text. A first extraction lists nothing and sends exactly the prompt it
+always did.
+
+The model answers with the usual `claims` plus an optional `retract: [{ claim, reason }]`:
+
+- a claim that still holds is **not re-emitted** — kept as stored, so unchanged
+  text has nothing to drift into;
+- a claim the document no longer supports is retracted by handle, with a reason;
+- a changed claim is retracted and its corrected form emitted in `claims`.
+
+Silence never retracts. An unlisted handle is a rejection and goes to the repair
+round. `applyRevision` in `extraction-write.ts` does the rest, in the same
+transaction as the claims: it removes **this document's** citation of the claim and
+its inverse, and deletes the claim only when nothing else cites it
+(`citation_removed` otherwise — a disagreement with another document is then a
+Phase 3 conflict). Canon, hand-written and seeded claims, and any claim the same
+run re-asserted, are `held`: never touched. Kept citations whose quote moved are
+re-pointed at the new paragraph.
+
+Every retraction, held ones included, is logged in `claim_retractions` with the
+reason and a snapshot of the claim; `extraction_runs` carries `claims_kept` and
+`claims_retracted`, and the Library's report lists the retractions.
+
+Not done, deliberately: no stored copy of the old text and no diff. The quote search
+gives the model the "what changed" signal at no storage cost.
 
 ### 9. Unattended runs
 

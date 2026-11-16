@@ -308,9 +308,16 @@ export function buildActivity(
 }
 
 function runCounts(run: RecentRun): string {
-  if (run.claimsCreated === 0 && run.claimsAlreadyPresent === 0) return 'No claims found'
+  const nothing =
+    run.claimsCreated === 0 &&
+    run.claimsAlreadyPresent === 0 &&
+    run.claimsKept === 0 &&
+    run.claimsRetracted === 0
+  if (nothing) return 'No claims found'
   const parts = [plural(run.claimsCreated, 'new claim')]
   if (run.claimsAlreadyPresent > 0) parts.push(`${run.claimsAlreadyPresent} already in the graph`)
+  if (run.claimsKept > 0) parts.push(`${run.claimsKept} kept`)
+  if (run.claimsRetracted > 0) parts.push(`${run.claimsRetracted} retracted`)
   if (run.inversesCreated > 0) parts.push(plural(run.inversesCreated, 'inverse'))
   return parts.join(', ')
 }

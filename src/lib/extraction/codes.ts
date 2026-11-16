@@ -42,6 +42,13 @@ export type RunSummary = {
   /** Reverse-direction claims generated alongside (§5). */
   inversesCreated: number
   entitiesCreated: number
+  /**
+   * Existing claims a re-extraction retracted and this run removed — deleted,
+   * or this document's citation withdrawn. Held retractions are not counted.
+   */
+  claimsRetracted: number
+  /** Existing claims a re-extraction left standing. Zero on a first extraction. */
+  claimsKept: number
   /** Claims the model emitted that did not reach the graph: validation plus write. */
   dropped: number
   /** Proposals filed into the queue by this run — after dedupe, so possibly fewer than proposed. */

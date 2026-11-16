@@ -8,7 +8,9 @@ import {
   type ExtractedClaim,
   type ProposedPredicate,
   type Rejection,
+  type Retraction,
 } from '@/lib/ontology/extraction'
+import type { ExistingClaim } from '@/lib/ontology/existing-claims'
 import { normalizeName } from '@/lib/ontology/name-key'
 import { chat, type ChatMessage, type ChatResult, type ProviderCredentials, type ResponseFormat } from './client'
 import { ProviderError } from './errors'
@@ -81,6 +83,12 @@ export type ExtractionInput = {
   paragraphs: Paragraph[]
   ontology: CompiledOntology
   /**
+   * The claims this document already holds, for a re-extraction. Absent or
+   * empty on a first extraction, which then sends exactly the prompt it always
+   * has. See src/lib/ontology/existing-claims.ts.
+   */
+  existingClaims?: ExistingClaim[]
+  /**
    * The context window to size the document against, when the caller knows it.
    * Defaults to the conservative floor in `fitsInContext`.
    */
@@ -90,6 +98,11 @@ export type ExtractionInput = {
 
 export type ExtractionRun = {
   claims: ExtractedClaim[]
+  /**
+   * Existing claims the model said no longer hold, by handle, from both
+   * attempts. Always empty on a first extraction.
+   */
+  retractions: Retraction[]
   /**
    * What was still wrong after the retry — §6's input.
    *
@@ -130,7 +143,7 @@ export async function extractClaims(
   input: ExtractionInput,
 ): Promise<ExtractionRun> {
   const system = extractionSystemPrompt(input.ontology)
-  const user = extractionUserPrompt(input.documentName, input.paragraphs)
+  const user = extractionUserPrompt(input.documentName, input.paragraphs, input.existingClaims)
 
   // Checked against the assembled prompt, not the document alone: the
   // vocabulary is ~10k characters and the paragraph markers are not free, so
@@ -160,6 +173,7 @@ export async function extractClaims(
   if (parsed.rejections.length === 0) {
     return {
       claims: parsed.claims,
+      retractions: parsed.retractions,
       rejections: [],
       proposals: parsed.proposals,
       model: first.model,
@@ -198,6 +212,7 @@ export async function extractClaims(
   } catch {
     return {
       claims: parsed.claims,
+      retractions: parsed.retractions,
       rejections: parsed.rejections,
       proposals: parsed.proposals,
       model: first.model,
@@ -209,6 +224,7 @@ export async function extractClaims(
 
   return {
     claims: dedupe([...parsed.claims, ...repaired.claims]),
+    retractions: mergeRetractions(parsed.retractions, repaired.retractions),
     rejections: repaired.rejections,
     // The repair is where an off-vocabulary claim is told it may be proposed
     // instead, so its proposals are as real as the first reply's.
@@ -372,6 +388,7 @@ function namesReasoningEffort(err: unknown): boolean {
 
 type ParsedReply = {
   claims: ExtractedClaim[]
+  retractions: Retraction[]
   rejections: Rejection[]
   proposals: ProposedPredicate[]
   /** How many entries the model emitted, so the next attempt can keep numbering. */
@@ -397,13 +414,20 @@ function parseReply(text: string, input: ExtractionInput, offset: number): Parse
     )
   }
 
-  const result = parseExtraction(payload, input.ontology)
+  const handles = new Set((input.existingClaims ?? []).map((c) => c.handle))
+  const result = parseExtraction(payload, input.ontology, handles)
 
   return {
     claims: result.claims,
+    retractions: result.retractions,
     rejections: result.rejections.map((r) => ({ ...r, index: r.index + offset })),
     proposals: result.proposals,
-    emitted: result.claims.length + result.rejections.length,
+    // Retraction rejections are numbered after the claims, so the next attempt
+    // starts past whichever is furthest along.
+    emitted: Math.max(
+      result.claims.length + result.rejections.length + result.retractions.length,
+      ...result.rejections.map((r) => r.index + 1),
+    ),
   }
 }
 
@@ -453,6 +477,12 @@ function providerSchema(ontology: CompiledOntology): unknown {
   const schema = extractionJsonSchema(ontology) as Record<string, unknown>
   const { $schema: _meta, ...rest } = schema
   return rest
+}
+
+/** One retraction per handle across both attempts; the first reply's reason wins. */
+function mergeRetractions(first: Retraction[], second: Retraction[]): Retraction[] {
+  const handles = new Set(first.map((r) => r.handle))
+  return [...first, ...second.filter((r) => !handles.has(r.handle))]
 }
 
 /** One proposal per name across both attempts; the first reply's evidence wins. */

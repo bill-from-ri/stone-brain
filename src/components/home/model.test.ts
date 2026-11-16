@@ -52,6 +52,8 @@ function run(over: Partial<RecentRun> = {}): RecentRun {
     claimsCreated: 12,
     claimsAlreadyPresent: 0,
     inversesCreated: 0,
+    claimsKept: 0,
+    claimsRetracted: 0,
     documentName: 'The Varrow Succession',
     driveFileId: 'drive-1',
     parentDriveFolderId: 'folder-1',

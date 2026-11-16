@@ -72,7 +72,7 @@ const STEPS = [
   {
     name: 'Adjudicate',
     icon: 'ph-scales',
-    body: 'A conflict shows both claims and both quotes side by side. Keep one, edit the claim, or dismiss the conflict if it is not one. Extraction never decides canon for you; it is additive, and a person settles what is true.',
+    body: 'A conflict shows both claims and both quotes side by side. Keep one, edit the claim, or dismiss the conflict if it is not one. Extraction never decides canon for you: it writes drafts, a re-read only withdraws a draft the document has stopped saying, and a person settles what is true.',
   },
 ]
 

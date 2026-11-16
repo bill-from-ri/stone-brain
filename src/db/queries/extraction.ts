@@ -2,6 +2,7 @@ import 'server-only'
 import { aliasedTable, and, asc, desc, eq, inArray, sql } from 'drizzle-orm'
 import { db } from '@/db'
 import {
+  claimRetractions,
   claimSources,
   claims,
   entities,
@@ -11,6 +12,7 @@ import {
   predicates,
   type ExtractionIssueStage,
   type ProposalStatus,
+  type RetractionOutcome,
 } from '@/db/schema'
 import { RUN_LEASE_MS } from '@/lib/extraction/codes'
 
@@ -32,6 +34,15 @@ export type RunIssue = {
   received: unknown
 }
 
+export type RunRetraction = {
+  id: string
+  outcome: RetractionOutcome
+  reason: string
+  detail: string | null
+  /** The `RetractedClaim` snapshot from extraction-write.ts. */
+  claim: unknown
+}
+
 export type FinishedRun = {
   id: string
   status: 'succeeded' | 'failed'
@@ -45,7 +56,10 @@ export type FinishedRun = {
   claimsAlreadyPresent: number
   inversesCreated: number
   entitiesCreated: number
+  claimsKept: number
+  claimsRetracted: number
   issues: RunIssue[]
+  retractions: RunRetraction[]
 }
 
 export type DocumentRuns = {
@@ -80,6 +94,8 @@ export async function getDocumentRuns(userId: string, documentId: string): Promi
       claimsAlreadyPresent: extractionRuns.claimsAlreadyPresent,
       inversesCreated: extractionRuns.inversesCreated,
       entitiesCreated: extractionRuns.entitiesCreated,
+      claimsKept: extractionRuns.claimsKept,
+      claimsRetracted: extractionRuns.claimsRetracted,
     })
     .from(extractionRuns)
     .where(and(eq(extractionRuns.userId, userId), eq(extractionRuns.documentId, documentId)))
@@ -108,7 +124,19 @@ export async function getDocumentRuns(userId: string, documentId: string): Promi
     // path's refusals, which carry no position.
     .orderBy(asc(extractionIssues.stage), asc(extractionIssues.position), asc(extractionIssues.createdAt))
 
-  return { latest: { ...latest, issues }, runningSince: running?.startedAt ?? null }
+  const retractions = await db
+    .select({
+      id: claimRetractions.id,
+      outcome: claimRetractions.outcome,
+      reason: claimRetractions.reason,
+      detail: claimRetractions.detail,
+      claim: claimRetractions.claim,
+    })
+    .from(claimRetractions)
+    .where(and(eq(claimRetractions.userId, userId), eq(claimRetractions.runId, latest.id)))
+    .orderBy(asc(claimRetractions.createdAt))
+
+  return { latest: { ...latest, issues, retractions }, runningSince: running?.startedAt ?? null }
 }
 
 /* ------------------------------------------------------------------- claims */

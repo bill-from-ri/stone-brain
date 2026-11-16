@@ -69,6 +69,7 @@ const { getProviderCredentials } = await import('@/lib/llm/provider')
 const { extractClaims, extractJson, ExtractionError } = await import('@/lib/llm/extract')
 const { extractionSystemPrompt, extractionUserPrompt } = await import('@/lib/llm/prompt')
 const { parseExtraction } = await import('@/lib/ontology/extraction')
+const { loadExistingClaims } = await import('@/lib/ontology/existing-claims')
 const fs = await import('node:fs')
 const path = await import('node:path')
 const { ProviderError } = await import('@/lib/llm/errors')
@@ -108,7 +109,12 @@ if (promptDir) {
   const slug = doc.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()
   fs.mkdirSync(promptDir, { recursive: true })
   fs.writeFileSync(path.join(promptDir, `${slug}.system.txt`), extractionSystemPrompt(coreOntology()))
-  fs.writeFileSync(path.join(promptDir, `${slug}.user.txt`), extractionUserPrompt(doc.name, text.paragraphs))
+  // With the document's existing claims, as a re-extraction would send it.
+  const existing = await loadExistingClaims(db, user.id, doc.id, text.paragraphs)
+  fs.writeFileSync(
+    path.join(promptDir, `${slug}.user.txt`),
+    extractionUserPrompt(doc.name, text.paragraphs, existing),
+  )
   console.error(`${doc.name}: prompts written to ${promptDir}/${slug}.* (${text.paragraphs.length} paragraphs)`)
   process.exit(0)
 }
@@ -131,9 +137,11 @@ async function extract(c: typeof creds, input: ExtractionInput): Promise<ModelRu
   if (payload === undefined) {
     throw new ExtractionError('unusable_response', 'The saved reply is not JSON.', reply)
   }
-  const parsed = parseExtraction(payload, input.ontology)
+  const handles = new Set((input.existingClaims ?? []).map((c) => c.handle))
+  const parsed = parseExtraction(payload, input.ontology, handles)
   return {
     claims: parsed.claims,
+    retractions: parsed.retractions,
     rejections: parsed.rejections,
     proposals: parsed.proposals,
     model: modelOverride!,
@@ -176,6 +184,9 @@ function printRun(run: ModelRun) {
     console.log(`  ${c.subjectName} (${c.subjectType}) --${c.predicate}--> ${object}${period}`)
     console.log(`      P${c.paragraphIndex ?? '?'} "${c.quote.slice(0, 110)}"`)
   }
+  for (const r of run.retractions ?? []) {
+    console.log(`  RETRACT ${r.handle}: ${r.reason}`)
+  }
   for (const r of run.rejections) {
     console.log(`  REJECTED [${r.index}] ${r.code}: ${r.message}`)
     console.log(`      ${JSON.stringify(r.received).slice(0, 200)}`)
@@ -197,6 +208,8 @@ if (!write) {
       documentName: doc.name,
       paragraphs: text.paragraphs,
       ontology: coreOntology(),
+      // A dry run is shown what a real run would be, re-extraction included.
+      existingClaims: await loadExistingClaims(db, user.id, doc.id, text.paragraphs),
     })
   } catch (err) {
     if (err instanceof ExtractionError) {
@@ -252,7 +265,10 @@ if (summary.failure) {
 console.error(
   `\nwritten  : ${summary.claimsCreated} new claims, ${summary.claimsAlreadyPresent} already present, ` +
     `${summary.inversesCreated} inverses, ${summary.entitiesCreated} draft entities, ` +
-    `${summary.dropped} dropped, ${summary.proposalsFiled} proposals filed`,
+    `${summary.dropped} dropped, ${summary.proposalsFiled} proposals filed` +
+    (summary.claimsKept > 0 || summary.claimsRetracted > 0
+      ? `; ${summary.claimsKept} kept, ${summary.claimsRetracted} retracted`
+      : ''),
 )
 console.error(`recorded : run ${summary.runId}`)
 

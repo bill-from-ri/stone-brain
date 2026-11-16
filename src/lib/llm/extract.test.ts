@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Paragraph } from '@/lib/drive/markdown'
 import { coreOntology } from '@/lib/ontology/extraction'
+import type { ExistingClaim } from '@/lib/ontology/existing-claims'
 import { ProviderError } from './errors'
 import { extractClaims, ExtractionError, extractJson, forgetNegotiatedShape } from './extract'
 import type { ProviderCredentials } from './client'
@@ -382,5 +383,156 @@ describe('extractClaims', () => {
       ExtractionError,
     )
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('re-extraction', () => {
+  const existing: ExistingClaim[] = [
+    {
+      handle: 'c1',
+      subjectName: 'Sera Vane',
+      subjectType: 'character',
+      predicate: 'rules',
+      objectName: 'Ashfall',
+      objectType: 'settlement',
+      value: null,
+      startTime: null,
+      endTime: null,
+      members: [
+        {
+          id: 'claim-1',
+          canonicity: 'draft',
+          createdBy: 'llm',
+          sources: [{ id: 's1', paragraphIndex: 1, quote: 'Sera Vane rules Ashfall', foundAt: 1 }],
+        },
+      ],
+    },
+    {
+      handle: 'c2',
+      subjectName: 'Ashfall',
+      subjectType: 'settlement',
+      predicate: 'population',
+      objectName: null,
+      objectType: null,
+      value: '900',
+      startTime: null,
+      endTime: null,
+      members: [
+        {
+          id: 'claim-2',
+          canonicity: 'draft',
+          createdBy: 'llm',
+          sources: [{ id: 's2', paragraphIndex: 3, quote: 'a town of 900 souls', foundAt: null }],
+        },
+      ],
+    },
+  ]
+  const revisit = { ...input, existingClaims: existing }
+
+  const userPromptOf = (fn: ReturnType<typeof mockFetch>) =>
+    (bodyOf(fn, 0).messages as { role: string; content: string }[])[1]!.content
+
+  it('sends a first extraction exactly the prompt it always had', async () => {
+    const fetchMock = mockFetch(completion(JSON.stringify({ claims: [rulesClaim] })))
+
+    await extractClaims(creds, input)
+
+    const user = userPromptOf(fetchMock)
+    expect(user).not.toContain('EXISTING CLAIMS')
+    expect(user).not.toContain('retract')
+    expect(user).toContain('Extract every claim this document states')
+  })
+
+  it('lists the existing claims by handle, and flags a quote the document lost', async () => {
+    const fetchMock = mockFetch(completion(JSON.stringify({ claims: [] })))
+
+    await extractClaims(creds, revisit)
+
+    const user = userPromptOf(fetchMock)
+    expect(user).toContain('EXISTING CLAIMS')
+    expect(user).toContain('c1. Sera Vane (character) rules Ashfall (settlement) — ¶1 "Sera Vane rules Ashfall"')
+    expect(user).toContain('c2. Ashfall (settlement) population "900" — ¶3 "a town of 900 souls" [quote not found]')
+    expect(user).toContain('Do NOT re-emit it')
+  })
+
+  it('returns a retraction alongside the corrected claim', async () => {
+    mockFetch(
+      completion(
+        JSON.stringify({
+          claims: [
+            {
+              subject: 'Ashfall',
+              subject_type: 'settlement',
+              predicate: 'population',
+              value: 1200,
+              quote: 'a town of 1,200 souls',
+              paragraph: 1,
+            },
+          ],
+          retract: [{ claim: 'c2', reason: 'The population is now given as 1,200.' }],
+        }),
+      ),
+    )
+
+    const run = await extractClaims(creds, revisit)
+
+    expect(run.attempts).toBe(1)
+    expect(run.retractions).toEqual([{ handle: 'c2', reason: 'The population is now given as 1,200.' }])
+    expect(run.claims).toHaveLength(1)
+  })
+
+  it('treats saying nothing about a claim as keeping it', async () => {
+    mockFetch(completion(JSON.stringify({ claims: [] })))
+
+    const run = await extractClaims(creds, revisit)
+
+    expect(run.retractions).toEqual([])
+    expect(run.rejections).toEqual([])
+  })
+
+  it('sends an unlisted handle back for repair rather than guessing which was meant', async () => {
+    const fetchMock = mockFetch(
+      completion(JSON.stringify({ claims: [], retract: [{ claim: 'c9', reason: 'Gone.' }] })),
+      completion(JSON.stringify({ claims: [], retract: [{ claim: 'c2', reason: 'Gone.' }] })),
+    )
+
+    const run = await extractClaims(creds, revisit)
+
+    expect(run.attempts).toBe(2)
+    expect(run.retractions).toEqual([{ handle: 'c2', reason: 'Gone.' }])
+    expect(run.rejections).toEqual([])
+    const repair = (bodyOf(fetchMock, 1).messages as { content: string }[])[3]!.content
+    expect(repair).toContain("'c9' is not one of the listed existing claims")
+    expect(repair).toContain('A rejected retraction may be resent')
+  })
+
+  it('rejects a retraction on a first extraction, where nothing was listed', async () => {
+    mockFetch(
+      completion(JSON.stringify({ claims: [rulesClaim], retract: [{ claim: 'c1', reason: 'x' }] })),
+      completion(JSON.stringify({ claims: [] })),
+    )
+
+    const run = await extractClaims(creds, input)
+
+    expect(run.retractions).toEqual([])
+    expect(run.claims).toHaveLength(1)
+  })
+
+  it('collapses a handle retracted twice into one retraction', async () => {
+    mockFetch(
+      completion(
+        JSON.stringify({
+          claims: [],
+          retract: [
+            { claim: 'c1', reason: 'First.' },
+            { claim: 'c1', reason: 'Second.' },
+          ],
+        }),
+      ),
+    )
+
+    const run = await extractClaims(creds, revisit)
+
+    expect(run.retractions).toEqual([{ handle: 'c1', reason: 'First.' }])
   })
 })

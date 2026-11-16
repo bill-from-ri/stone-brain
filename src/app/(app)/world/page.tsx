@@ -37,8 +37,8 @@ export const metadata: Metadata = { title: 'World' }
  * The prototype framed its CLAIMS view as *one extraction run awaiting commit* —
  * a progress bar of new / already-in-graph / contradicting, a checkbox per row,
  * a "Commit to graph" footer. That is not how extraction landed: a run writes
- * draft claims straight into the graph (re-extraction is additive, and nothing
- * is canon until a person says so), its report lives on the document in the
+ * draft claims straight into the graph (a re-extraction only removes a draft it
+ * names, and nothing is canon until a person says so), its report lives on the document in the
  * Library, and contradictions are their own inbox. What is kept here is the
  * part that was always right — the claims, over the whole graph or one
  * document's share of it — with each contested row badged.

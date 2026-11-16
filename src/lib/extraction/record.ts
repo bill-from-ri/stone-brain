@@ -1,8 +1,14 @@
 import { and, eq, gt, inArray, isNull, sql } from 'drizzle-orm'
 import type { NeonDatabase } from 'drizzle-orm/neon-serverless'
 import type * as schema from '@/db/schema'
-import { extractionIssues, extractionRuns, predicateProposals, type ProposalStatus } from '@/db/schema'
-import type { UnwrittenClaim } from '@/lib/ontology/extraction-write'
+import {
+  claimRetractions,
+  extractionIssues,
+  extractionRuns,
+  predicateProposals,
+  type ProposalStatus,
+} from '@/db/schema'
+import type { AppliedRetraction, UnwrittenClaim } from '@/lib/ontology/extraction-write'
 import type { ProposedPredicate, Rejection } from '@/lib/ontology/extraction'
 import { RUN_LEASE_MS } from './codes'
 import { INTERRUPTED_MESSAGE, type RunFailure } from './failure'
@@ -106,9 +112,12 @@ export type RunRecord = {
   inversesCreated?: number
   sourcesCreated?: number
   entitiesCreated?: number
+  claimsRetracted?: number
+  claimsKept?: number
   rejections?: Rejection[]
   unwritten?: UnwrittenClaim[]
   proposals?: ProposedPredicate[]
+  retractions?: AppliedRetraction[]
 }
 
 /**
@@ -147,6 +156,8 @@ export async function finishRun(
         inversesCreated: record.inversesCreated ?? 0,
         sourcesCreated: record.sourcesCreated ?? 0,
         entitiesCreated: record.entitiesCreated ?? 0,
+        claimsRetracted: record.claimsRetracted ?? 0,
+        claimsKept: record.claimsKept ?? 0,
         finishedAt,
       })
       .where(and(eq(extractionRuns.userId, userId), eq(extractionRuns.id, runId)))
@@ -177,6 +188,25 @@ export async function finishRun(
       })),
     ]
     if (issues.length > 0) await t.insert(extractionIssues).values(issues)
+
+    // The audit log for the one path where extraction removes something —
+    // held retractions included, since "the model wanted this gone" is worth a
+    // person's look even when nothing changed.
+    const retractions = record.retractions ?? []
+    if (retractions.length > 0) {
+      await t.insert(claimRetractions).values(
+        retractions.map((r) => ({
+          userId,
+          runId,
+          documentId: document.id,
+          claimId: r.claimId,
+          outcome: r.outcome,
+          reason: r.reason,
+          detail: r.detail,
+          claim: r.claim,
+        })),
+      )
+    }
 
     const proposalsFiled = await fileProposals(t, userId, runId, document, record.proposals ?? [])
     return { proposalsFiled }

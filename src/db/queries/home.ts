@@ -145,6 +145,8 @@ export type RecentRun = {
   claimsCreated: number
   claimsAlreadyPresent: number
   inversesCreated: number
+  claimsKept: number
+  claimsRetracted: number
   documentName: string
   driveFileId: string
   parentDriveFolderId: string | null
@@ -163,6 +165,8 @@ export async function getRecentRuns(userId: string, limit = 6): Promise<RecentRu
       claimsCreated: extractionRuns.claimsCreated,
       claimsAlreadyPresent: extractionRuns.claimsAlreadyPresent,
       inversesCreated: extractionRuns.inversesCreated,
+      claimsKept: extractionRuns.claimsKept,
+      claimsRetracted: extractionRuns.claimsRetracted,
       documentName: documents.name,
       driveFileId: documents.driveFileId,
       parentDriveFolderId: documents.parentDriveFolderId,

@@ -1,10 +1,11 @@
 import { and, eq, inArray, sql } from 'drizzle-orm'
 import type { NeonDatabase } from 'drizzle-orm/neon-serverless'
 import type * as schema from '@/db/schema'
-import { claimSources, claims, documents, entities } from '@/db/schema'
+import { claimSources, claims, documents, entities, type RetractionOutcome } from '@/db/schema'
 import { ordinalFor } from './calendar'
 import { createDraftEntities, type CreatedDraft, type DraftProposal } from './entity-drafts'
-import type { ExtractedClaim } from './extraction'
+import type { ExistingClaim } from './existing-claims'
+import type { ExtractedClaim, Retraction } from './extraction'
 import { inverseOf } from './inverse'
 import { buildEntityIndex, resolve, type EntityIndex } from './matcher'
 import { looseNameKey, normalizeName } from './name-key'
@@ -19,15 +20,19 @@ import { looseNameKey, normalizeName } from './name-key'
  *
  * ## Idempotency
  *
- * Re-extracting a document is **additive**: new claims are inserted, ones
- * already present are no-ops, and nothing from a previous run is removed. A
- * fact deleted from the document keeps its claim — that divergence is a Phase 3
- * conflict, and reconciling it here would mean a model having an off day could
- * silently retract real claims. Non-determinism must not become data loss.
+ * Writing claims is **additive**: new claims are inserted, ones already
+ * present are no-ops. The mechanism is `claims.fingerprint`, a generated
+ * column, with its unique index as the conflict target. Two runs over an
+ * unchanged document therefore write the same rows and produce the same graph.
  *
- * The mechanism is `claims.fingerprint`, a generated column, with its unique
- * index as the conflict target. Two runs over an unchanged document therefore
- * write the same rows and produce the same graph.
+ * ## Retraction
+ *
+ * A re-extraction is shown the claims the document already holds (see
+ * `existing-claims.ts`) and may retract one by name, with a reason — the only
+ * way extraction removes anything. Never by omission: a claim the model did not
+ * mention is kept, so a model having an off day cannot silently retract real
+ * claims. Non-determinism must not become data loss. What a retraction may do
+ * is narrow, too — see `applyRevision`.
  *
  * ## Inverses
  *
@@ -74,6 +79,39 @@ export type UnwrittenClaim = {
   claim: ExtractedClaim
 }
 
+/**
+ * The re-extraction half of a write: what the document held before this run,
+ * and which of it the model retracted. Absent on a first extraction.
+ */
+export type Revision = {
+  existing: ExistingClaim[]
+  retractions: Retraction[]
+}
+
+/** The claim a retraction was about, as it read before — the audit snapshot. */
+export type RetractedClaim = {
+  subject: string
+  subjectType: string
+  predicate: string
+  object: string | null
+  objectType: string | null
+  value: string | null
+  startTime: string | null
+  endTime: string | null
+  quotes: { paragraphIndex: number | null; quote: string | null }[]
+}
+
+export type AppliedRetraction = {
+  handle: string
+  /** The claim shown to the model; its inverse, if any, went the same way. */
+  claimId: string
+  outcome: RetractionOutcome
+  reason: string
+  /** Why a `held` retraction was not applied. */
+  detail: string | null
+  claim: RetractedClaim
+}
+
 export type WriteExtractionResult = {
   /**
    * Claims the model stated that this run created. Inverses are counted
@@ -97,6 +135,17 @@ export type WriteExtractionResult = {
   sourcesCreated: number
   entitiesCreated: CreatedDraft[]
   unwritten: UnwrittenClaim[]
+  /** Every retraction the model made, applied or held. Empty without a revision. */
+  retractions: AppliedRetraction[]
+  /** Retractions that changed something: a claim deleted or a citation withdrawn. */
+  claimsRetracted: number
+  /** Kept citations re-pointed at the paragraph their quote moved to. */
+  sourcesRelocated: number
+}
+
+type ClaimsWritten = Omit<WriteExtractionResult, 'retractions' | 'claimsRetracted' | 'sourcesRelocated'> & {
+  /** Every claim id this run asserted or mirrored — never retracted by the same run. */
+  assertedIds: Set<string>
 }
 
 /** `entityType|normalizedName` — how a claim's ends are keyed while resolving. */
@@ -119,23 +168,32 @@ export async function writeExtraction(
   userId: string,
   extracted: ExtractedClaim[],
   context: ExtractionContext,
+  revision?: Revision,
 ): Promise<WriteExtractionResult> {
-  return db.transaction(async (tx) =>
+  return db.transaction(async (raw) => {
     // Drizzle types a transaction as its own handle rather than as the database
     // it came from. Every query below is ordinary query-builder syntax that
     // both support, so the cast buys uniform helpers without widening anything.
-    writeInTransaction(tx as unknown as NeonDatabase<typeof schema>, userId, extracted, context),
-  )
+    const tx = raw as unknown as NeonDatabase<typeof schema>
+
+    // Claims first, so a retraction can see what this same run re-asserted.
+    const { assertedIds, ...written } = await writeClaims(tx, userId, extracted, context)
+    const revised = revision
+      ? await applyRevision(tx, userId, context, revision, assertedIds)
+      : { retractions: [], claimsRetracted: 0, sourcesRelocated: 0 }
+    await stampDocument(tx, userId, context)
+
+    return { ...written, ...revised }
+  })
 }
 
-async function writeInTransaction(
+async function writeClaims(
   db: NeonDatabase<typeof schema>,
   userId: string,
   extracted: ExtractedClaim[],
   context: ExtractionContext,
-): Promise<WriteExtractionResult> {
+): Promise<ClaimsWritten> {
   if (extracted.length === 0) {
-    await stampDocument(db, userId, context)
     return {
       claimsCreated: 0,
       claimsAlreadyPresent: 0,
@@ -143,6 +201,7 @@ async function writeInTransaction(
       sourcesCreated: 0,
       entitiesCreated: [],
       unwritten: [],
+      assertedIds: new Set(),
     }
   }
 
@@ -191,7 +250,6 @@ async function writeInTransaction(
   }
 
   if (pending.length === 0) {
-    await stampDocument(db, userId, context)
     return {
       claimsCreated: 0,
       claimsAlreadyPresent: 0,
@@ -199,6 +257,7 @@ async function writeInTransaction(
       sourcesCreated: 0,
       entitiesCreated,
       unwritten,
+      assertedIds: new Set(),
     }
   }
 
@@ -224,7 +283,6 @@ async function writeInTransaction(
 
   const sourcesCreated = await writeSources(db, userId, stated, context)
   await writeSources(db, userId, mirrored, context)
-  await stampDocument(db, userId, context)
 
   const statedIds = new Set(stated.map((w) => w.id))
 
@@ -238,6 +296,178 @@ async function writeInTransaction(
     sourcesCreated,
     entitiesCreated,
     unwritten,
+    assertedIds: new Set(written.map((w) => w.id)),
+  }
+}
+
+/* -------------------------------------------------------------- revision */
+
+/**
+ * Apply a re-extraction's retractions, then re-point the citations that are
+ * left at the paragraphs their quotes now sit in.
+ *
+ * ## What a retraction may do
+ *
+ * A retraction is about **this document**: it says this document no longer
+ * supports the claim, not that the claim is false. So:
+ *
+ *   - It removes this document's citations of the claim and its inverse.
+ *   - The claim itself is deleted only when no citation is left — another
+ *     document that still says it keeps it standing (`citation_removed`). If
+ *     the two documents now disagree, that is a Phase 3 conflict, which is the
+ *     honest outcome: one changed its mind and the other did not.
+ *   - Canon, and anything a person or the seed wrote, is never touched (`held`).
+ *     The model may think it no longer holds; a person decides.
+ *   - A claim this same run asserted is never retracted (`held`): the model
+ *     retracted a claim and re-emitted it identically, and keeping is the side
+ *     to err on.
+ *
+ * A fact is held or retracted as a whole — both directions together — so the
+ * graph never keeps one end of a relationship it dropped the other end of.
+ *
+ * Every retraction is returned, held ones included, for the run to record.
+ */
+async function applyRevision(
+  db: NeonDatabase<typeof schema>,
+  userId: string,
+  context: ExtractionContext,
+  revision: Revision,
+  assertedIds: Set<string>,
+): Promise<Pick<WriteExtractionResult, 'retractions' | 'claimsRetracted' | 'sourcesRelocated'>> {
+  const byHandle = new Map(revision.existing.map((c) => [c.handle, c]))
+  const applied: AppliedRetraction[] = []
+  const gone = new Set<string>()
+
+  for (const { handle, reason } of revision.retractions) {
+    const fact = byHandle.get(handle)
+    if (!fact) continue
+    const primary = fact.members[0]!
+    const ids = fact.members.map((m) => m.id)
+
+    const record = (outcome: RetractionOutcome, detail: string | null) =>
+      applied.push({ handle, claimId: primary.id, outcome, reason, detail, claim: snapshot(fact) })
+
+    if (ids.some((id) => assertedIds.has(id))) {
+      record('held', 'This run also re-asserted the claim, so it was kept.')
+      continue
+    }
+    const guarded = fact.members.find((m) => m.canonicity === 'canon' || m.createdBy !== 'llm')
+    if (guarded) {
+      record(
+        'held',
+        guarded.canonicity === 'canon'
+          ? 'The claim is canon; a person decides whether it still holds.'
+          : 'The claim was not written by extraction; a person decides whether it still holds.',
+      )
+      continue
+    }
+
+    await db
+      .delete(claimSources)
+      .where(
+        and(
+          eq(claimSources.userId, userId),
+          eq(claimSources.documentId, context.documentId),
+          inArray(claimSources.claimId, ids),
+        ),
+      )
+
+    const deleted = await db
+      .delete(claims)
+      .where(
+        and(
+          eq(claims.userId, userId),
+          inArray(claims.id, ids),
+          sql`not exists (select 1 from ${claimSources} where ${claimSources.claimId} = ${claims.id})`,
+        ),
+      )
+      .returning({ id: claims.id })
+
+    for (const id of ids) gone.add(id)
+    record(deleted.some((d) => d.id === primary.id) ? 'deleted' : 'citation_removed', null)
+  }
+
+  const sourcesRelocated = await relocateSources(db, userId, context, revision.existing, gone)
+
+  return {
+    retractions: applied,
+    claimsRetracted: applied.filter((a) => a.outcome !== 'held').length,
+    sourcesRelocated,
+  }
+}
+
+/**
+ * Move each surviving citation whose quote has moved to the paragraph it is in
+ * now, so the paragraph numbers a person clicks — and the next run is shown —
+ * are true. A quote no longer found anywhere is left where it was: the model
+ * was told it was missing and chose to keep the claim.
+ *
+ * Done as delete-then-reinsert rather than in-place updates, because two moves
+ * can swap paragraphs and the `(claim, document, paragraph)` index is checked
+ * per statement. A moved citation that lands on one the claim already has is
+ * the same citation twice, and the reinsert drops it.
+ */
+async function relocateSources(
+  db: NeonDatabase<typeof schema>,
+  userId: string,
+  context: ExtractionContext,
+  existing: ExistingClaim[],
+  gone: Set<string>,
+): Promise<number> {
+  const moves = existing.flatMap((fact) =>
+    fact.members
+      .filter((m) => !gone.has(m.id))
+      .flatMap((m) =>
+        m.sources
+          .filter((s) => s.foundAt !== null && s.foundAt !== s.paragraphIndex)
+          .map((s) => ({ claimId: m.id, sourceId: s.id, quote: s.quote, paragraphIndex: s.foundAt! })),
+      ),
+  )
+  if (moves.length === 0) return 0
+
+  await db.delete(claimSources).where(
+    and(
+      eq(claimSources.userId, userId),
+      inArray(
+        claimSources.id,
+        moves.map((m) => m.sourceId),
+      ),
+    ),
+  )
+
+  const inserted = await db
+    .insert(claimSources)
+    .values(
+      moves.map((m) => ({
+        userId,
+        claimId: m.claimId,
+        documentId: context.documentId,
+        documentName: context.documentName,
+        quote: m.quote,
+        paragraphIndex: m.paragraphIndex,
+        ...(context.headRevisionId && { documentRevisionId: context.headRevisionId }),
+      })),
+    )
+    .onConflictDoNothing()
+    .returning({ id: claimSources.id })
+
+  return inserted.length
+}
+
+function snapshot(fact: ExistingClaim): RetractedClaim {
+  return {
+    subject: fact.subjectName,
+    subjectType: fact.subjectType,
+    predicate: fact.predicate,
+    object: fact.objectName,
+    objectType: fact.objectType,
+    value: fact.value,
+    startTime: fact.startTime,
+    endTime: fact.endTime,
+    quotes: (fact.members[0]?.sources ?? []).map((s) => ({
+      paragraphIndex: s.paragraphIndex,
+      quote: s.quote,
+    })),
   }
 }
 

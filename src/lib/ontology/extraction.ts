@@ -138,6 +138,8 @@ export type Rejection = {
     | 'wrong_value_type'
     | 'value_not_in_enum'
     | 'self_relation'
+    /** A `retract` entry naming a handle that was not among the existing claims. */
+    | 'unknown_claim'
   message: string
   received: unknown
 }
@@ -161,8 +163,23 @@ export type ProposedPredicate = {
   paragraphIndex?: number
 }
 
+/**
+ * A re-extraction's verdict that an existing claim no longer holds — the
+ * document dropped it, or the edit changed it (then the corrected claim is in
+ * `claims` too). `handle` is the `cN` the prompt listed it under.
+ */
+export type Retraction = {
+  handle: string
+  reason: string
+}
+
 export type ParseResult = {
   claims: ExtractedClaim[]
+  /**
+   * Retractions naming a listed handle, one per handle. Empty on a first
+   * extraction, where nothing was listed and any `retract` entry is rejected.
+   */
+  retractions: Retraction[]
   rejections: Rejection[]
   /**
    * Proposals that survived the lenient pass in `parseProposals`. Never part
@@ -229,10 +246,25 @@ function proposalSchema(ontology: CompiledOntology) {
  * `proposed_predicates` is optional, so every reply written before it existed —
  * and every model that ignores it — still validates.
  */
+/**
+ * One retraction, as the model writes it. Strict, like a claim: it removes
+ * something from the graph, so a malformed one is sent back rather than read
+ * generously.
+ */
+const retractionSchema = z.strictObject({
+  claim: z.string().trim().min(1),
+  reason: z.string().trim().min(1).max(600),
+})
+
+/**
+ * `retract` is optional for the same reason: a first extraction has nothing to
+ * retract, and the prompt only mentions the field when there is.
+ */
 export function extractionSchema(ontology: CompiledOntology) {
   return z.strictObject({
     claims: z.array(claimSchema(ontology)),
     proposed_predicates: z.array(proposalSchema(ontology)).optional(),
+    retract: z.array(retractionSchema).optional(),
   })
 }
 
@@ -422,7 +454,12 @@ function assignValue(
  * single rejection, because that too is something the retry loop should be told
  * rather than something that should crash the extraction.
  */
-export function parseExtraction(input: unknown, ontology: CompiledOntology): ParseResult {
+export function parseExtraction(
+  input: unknown,
+  ontology: CompiledOntology,
+  /** The handles of the existing claims the prompt listed; none on a first run. */
+  handles: ReadonlySet<string> = new Set(),
+): ParseResult {
   const claims: ExtractedClaim[] = []
   const rejections: Rejection[] = []
 
@@ -435,6 +472,7 @@ export function parseExtraction(input: unknown, ontology: CompiledOntology): Par
   if (!list) {
     return {
       claims,
+      retractions: [],
       rejections: [
         {
           index: 0,
@@ -470,7 +508,78 @@ export function parseExtraction(input: unknown, ontology: CompiledOntology): Par
     ? []
     : parseProposals((input as { proposed_predicates?: unknown }).proposed_predicates, ontology)
 
-  return { claims, rejections, proposals }
+  const retracted = Array.isArray(input)
+    ? { retractions: [], rejections: [] }
+    : parseRetractions((input as { retract?: unknown }).retract, handles, list.length)
+
+  return {
+    claims,
+    retractions: retracted.retractions,
+    rejections: [...rejections, ...retracted.rejections],
+    proposals,
+  }
+}
+
+/**
+ * The `retract` entries of a reply.
+ *
+ * A handle that was not listed is a rejection, not a silent drop: the model
+ * meant to remove *something*, and the repair round is the chance to name it
+ * properly. Rejections are numbered after the claims (`offset`), so a position
+ * is unique within the reply. A handle retracted twice is one retraction.
+ */
+function parseRetractions(
+  input: unknown,
+  handles: ReadonlySet<string>,
+  offset: number,
+): { retractions: Retraction[]; rejections: Rejection[] } {
+  const retractions: Retraction[] = []
+  const rejections: Rejection[] = []
+  if (input === undefined) return { retractions, rejections }
+
+  if (!Array.isArray(input)) {
+    rejections.push({
+      index: offset,
+      code: 'malformed',
+      message: `"retract" must be an array of { "claim": "cN", "reason": "…" }.`,
+      received: input,
+    })
+    return { retractions, rejections }
+  }
+
+  const seen = new Set<string>()
+  for (const [i, entry] of input.entries()) {
+    const parsed = retractionSchema.safeParse(entry)
+    if (!parsed.success) {
+      rejections.push({
+        index: offset + i,
+        code: 'malformed',
+        message: `A retraction is { "claim": "cN", "reason": "…" }, with a listed handle and a one-sentence reason.`,
+        received: entry,
+      })
+      continue
+    }
+
+    const handle = parsed.data.claim
+    if (!handles.has(handle)) {
+      rejections.push({
+        index: offset + i,
+        code: 'unknown_claim',
+        message:
+          handles.size === 0
+            ? `There are no existing claims to retract; leave "retract" out.`
+            : `'${handle}' is not one of the listed existing claims. Retract only a listed handle (c1 to c${handles.size}).`,
+        received: entry,
+      })
+      continue
+    }
+
+    if (seen.has(handle)) continue
+    seen.add(handle)
+    retractions.push({ handle, reason: parsed.data.reason })
+  }
+
+  return { retractions, rejections }
 }
 
 /**

@@ -200,7 +200,9 @@ function Result({ run }: { run: RunSummary }) {
   }
 
   const seconds = Math.max(1, Math.round(run.durationMs / 1000))
-  const nothing = run.claimsExtracted === 0 && run.dropped === 0
+  const nothing = run.claimsExtracted === 0 && run.dropped === 0 && run.claimsKept === 0
+  // A re-extraction: the document already had claims, and the model was shown them.
+  const revised = run.claimsKept > 0 || run.claimsRetracted > 0
 
   return (
     <div className="sb-x-box sb-x-box--ok" role="status">
@@ -211,6 +213,14 @@ function Result({ run }: { run: RunSummary }) {
       </p>
       {!nothing && (
         <dl className="sb-x-counts">
+          {revised && (
+            <>
+              <dt>Kept unchanged</dt>
+              <dd>{run.claimsKept}</dd>
+              <dt>Retracted</dt>
+              <dd>{run.claimsRetracted}</dd>
+            </>
+          )}
           <dt>New claims</dt>
           <dd>{run.claimsCreated}</dd>
           <dt>Already in the graph</dt>

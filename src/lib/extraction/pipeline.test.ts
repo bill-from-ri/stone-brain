@@ -61,6 +61,7 @@ const tradesWith: ProposedPredicate = {
 function modelRun(over: Partial<ModelRun> = {}): ModelRun {
   return {
     claims: [rules()],
+    retractions: [],
     rejections: [],
     proposals: [],
     model: 'test/model-0613',
@@ -407,5 +408,69 @@ describe('the proposals queue', () => {
     )
     expect(await decideProposal(db, other.rows[0]!.id, row!.id, 'promoted')).toBeNull()
     expect((await proposals())[0]!.status).toBe('open')
+  })
+})
+
+describe('re-extraction', () => {
+  it('shows the model nothing on a first run', async () => {
+    const extract = vi.fn<RunnerDeps['extract']>(async () => modelRun())
+    await createRunner(deps({ extract }))(userId, documentId)
+
+    expect(extract.mock.calls[0]![1]).toMatchObject({ existingClaims: [] })
+  })
+
+  it('shows the model the document’s claims, and keeps what it does not mention', async () => {
+    await createRunner(deps())(userId, documentId)
+
+    const extract = vi.fn<RunnerDeps['extract']>(async () => modelRun({ claims: [] }))
+    const outcome = await createRunner(deps({ extract }))(userId, documentId)
+
+    const shown = extract.mock.calls[0]![1].existingClaims ?? []
+    expect(shown.map((c) => c.handle)).toEqual(['c1'])
+    expect(outcome.ok && outcome.run).toMatchObject({ claimsKept: 1, claimsRetracted: 0, claimsCreated: 0 })
+    expect(await db.select().from(schema.claims)).toHaveLength(2)
+  })
+
+  it('applies a retraction and records it with the reason and the claim as it was', async () => {
+    await createRunner(deps())(userId, documentId)
+
+    const outcome = await createRunner(
+      deps({
+        readText: async () => ({ ...TEXT, paragraphs: [{ ...TEXT.paragraphs[0]!, text: 'Sera Vane left.' }] }),
+        extract: async () =>
+          modelRun({ claims: [], retractions: [{ handle: 'c1', reason: 'She no longer rules it.' }] }),
+      }),
+    )(userId, documentId)
+
+    expect(outcome.ok && outcome.run).toMatchObject({ claimsKept: 0, claimsRetracted: 1 })
+    expect(await db.select().from(schema.claims)).toHaveLength(0)
+
+    const [latest] = (await runs()).sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime())
+    expect(latest).toMatchObject({ claimsRetracted: 1, claimsKept: 0 })
+
+    const logged = await db.select().from(schema.claimRetractions)
+    expect(logged).toHaveLength(1)
+    expect(logged[0]).toMatchObject({
+      runId: latest!.id,
+      documentId,
+      outcome: 'deleted',
+      reason: 'She no longer rules it.',
+    })
+    expect(logged[0]!.claim).toMatchObject({ quotes: [{ paragraphIndex: 0, quote: 'Sera Vane rules Ashfall.' }] })
+  })
+
+  it('writes nothing — no retraction either — when the run fails', async () => {
+    await createRunner(deps())(userId, documentId)
+
+    await createRunner(
+      deps({
+        extract: async () => {
+          throw new ExtractionError('empty_response', 'Nothing came back.')
+        },
+      }),
+    )(userId, documentId)
+
+    expect(await db.select().from(schema.claims)).toHaveLength(2)
+    expect(await db.select().from(schema.claimRetractions)).toHaveLength(0)
   })
 })
