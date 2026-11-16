@@ -15,7 +15,7 @@ export function ClaimIllustration() {
         <div className="lp-claim-tuple">
           <span className="lp-entity">
             <i className={entityIcon('character')} aria-hidden="true" />
-            Ilsabet
+            Elspeth
           </span>
           <span className="lp-mono lp-predicate">rules</span>
           <span className="lp-entity">
@@ -36,7 +36,7 @@ export function ClaimIllustration() {
         </dl>
 
         <blockquote className="lp-quote">
-          Ilsabet took the crown of Varrow in AD 391 and held it until her death.
+          Elspeth took the crown of Varrow in AD 391 and held it until her death.
         </blockquote>
         <div className="lp-cite">
           <i className="ph ph-file-text" aria-hidden="true" />
@@ -48,14 +48,14 @@ export function ClaimIllustration() {
           <span>
             Written alongside: <span className="lp-mono">Kingdom of Varrow</span>{' '}
             <span className="lp-mono lp-predicate">ruled_by</span>{' '}
-            <span className="lp-mono">Ilsabet</span>
+            <span className="lp-mono">Elspeth</span>
           </span>
         </div>
       </div>
 
-      <figcaption id="lp-claim-caption" className="lp-caption">
+      {/* <figcaption id="lp-claim-caption" className="lp-caption">
         Illustration of one extracted claim. Invented names.
-      </figcaption>
+      </figcaption> */}
     </figure>
   )
 }

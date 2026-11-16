@@ -62,7 +62,7 @@ const STEPS = [
   {
     name: 'Extract',
     icon: 'ph-brain',
-    body: 'You bring the model: any OpenAI-compatible endpoint, Gemini included. It reads a document and answers in a closed vocabulary of 12 entity types and 73 predicates, quoting the sentence and naming the paragraph each claim came from. Every claim is checked twice — by a Zod schema that can say what is wrong, then by a foreign key in Postgres that nothing gets past.',
+    body: 'You bring the model: all OpenAI-compatible endpoints are supported. It reads a document and answers in a closed vocabulary of 12 entity types and 73 predicates, quoting the sentence and naming the paragraph each claim came from. Every claim is checked twice — by a Zod schema that can say what is wrong, then by a foreign key in Postgres that nothing gets past.',
   },
   {
     name: 'Reconcile',
@@ -128,9 +128,9 @@ export default function LandingPage() {
       <header className="lp-header">
         <div className="lp-wrap lp-header-row">
           <Link className="lp-brand" href="/">
-            <span className="lp-mark" aria-hidden="true">
+            {/* <span className="lp-mark" aria-hidden="true">
               <i className="ph ph-diamond" />
-            </span>
+            </span> */}
             <span>Stone Brain</span>
           </Link>
           <nav className="lp-nav" aria-label="Page sections">
@@ -152,17 +152,13 @@ export default function LandingPage() {
               <h1 id="lp-hero-title">Find where your world contradicts itself.</h1>
               <p className="lp-lede">
                 Stone Brain reads a Google Drive folder of worldbuilding documents, turns every
-                claim they make into a typed graph, and shows you where two documents disagree —
-                quoting the paragraph each side came from.
+                claim they make into a typed graph, and shows you where two documents disagree.
+                All claims are grounded by by real quotes.
               </p>
               <div className="lp-actions">
                 <a className="btn btn-primary lp-btn-lg" href="/connect">
                   <i className="ph-bold ph-google-logo" aria-hidden="true" />
                   Connect Google Drive
-                </a>
-                <a className="btn btn-secondary lp-btn-lg" href={REPO}>
-                  <i className="ph ph-github-logo" aria-hidden="true" />
-                  Read the source
                 </a>
               </div>
               <ul className="lp-assurances">
@@ -190,8 +186,7 @@ export default function LandingPage() {
               What it catches
             </h2>
             <p className="lp-intro">
-              A world written across dozens of documents drifts. Stone Brain looks for the two
-              kinds of drift a careful reader would flag, and nothing it cannot back with a quote.
+              A world written across dozens of documents will inevitably give rise to contradictions. Stone Brain finds those mistakes in one of two ways:
             </p>
             <div className="lp-catches">
               {CATCHES.map((c) => (
@@ -235,7 +230,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="engineering" className="lp-section" aria-labelledby="lp-eng-title">
+        {/* <section id="engineering" className="lp-section" aria-labelledby="lp-eng-title">
           <div className="lp-wrap">
             <h2 id="lp-eng-title" className="lp-h2">
               Under the hood
@@ -255,7 +250,7 @@ export default function LandingPage() {
               ))}
             </dl>
           </div>
-        </section>
+        </section> */}
 
         <section className="lp-section" aria-labelledby="lp-notyet-title">
           <div className="lp-wrap">

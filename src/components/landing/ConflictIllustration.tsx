@@ -28,19 +28,19 @@ export function ConflictIllustration() {
         </div>
 
         <p className="lp-conflict-question">
-          When did <strong>Queen Ilsabet</strong> die?
+          When did <strong>Queen Elspeth</strong> die?
         </p>
 
         <div className="lp-sides">
           <Side
             value="spring of AD 412"
-            quote="Queen Ilsabet died in the spring of AD 412, three winters after the river took the lower town."
+            quote="Queen Elspeth died in the spring of AD 412, three winters after the river took the lower town."
             document="The Varrow Succession"
             paragraph={14}
           />
           <Side
             value="AD 409"
-            quote="Ilsabet's death in AD 409 left the regency to a council that could agree on nothing."
+            quote="Elspeth's death in AD 409 left the regency to a council that could agree on nothing."
             document="Council of Nine — Notes"
             paragraph={3}
           />
@@ -53,9 +53,9 @@ export function ConflictIllustration() {
         </div>
       </div>
 
-      <figcaption id="lp-conflict-caption" className="lp-caption">
+      {/* <figcaption id="lp-conflict-caption" className="lp-caption">
         Illustration. The world, the names, and the documents are invented.
-      </figcaption>
+      </figcaption> */}
     </figure>
   )
 }
