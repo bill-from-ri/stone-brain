@@ -49,7 +49,6 @@ The other screens:
 - **World** — the graph itself: every entity and claim, as a table or a force-directed picture,
   filterable by entity or by source document, with hand entry and editing.
 - **Settings** — the model provider, and the queue of proposed predicates.
-- **Assistant** — a placeholder; not built yet.
 
 Signed out, `/` is a public page describing the app.
 
