@@ -24,6 +24,8 @@ the same graph.
    Each run is recorded with what it dropped and why, and predicates the vocabulary lacks are
    filed as proposals for review in Settings.
 
+   ![The Library with one document selected. Its pane reports the extraction: done in 9 seconds, 10 new claims, 8 reverse-direction claims, 7 new draft entities, none dropped, one proposed predicate, and the first of the document's 18 claims.](docs/images/extraction.png)
+
    When a document changes in Drive, the Library offers to re-extract it. A re-extraction reads
    the whole document again, but the model is also shown the claims already recorded from it.
    It leaves the ones that still hold alone, so unchanged text cannot drift, and retracts by
@@ -37,6 +39,8 @@ the same graph.
    Keep one side, edit a claim (often to add the dates that make two rulers a succession), merge
    two entities that turn out to be one, or dismiss the conflict — the only conflict state that
    is stored.
+
+   ![The Conflicts screen: two claims about who rules the Kaldian Empire, Ludwig II Kalduin and Lukas I Kalduin, side by side with the quote and paragraph each was read from.](docs/images/conflict.png)
 
 The other screens:
 
