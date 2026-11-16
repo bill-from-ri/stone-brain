@@ -1,6 +1,6 @@
 /* The in-app Home screen (src/app/(app)/page.tsx).
 
-   The prototype's inline styles for the HOME section (the design prototype,
+   The design prototype's inline styles for the HOME section (the prototype is
    no longer in the repo), extracted into classes the same way
    components.css did for the rest of the shell. Kept in its own file because
    only this route uses them. */

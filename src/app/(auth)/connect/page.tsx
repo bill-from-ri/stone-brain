@@ -3,8 +3,8 @@ import type { Metadata } from 'next'
 export const metadata: Metadata = { title: 'Connect' }
 
 /**
- * Ported from the prototype's `connect` screen (the design prototype, no longer in the repo,
- * lines 727-754), with the three access bullets rewritten.
+ * Ported from the design prototype's `connect` screen (no longer in the repo),
+ * with the three access bullets rewritten.
  *
  * Two of the prototype's bullets were wrong: "Write drafts back, on your say-so"
  * contradicts decisions §10 (Drive writes were dropped entirely), and "One folder

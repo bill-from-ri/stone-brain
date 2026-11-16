@@ -26,8 +26,8 @@ export const dynamic = 'force-dynamic'
 export const metadata: Metadata = { title: 'Home' }
 
 /**
- * Home, rebuilt from the prototype (the design prototype, no longer in the repo, lines
- * 104-205) on real data only.
+ * Home, rebuilt from the design prototype (no longer in the repo) on real data
+ * only.
  *
  * One parallel batch and nothing after it, the same shape as the Library page:
  * seven independent reads, none waiting on another. What to suggest and what

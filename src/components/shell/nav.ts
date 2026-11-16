@@ -1,6 +1,6 @@
 /**
- * The nav rail's items, lifted from the prototype's NAV array
- * (the design prototype, no longer in the repo, ~line 763).
+ * The nav rail's items, lifted from the design prototype's NAV array (the
+ * prototype is no longer in the repo).
  *
  * `phase` marks which build phase makes an item real. Anything above it is
  * rendered dimmed rather than hidden — the shell should look like the product it

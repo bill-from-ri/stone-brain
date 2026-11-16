@@ -1,5 +1,5 @@
 /* Stone Brain's gold palette, lifted from the design prototype's inline <style>
-   block (the design prototype, no longer in the repo, lines 16-39).
+   block (the prototype is no longer in the repo).
 
    Nocturne ships a blurple accent; the prototype re-points its --color-* tokens
    at gold rather than editing the design system. We keep that arrangement: this

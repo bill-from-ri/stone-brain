@@ -4,11 +4,18 @@ A continuity checker for worldbuilders. Stone Brain mirrors one Google Drive fol
 read-only, has a model extract every claim they make into a typed graph with verbatim citations,
 and shows you where those claims contradict each other.
 
+![Two documents name different emperors of the same empire. Each statement is extracted as a ruled_by claim with its quote, and the two claims are flagged as a conflict.](docs/images/stone-brain.png)
+
+Two documents, written at different times, disagree about who rules the Kaldian Empire. Neither is
+wrong on its own; together they are a continuity error. Stone Brain finds it by reading both into
+the same graph.
+
 ## How it works
 
 1. **Mirror.** The Library syncs the chosen Drive folder (`drive.readonly`; nothing is ever
-   written to Drive). Documents removed from the folder are soft-deleted, so claims that cited
-   them survive and are flagged (`src/lib/sync/`).
+   written to Drive), polling from the browser while the tab is visible. Documents removed from
+   the folder are soft-deleted, so claims that cited them survive and are flagged
+   (`src/lib/sync/`).
 2. **Extract.** From a document's pane, Extract exports it as Markdown, sends its paragraphs to
    your model provider, and validates the reply against a closed ontology — entity types,
    predicates, domain and range — before anything is written (`src/lib/extraction/`,
@@ -16,15 +23,31 @@ and shows you where those claims contradict each other.
    its reverse direction written beside it; names the graph does not know become draft entities.
    Each run is recorded with what it dropped and why, and predicates the vocabulary lacks are
    filed as proposals for review in Settings.
-3. **Detect.** Conflicts are derived from the claims on every read, never stored: two claims
-   giving a single-valued predicate different answers over overlapping time, or a claim whose
-   every source document has left the Library (`src/lib/conflicts/`).
-4. **Resolve.** The Conflicts screen sets the competing claims side by side with their evidence.
-   Keep one side, edit a claim (often to add the dates that make two rulers a succession), or
-   dismiss the conflict — the only conflict state that is stored.
 
-The World screen is the graph itself: every entity and claim, as a table or a force-directed
-picture, filterable by entity or by source document, with hand entry and editing.
+   When a document changes in Drive, the Library offers to re-extract it. A re-extraction reads
+   the whole document again, but the model is also shown the claims already recorded from it.
+   It leaves the ones that still hold alone, so unchanged text cannot drift, and retracts by
+   name, with a reason, any the document no longer supports. A retraction never touches a claim
+   a person wrote or promoted to canon, and every one is logged.
+3. **Detect.** Conflicts are derived from the claims on every read, never stored: two claims
+   giving a single-valued predicate different answers over overlapping time, a claim whose every
+   source document has left the Library, or two entities whose names suggest they are one thing
+   (`src/lib/conflicts/`, `src/lib/duplicates/`).
+4. **Resolve.** The Conflicts screen sets the competing claims side by side with their evidence.
+   Keep one side, edit a claim (often to add the dates that make two rulers a succession), merge
+   two entities that turn out to be one, or dismiss the conflict — the only conflict state that
+   is stored.
+
+The other screens:
+
+- **Home** — what needs attention: open conflicts, documents changed since they were extracted,
+  and recent runs.
+- **World** — the graph itself: every entity and claim, as a table or a force-directed picture,
+  filterable by entity or by source document, with hand entry and editing.
+- **Settings** — the model provider, and the queue of proposed predicates.
+- **Assistant** — a placeholder; not built yet.
+
+Signed out, `/` is a public page describing the app.
 
 ## Stack
 
@@ -74,9 +97,9 @@ to mirror. To extract, add a model provider in Settings.
 | `npm run lint` | ESLint (flat config: Next Core Web Vitals + typescript-eslint) |
 | `npm run db:migrate` / `db:generate` / `db:studio` | Drizzle migrations and the Drizzle Studio browser |
 | `npm run db:seed` | Load the ontology registry into the reference tables |
-| `npm run db:seed:world` (and `:kaldia`, `:runar`) | Load hand-labelled ground truth for one corpus document |
-| `npm run extract` | Extract one document from the command line |
-| `npm run extract:capture` / `extract:score` | Capture extraction runs over the seeded documents and score them against the ground truth |
+| `npm run db:seed:world` (and `:kaldia`, `:runar`) | Load hand-labelled ground truth for one corpus document. Needs `corpus/` |
+| `npm run extract` | Extract one document from the command line (`--write` to store it, `--dump-prompt` to see what would be sent) |
+| `npm run extract:capture` / `extract:score` | Capture extraction runs over the seeded documents and score them against the ground truth. Needs `corpus/` |
 | `npm run db:backfill:inverses` | Materialise reverse-direction claims for rows written before that existed |
 
 ## Docs
@@ -92,3 +115,7 @@ to mirror. To extract, add a model provider in Settings.
 `corpus/` is gitignored and holds private worldbuilding: the hand-seeded ground truth
 (`corpus/seeds/`), the scripts that load it, and saved extraction runs. Scoring and the seed
 scripts need it; the app, its tests and a fresh clone do not.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
