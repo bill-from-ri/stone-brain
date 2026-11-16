@@ -89,6 +89,6 @@ to mirror. To extract, add a model provider in Settings.
 - [docs/deferred-proposals.md](docs/deferred-proposals.md) — vocabulary changes judged worth having and deferred
 - [docs/phase-1-setup.md](docs/phase-1-setup.md) — one-time Neon and Google Cloud setup
 
-`frontend/` holds the original design prototype (a Claude Design export, served with
-`python3 -m http.server` and opened at `/frontend/Stone%20Brain.dc.html`); it is reference for
-the look, not part of the build.
+`corpus/` is gitignored and holds private worldbuilding: the hand-seeded ground truth
+(`corpus/seeds/`), the scripts that load it, and saved extraction runs. Scoring and the seed
+scripts need it; the app, its tests and a fresh clone do not.

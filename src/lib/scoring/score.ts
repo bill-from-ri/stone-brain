@@ -49,7 +49,7 @@ import { ordinalFor } from '@/lib/ontology/calendar'
 import type { ExtractedClaim } from '@/lib/ontology/extraction'
 import { looseNameKey, normalizeName } from '@/lib/ontology/name-key'
 import { RELATIONSHIPS, deriveOntology, type PredicateRow } from '@/lib/ontology/registry'
-import type { SeedClaim, SeedEntity, SourcedSeedClaim } from '@/lib/ontology/seed-world'
+import type { SeedClaim, SeedEntity, SourcedSeedClaim } from '@/lib/ontology/ground-truth'
 import { type QuoteSpan, type QuotedParagraph, locateQuote, spansOverlap } from './quotes'
 
 /* ---------------------------------------------------------------- directions */

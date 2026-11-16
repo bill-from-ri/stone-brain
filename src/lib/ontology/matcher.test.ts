@@ -1,6 +1,45 @@
 import { describe, expect, it } from 'vitest'
 import { type EntityIndex, buildEntityIndex, normalizeName, resolve } from './matcher'
-import { SEED_ENTITIES } from './seed-world'
+
+/**
+ * The entity names of the first hand-seeded document — names and spellings only,
+ * which is all the matcher sees. The seed itself is private (see
+ * src/lib/ontology/ground-truth.ts); this copy keeps the matcher tested against
+ * a real naming population on a fresh clone.
+ */
+const SEED_ENTITIES: { name: string; type: string; variants?: string[] }[] = [
+  { name: "Nevlos", type: 'region' },
+  { name: "Elduin", type: 'region' },
+  { name: "Frost Gulf", type: 'region' },
+  { name: "Runara", type: 'region', variants: ["Frost Gulf"] },
+  { name: "Enua", type: 'region', variants: ["Nethros"] },
+  { name: "Zada Mountains", type: 'region' },
+  { name: "Orosh Mountains", type: 'region' },
+  { name: "Lagetan Basin", type: 'region' },
+  { name: "Ipherian Sea", type: 'region' },
+  { name: "Ipheria", type: 'region' },
+  { name: "Merovia", type: 'region' },
+  { name: "Agyros", type: 'region' },
+  { name: "Ephria", type: 'region' },
+  { name: "Southern Ephria", type: 'region' },
+  { name: "Kovnia", type: 'region' },
+  { name: "Akál", type: 'region', variants: ["Akali Archipelago"] },
+  { name: "Sea of Akál", type: 'region' },
+  { name: "Yeosin Frontier", type: 'region' },
+  { name: "Central Plain", type: 'region' },
+  { name: "Great Steppe", type: 'region' },
+  { name: "Ipherian Empire", type: 'society' },
+  { name: "Tavilaga", type: 'society' },
+  { name: "Central Empire", type: 'society' },
+  { name: "Syrath", type: 'character' },
+  { name: "Vaski", type: 'character' },
+  { name: "Doom", type: 'event' },
+  { name: "Enu Conquests", type: 'event' },
+  { name: "Dragon's Shroud", type: 'artifact' },
+  { name: "Grain", type: 'commodity' },
+  { name: "Dragon", type: 'species' },
+  { name: "Giant", type: 'species' },
+]
 
 /**
  * The matcher's whole value is what it *refuses* to do, so most of these assert

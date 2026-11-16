@@ -12,7 +12,7 @@
  * **Never writes to the database.** Stops at the first provider error rather
  * than burning further requests on a key that is revoked or rate limited.
  *
- * Writes `scoring/captures/<run-label>/<seed>.json`, refusing to overwrite.
+ * Writes `corpus/scoring/captures/<run-label>/<seed>.json` (gitignored), refusing to overwrite.
  *
  * ## Capturing a model that is not the configured provider
  *
@@ -61,9 +61,10 @@ const { extractClaims, extractJson, ExtractionError } = await import('@/lib/llm/
 const { ProviderError } = await import('@/lib/llm/errors')
 const { extractionSystemPrompt, extractionUserPrompt } = await import('@/lib/llm/prompt')
 const { coreOntology, parseExtraction } = await import('@/lib/ontology/extraction')
-const world = await import('@/lib/ontology/seed-world')
-const kaldia = await import('@/lib/ontology/seed-kaldia')
-const runar = await import('@/lib/ontology/seed-runar')
+// The seed data is private and gitignored (see src/lib/ontology/ground-truth.ts).
+const world = await import('../corpus/seeds/world')
+const kaldia = await import('../corpus/seeds/kaldia')
+const runar = await import('../corpus/seeds/runar')
 
 /** Every hand-seeded document — the same list `check-seed-quotes.ts` keeps. */
 const SEEDS: Record<string, { name: string; driveFileId: string }> = {
@@ -75,7 +76,7 @@ const SEEDS: Record<string, { name: string; driveFileId: string }> = {
 const unknown = wanted.filter((name) => !(name in SEEDS))
 if (unknown.length > 0) throw new Error(`unknown seed(s): ${unknown.join(', ')} — known: ${Object.keys(SEEDS).join(', ')}`)
 
-const outDir = join('scoring', 'captures', label)
+const outDir = join('corpus', 'scoring', 'captures', label)
 const seeds = wanted.length > 0 ? wanted : Object.keys(SEEDS)
 for (const name of seeds) {
   if (existsSync(join(outDir, `${name}.json`))) throw new Error(`${outDir}/${name}.json already exists — pick a new run label.`)

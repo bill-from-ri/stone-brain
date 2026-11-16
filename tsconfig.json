@@ -42,7 +42,7 @@
   ],
   "exclude": [
     "node_modules",
-    "frontend",
+    "corpus",
     "spikes",
     "docs"
   ]

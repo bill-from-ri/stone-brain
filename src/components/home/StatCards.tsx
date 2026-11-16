@@ -12,7 +12,7 @@ type Props = {
 const fmt = new Intl.NumberFormat('en-GB')
 
 /**
- * The prototype's four stat cards (frontend/Stone Brain.dc.html, ~line 112),
+ * The prototype's four stat cards (the design prototype, no longer in the repo, ~line 112),
  * each now backed by a query. Two of the prototype's sub-lines are gone
  * because nothing records them: "+38 this week" needs claim history by week,
  * and "2 flagged high impact" needs an impact score no part of the product

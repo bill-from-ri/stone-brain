@@ -27,10 +27,10 @@ export default defineConfig([
     'out/**',
     'build/**',
     'next-env.d.ts',
-    // Not the app: the design export (a runtime-interpreted template), a
-    // throwaway OAuth spike, and captured model output.
-    'frontend/**',
+    // Not the app: a throwaway OAuth spike, and the private, gitignored seed
+    // data and captured model output.
     'spikes/**',
+    'corpus/**',
     'scoring/**',
   ]),
 ])

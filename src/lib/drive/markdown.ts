@@ -89,11 +89,11 @@ const INLINE_IMAGE = /[ \t]*!\[[^\]]*\](?:\((?:[^()]*)\)|\[[^\]]*\])/g
 const EMPTY_HEADING = /^#{1,6}[ \t]*$/gm
 
 /**
- * Bold and italic delimiters: `**Eldi**`, `*aside*`, `__x__`, `_x_`.
+ * Bold and italic delimiters: `**Marrow**`, `*aside*`, `__x__`, `_x_`.
  *
  * Emphasis is invisible in the document a person reads, but left in it splits
- * the text a quote is taken from — "the **Eldi** of the Amber Coast" does not
- * contain "the Eldi of the Amber Coast", so a faithful quote fails to match and
+ * the text a quote is taken from — "the **Marrow** of the Glass Fen" does not
+ * contain "the Marrow of the Glass Fen", so a faithful quote fails to match and
  * the natural one is marked up. Google escapes every *literal* `*` and `_`
  * (`\*`, `\_`), so an unescaped one is always markup; the lookbehind leaves the
  * escaped ones for `ESCAPED` to restore.

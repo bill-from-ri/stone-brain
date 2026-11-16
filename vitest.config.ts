@@ -4,7 +4,9 @@ import { fileURLToPath } from 'node:url'
 export default defineConfig({
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    // `corpus/` is gitignored and absent from a fresh clone; its tests run
+    // only where the private seed data is on disk.
+    include: ['src/**/*.test.ts', 'corpus/**/*.test.ts'],
   },
   resolve: {
     alias: {

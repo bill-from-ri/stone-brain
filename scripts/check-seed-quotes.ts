@@ -20,9 +20,10 @@ const { db } = await import('@/db')
 const { users } = await import('@/db/schema')
 const { DriveClient } = await import('@/lib/drive/client')
 const { readDocumentText } = await import('@/lib/documents/text')
-const world = await import('@/lib/ontology/seed-world')
-const kaldia = await import('@/lib/ontology/seed-kaldia')
-const runar = await import('@/lib/ontology/seed-runar')
+// The seed data is private and gitignored (see src/lib/ontology/ground-truth.ts).
+const world = await import('../corpus/seeds/world')
+const kaldia = await import('../corpus/seeds/kaldia')
+const runar = await import('../corpus/seeds/runar')
 
 type Seed = {
   document: { name: string; driveFileId: string }

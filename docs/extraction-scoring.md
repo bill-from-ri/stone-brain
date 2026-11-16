@@ -45,8 +45,8 @@ and reported separately. They do not affect the match.
 ## Capturing and scoring
 
 ```sh
-npm run extract:capture -- <run-label>          # spends 3 requests; writes scoring/captures/<run-label>/
-npm run extract:score   -- <run-label> [--json] # spends nothing; --json writes scoring/results/<run-label>.json
+npm run extract:capture -- <run-label>          # spends 3 requests; writes corpus/scoring/captures/<run-label>/
+npm run extract:score   -- <run-label> [--json] # spends nothing; --json writes corpus/scoring/results/<run-label>.json
 ```
 
 A model outside the configured provider can be captured offline: `--dump-prompts=<dir>` writes the

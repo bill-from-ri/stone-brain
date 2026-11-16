@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ExtractedClaim } from '@/lib/ontology/extraction'
-import type { SeedClaim, SeedEntity } from '@/lib/ontology/seed-world'
+import type { SeedClaim, SeedEntity } from '@/lib/ontology/ground-truth'
 import { coreDirections, combineScores, rates, scoreDocument } from './score'
 
 /**
@@ -9,9 +9,9 @@ import { coreDirections, combineScores, rates, scoreDocument } from './score'
  */
 
 const P = [
-  'The Shroud was created by Syrath during the dragon’s final moments.',
+  'The Shroud was created by Syrath in the war’s last winter.',
   'Prince Lukas married Princess Edith in 935, and the Empire rules Thalgia.',
-  'Population Approx. 2.9 million. The Empire was founded in 918.',
+  'Population roughly 2.9 million. The Empire was founded in 918.',
   'The Akali Archipelago is a cluster of islands. The Shroud is mentioned here too.',
 ]
 const paragraphs = P.map((text, index) => ({ index, text }))
@@ -30,7 +30,7 @@ const truth: SeedClaim[] = [
   { subject: 'Shroud', predicate: 'created_by', object: 'Syrath', quote: P[0]!, paragraph: 0 },
   { subject: 'Lukas', predicate: 'married_to', object: 'Edith', startTime: '935', quote: 'Prince Lukas married Princess Edith in 935', paragraph: 1 },
   { subject: 'Kaldian Empire', predicate: 'rules', object: 'Thalgia', quote: 'the Empire rules Thalgia', paragraph: 1 },
-  { subject: 'Kaldian Empire', predicate: 'population', value: 2_900_000, quote: 'Population Approx. 2.9 million', paragraph: 2 },
+  { subject: 'Kaldian Empire', predicate: 'population', value: 2_900_000, quote: 'Population roughly 2.9 million', paragraph: 2 },
   { subject: 'Kaldian Empire', predicate: 'founded_on', value: '918', quote: 'The Empire was founded in 918', paragraph: 2 },
   { subject: 'Akál', predicate: 'landform', value: 'archipelago', quote: 'The Akali Archipelago is a cluster of islands', paragraph: 3 },
   { subject: 'Shroud', predicate: 'located_in', object: 'Akál', handEntered: 'not in any document' },
@@ -41,7 +41,7 @@ const perfect: ExtractedClaim[] = [
   { subjectName: 'Syrath', subjectType: 'character', predicate: 'created', objectName: 'Shroud', objectType: 'artifact', quote: 'created by Syrath', paragraphIndex: 0 },
   { subjectName: 'Edith', subjectType: 'character', predicate: 'married_to', objectName: 'Lukas', objectType: 'character', startTime: '935', quote: 'Prince Lukas married Princess Edith in 935' },
   { subjectName: 'Thalgia', subjectType: 'region', predicate: 'ruled_by', objectName: 'the Kaldian Empire', objectType: 'society', quote: 'the Empire rules Thalgia' },
-  { subjectName: 'Kaldian Empire', subjectType: 'society', predicate: 'population', valueInt: 2_900_000, quote: 'Population Approx. 2.9 million' },
+  { subjectName: 'Kaldian Empire', subjectType: 'society', predicate: 'population', valueInt: 2_900_000, quote: 'Population roughly 2.9 million' },
   { subjectName: 'Empire', subjectType: 'society', predicate: 'founded_on', valueTime: '918 AD', quote: 'founded in 918' },
   { subjectName: 'Akali Archipelago', subjectType: 'region', predicate: 'landform', valueString: 'archipelago', quote: 'Akali Archipelago is a cluster' },
 ]
@@ -107,7 +107,7 @@ describe('grading the citation', () => {
   })
 
   it('accepts straightened quote marks', () => {
-    expect(outcomes(replace(0, { quote: "during the dragon's final moments" }))[0]).toBe('matched')
+    expect(outcomes(replace(0, { quote: "in the war's last winter" }))[0]).toBe('matched')
   })
 })
 

@@ -89,3 +89,9 @@ docker-compose.override.yml
 tmp/
 scratch/
 .claude/settings.local.json
+
+# ---------- Private worldbuilding ----------
+# Hand-seeded ground truth, saved extractions and anything else that quotes the
+# documents verbatim. Kept on disk for scoring; never committed.
+/corpus/
+/scoring/

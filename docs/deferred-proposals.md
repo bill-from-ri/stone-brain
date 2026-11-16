@@ -16,6 +16,10 @@ Two neighbouring lists are **not** this file, and are not proposed either:
   (comparatives, purpose, causal links between places, …).
 - *Modelling conventions* in the same file — settled rulings.
 
+**No quotes here.** The documents are private, so evidence is cited by document and paragraph
+and described in other words. The verbatim quotes, and each parked claim with its quote, are in
+the local, gitignored `corpus/docs/deferred-proposals.md` — keep the two in step.
+
 When an entry is approved: land the registry change, seed its parked claims into their
 documents' seed modules, move any modelling ruling into *Modelling conventions*, and delete the
 entry. When one is rejected outright: move it to *Deliberately not modelled* and delete it here.
@@ -31,16 +35,16 @@ entry. When one is rejected outright: move it to *Deliberately not modelled* and
 - **Deferred because:** trade and the other economic relationships between actors are to be
   modelled together, later (ruling 2026-09-27). See also D2.
 - **Evidence:**
-  - *The Runar* ¶10 — "trading regularly with the Eldi to their south"
-  - *The Runar* ¶17 — "in intermittent trade and conflict with the Suedi"
-  - *The Runar* ¶17 — "in sustained trade and cultural contact with the Eldi"
+  - *The Runar* ¶10 — the Suedi trade regularly with the Eldi.
+  - *The Runar* ¶17 — the Kazavs trade, and fight, with the Suedi on and off.
+  - *The Runar* ¶17 — the Enuarak and the Eldi have long traded and swapped customs.
 - **Parked claims:**
 
-  | Document | ¶ | Claim | Quote |
-  | --- | --- | --- | --- |
-  | The Runar | 10 | `Suedi —trades_with→ Eldi` | "trading regularly with the Eldi to their south" |
-  | The Runar | 17 | `Kazavs —trades_with→ Suedi` | "in intermittent trade and conflict with the Suedi" |
-  | The Runar | 17 | `Enuarak —trades_with→ Eldi` | "in sustained trade and cultural contact with the Eldi" |
+  | Document | ¶ | Claim |
+  | --- | --- | --- |
+  | The Runar | 10 | `Suedi —trades_with→ Eldi` |
+  | The Runar | 17 | `Kazavs —trades_with→ Suedi` |
+  | The Runar | 17 | `Enuarak —trades_with→ Eldi` |
 
 ## D2. Currency and coinage
 
@@ -49,8 +53,8 @@ entry. When one is rejected outright: move it to *Deliberately not modelled* and
   one society adopted another's currency.
 - **Deferred because:** part of the economy, modelled later with D1.
 - **Evidence:**
-  - *The Kaldian Empire* ¶20 — "Kaldia uses five types of coins"
-  - *The Kaldian Empire* ¶20 — "After the Pale War, Swadia began adopting imperial currency"
+  - *The Kaldian Empire* ¶20 — Kaldia's coinage has several denominations.
+  - *The Kaldian Empire* ¶20 — Swadia took up the imperial currency after the Pale War.
 - **Parked claims:** none drafted; no predicate shape was chosen.
 
 ## D3. Breadth of the `economy` enum
@@ -62,11 +66,10 @@ entry. When one is rejected outright: move it to *Deliberately not modelled* and
 - **Deferred because:** part of the economy, modelled later with D1. Until then a society whose
   economy is mixed or outside the enum gets no `economy` claim.
 - **Evidence:**
-  - *The Kaldian Empire* ¶16–¶18 — farming ("The Kaldian Vale is a breadbasket"), extraction
-    ("its ores and quarried stone are primarily harvested"), and industry ("an expansive smithing
-    industry") at once.
-  - *The Runar* ¶7 — "built on trade rather than raiding or subsistence stockpiling"
-  - *The Runar* ¶17 — "hunter-gatherer tribes of the monster-infested tundra to the north"
+  - *The Kaldian Empire* ¶16–¶18 — farming, mining and quarrying, and a large smithing industry,
+    all at once.
+  - *The Runar* ¶7 — an economy of trade, explicitly not raiding or subsistence.
+  - *The Runar* ¶17 — hunter-gatherer tribes on the northern tundra.
 - **Parked claims:** none — which value to use is the open question.
 
 ## D4. Named customs and rites
@@ -77,17 +80,17 @@ entry. When one is rejected outright: move it to *Deliberately not modelled* and
 - **Deferred because:** (a) blurs a whole way of life with one rite; (b) is a new type on one
   document's evidence.
 - **Evidence:**
-  - *The Runar* ¶24 —
-    "The practice is oldest and most elaborate among the Tvars, and each of the other three peoples has reshaped it"
+  - *The Runar* ¶24 — the Giving Ceremonies are oldest among the Tvars, and the other three
+    peoples each practise their own form.
   - *The Runar* ¶25 — per-tribe forms of the Giving Ceremonies.
 - **Parked claims** (shape assumes option (a) or (b)):
 
-  | Document | ¶ | Claim | Quote |
-  | --- | --- | --- | --- |
-  | The Runar | 24 | `Tvars —practices→ Giving Ceremonies` | "The practice is oldest and most elaborate among the Tvars" |
-  | The Runar | 24 | `Suedi —practices→ Giving Ceremonies` | "each of the other three peoples has reshaped it" |
-  | The Runar | 24 | `Atarks —practices→ Giving Ceremonies` | "each of the other three peoples has reshaped it" |
-  | The Runar | 24 | `Eldi —practices→ Giving Ceremonies` | "each of the other three peoples has reshaped it" |
+  | Document | ¶ | Claim |
+  | --- | --- | --- |
+  | The Runar | 24 | `Tvars —practices→ Giving Ceremonies` |
+  | The Runar | 24 | `Suedi —practices→ Giving Ceremonies` |
+  | The Runar | 24 | `Atarks —practices→ Giving Ceremonies` |
+  | The Runar | 24 | `Eldi —practices→ Giving Ceremonies` |
 
 ## D5. `influenced_by` between cultures and societies
 
@@ -95,15 +98,15 @@ entry. When one is rejected outright: move it to *Deliberately not modelled* and
 - **Change:** `influenced_by` — culture/society → culture/society/religion.
 - **Deferred because:** vague, and prone to false positives in extraction.
 - **Evidence:**
-  - *The Runar* ¶7 — "Sustained contact with the Enu has made the Eldi the most materially developed"
-  - *The Runar* ¶7 — "Enu religious ideas have had some influence as well"
-  - *The Runar* ¶14 — the Atarks "have absorbed a substantial amount of horse culture from their
-    steppe neighbors" (the steppe side is unnamed, so not claimable).
+  - *The Runar* ¶7 — contact with the Enu shaped the Eldi materially.
+  - *The Runar* ¶7 — and religiously, to a lesser degree.
+  - *The Runar* ¶14 — the Atarks took on much of a steppe horse culture (the steppe side is
+    unnamed, so not claimable).
 - **Parked claims:**
 
-  | Document | ¶ | Claim | Quote |
-  | --- | --- | --- | --- |
-  | The Runar | 7 | `Eldi —influenced_by→ Enu` | "Enu religious ideas have had some influence as well" |
+  | Document | ¶ | Claim |
+  | --- | --- | --- |
+  | The Runar | 7 | `Eldi —influenced_by→ Enu` |
 
 ## D6. `descended_from` between peoples and cultures
 
@@ -112,8 +115,8 @@ entry. When one is rejected outright: move it to *Deliberately not modelled* and
 - **Deferred because:** no named pair in the evidence so far; the cross-document chain
   (Kaldians ← Runyar ← Eldi) is not stated anywhere.
 - **Evidence:**
-  - *The Runar* ¶2 — "these settlers eventually came to be known as the Runar"
-  - *The Runar* ¶3 — "the Eldi, the tribe from whom the first Elduinian settlers descended"
+  - *The Runar* ¶2 — the settlers came to be called the Runar.
+  - *The Runar* ¶3 — the first Elduinian settlers descended from the Eldi.
 - **Parked claims:** none — the descendants in ¶3 are unnamed.
 
 ## D7. Belief-only places and concepts
@@ -125,8 +128,8 @@ entry. When one is rejected outright: move it to *Deliberately not modelled* and
 - **Deferred because:** wanted eventually, together with deities, not now (ruling 2026-09-27).
   Until then, cosmology goes in the religion's `summary`.
 - **Evidence:**
-  - *The Runar* ¶19 —
-    "the Upper World above the sky, the Walked World of forest, river, coast, and settlement, and the Underworld beyond"
+  - *The Runar* ¶19 — a three-part cosmology: a world above the sky, the lived-in world, and an
+    underworld.
 - **Parked claims:** none drafted.
 
 ---

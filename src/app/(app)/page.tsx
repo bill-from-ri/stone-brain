@@ -26,7 +26,7 @@ export const dynamic = 'force-dynamic'
 export const metadata: Metadata = { title: 'Home' }
 
 /**
- * Home, rebuilt from the prototype (frontend/Stone Brain.dc.html, lines
+ * Home, rebuilt from the prototype (the design prototype, no longer in the repo, lines
  * 104-205) on real data only.
  *
  * One parallel batch and nothing after it, the same shape as the Library page:

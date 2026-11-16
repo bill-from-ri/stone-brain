@@ -1,6 +1,6 @@
 /**
  * The nav rail's items, lifted from the prototype's NAV array
- * (frontend/Stone Brain.dc.html, ~line 763).
+ * (the design prototype, no longer in the repo, ~line 763).
  *
  * `phase` marks which build phase makes an item real. Anything above it is
  * rendered dimmed rather than hidden — the shell should look like the product it

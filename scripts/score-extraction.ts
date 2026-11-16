@@ -2,13 +2,13 @@
  * `npm run extract:score -- <run-label> [--json]` — score a captured extraction
  * run against the hand-seeded ground truth (implementation plan §4b).
  *
- * Reads `scoring/captures/<run-label>/<seed>.json`, written by
+ * Reads `corpus/scoring/captures/<run-label>/<seed>.json`, written by
  * `npm run extract:capture`, and prints precision, recall and F1 per document
  * and per predicate, then every ground-truth claim that was missed and every
  * extracted claim that matched nothing. The match rule is in
  * src/lib/scoring/score.ts and docs/extraction-scoring.md.
  *
- *   --json   also write the full result to `scoring/results/<run-label>.json`
+ *   --json   also write the full result to `corpus/scoring/results/<run-label>.json`
  *
  * Spends nothing: no model, no database, no Drive. The fixture carries the
  * paragraphs the model was shown, so quotes are checked against exactly the
@@ -20,10 +20,11 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { ExtractedClaim } from '@/lib/ontology/extraction'
-import * as kaldia from '@/lib/ontology/seed-kaldia'
-import * as runar from '@/lib/ontology/seed-runar'
-import * as world from '@/lib/ontology/seed-world'
-import type { SeedClaim } from '@/lib/ontology/seed-world'
+// The seed data is private and gitignored (see src/lib/ontology/ground-truth.ts).
+import * as kaldia from '../corpus/seeds/kaldia'
+import * as runar from '../corpus/seeds/runar'
+import * as world from '../corpus/seeds/world'
+import type { SeedClaim } from '@/lib/ontology/ground-truth'
 import { MIN_SHARED_CHARS } from '@/lib/scoring/quotes'
 import {
   type DocumentScore,
@@ -59,7 +60,7 @@ if (!label) {
   console.error('Usage: npm run extract:score -- <run-label> [--json]')
   process.exit(1)
 }
-const captureDir = join('scoring', 'captures', label)
+const captureDir = join('corpus', 'scoring', 'captures', label)
 if (!existsSync(captureDir)) {
   console.error(`No capture at ${captureDir} — run \`npm run extract:capture -- ${label}\` first.`)
   process.exit(1)
@@ -206,7 +207,7 @@ function describeTruth(t: TruthResult, extracted: ExtractedResult[]): string {
 /* ---------------------------------------------------------------------- json */
 
 if (asJson) {
-  const resultDir = join('scoring', 'results')
+  const resultDir = join('corpus', 'scoring', 'results')
   mkdirSync(resultDir, { recursive: true })
   const result = {
     runLabel: label,

@@ -13,7 +13,7 @@ import { deriveOntology } from './registry'
  *   - hand entry (`claim-writes.ts`), where editing or deleting one direction
  *     carries the other with it;
  *   - extraction (`extraction-write.ts`), in the same transaction as the claim;
- *   - the hand-seeded ground truth (`seed-world.ts`);
+ *   - the hand-seeded ground truth (`ground-truth.ts`);
  *   - `scripts/backfill-inverses.ts`, for rows written before any of this.
  *
  * This module is pure: it decides *what* the inverse is. Writing it, deduping

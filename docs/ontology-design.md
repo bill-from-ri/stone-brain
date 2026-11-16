@@ -399,8 +399,8 @@ region) and `Enuarak` (a society) — related names, distinct entities.
 
 How recurring real-world shapes map onto the vocabulary. Each was ratified while hand-labelling a
 document, and holds for extraction as much as for labelling. The worked example at
-`.claude/skills/seed-ground-truth/examples/kaldian-empire-draft.md` shows the evidence for the
-round-2 rulings; the other rounds' drafts are in git history.
+`corpus/skill-examples/kaldian-empire-draft.md` (local only, gitignored) shows the evidence for the
+round-2 rulings; the other rounds' drafts are kept alongside it.
 
 **Places**
 
@@ -422,7 +422,7 @@ round-2 rulings; the other rounds' drafts are in git history.
   stays out: "successor state" is too vague to be useful.
 - **A polity controlling land is `rules`, not `located_in`.** A region cannot sit inside a
   society. `located_in` is geographic containment or habitation (`Kaldian Empire —located_in→
-  Elduin`; "the Eldi of the Amber Coast" is `Eldi —located_in→ Amber Coast`) — a people living
+  Elduin`; "the river folk of the Glass Fen" is `river folk —located_in→ Glass Fen`) — a people living
   somewhere is not a claim that it holds sovereignty there.
 - **Sub-polities are `society`s.** A duchy or province within an empire is its own `society`,
   joined to the parent by `serves`; true vassalage (a kingdom "under the aegis" of an empire) uses
@@ -476,12 +476,12 @@ round-2 rulings; the other rounds' drafts are in git history.
 
 Not deferred — judged out of scope, so neither a labeller nor an extractor should try:
 
-- **Comparatives** — "the largest nation", "one of the most densely populated places".
-- **Purpose and intent** — "…with the intention of trapping Vaski". Summary prose, if anywhere.
-- **Causal relations between places** — "watered by moisture blown off the Dragon's Shroud".
-- **Extents** — "spanning from the Yeosin Frontier to the Sea of Akál" is not a location.
-- **Unnamed groups, events, and places** — "nomadic tribes", "a period of civil war", "the deep
-  inland forest", "Steppe peoples to the east". Only a proper name makes an entity.
+- **Comparatives** — "the biggest kingdom", "among the most crowded cities".
+- **Purpose and intent** — "…built to keep the raiders out". Summary prose, if anywhere.
+- **Causal relations between places** — "kept green by rain off the western peaks".
+- **Extents** — "reaching from the northern marches to the southern sea" is not a location.
+- **Unnamed groups, events, and places** — "wandering clans", "years of unrest", "the old
+  forest", "the peoples beyond the river". Only a proper name makes an entity.
 
 Hand entry is first-class throughout: `created_by = 'user'` on an entity or claim means it was
 written by a person with no document behind it, and needs no `claim_sources` row.

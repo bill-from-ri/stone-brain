@@ -83,17 +83,17 @@ describe('cleanExport', () => {
   })
 
   it('leaves ordinary prose byte-for-byte alone', () => {
-    const prose = 'The Central Empire is an absolute monarchy in eastern Zhusan.'
+    const prose = 'The Lantern League is a loose union of harbour towns on the Salt Reach.'
     expect(cleanExport(prose)).toBe(prose)
   })
 
   it('strips bold and italic, so a quote across them still matches', () => {
-    // Real: The Runar ¶5 and The Kaldian Empire ¶12.
-    expect(cleanExport('the **Eldi** of the Amber Coast, the **Suedi** of the Blighted Shore')).toBe(
-      'the Eldi of the Amber Coast, the Suedi of the Blighted Shore',
+    // Shaped like real exports: a bolded name mid-sentence, twice in one line.
+    expect(cleanExport('the **Marrow** of the Glass Fen, the **Oskari** of the Salt Reach')).toBe(
+      'the Marrow of the Glass Fen, the Oskari of the Salt Reach',
     )
-    expect(cleanExport('after Count **Aldo Demard** was made Imperial Margrave.')).toBe(
-      'after Count Aldo Demard was made Imperial Margrave.',
+    expect(cleanExport('after Lady **Teodora Vell** was named Warden of the March.')).toBe(
+      'after Lady Teodora Vell was named Warden of the March.',
     )
     expect(cleanExport('an *aside*, a __strong__ word, and _one_ more')).toBe(
       'an aside, a strong word, and one more',
@@ -195,11 +195,11 @@ describe('layout tables', () => {
     ['| Infobox | ' + body + ' |', '| :---- | ----- |'].join('\n')
 
   const longBody = [
-    'The Republic of Andras is an aristocratic republic consisting of three protectorates, each considered the dominion of one of three parties.',
-    'The nobility of Andras came into power due to their innate magical gifts, which set them apart from the common people of the northeast.',
-    'Delacia to the south is the most populous of the three domains, holding most of the Republic’s cities and its major towns and ports.',
-    'Eszakia to the north belongs to the Church of Syrath, and consists of the holy city of St Leir and the surrounding highlands and moors.',
-    'Local governance in the northern domain is the responsibility of bishops and priests appointed directly by the Church rather than the Veche.',
+    'The Lantern League is a confederation of eleven harbour towns that share a fleet, a mint and a council that meets once every winter.',
+    'Its founding families made their fortunes in the salt trade, and their seats on the council pass down through the eldest daughter.',
+    'Brenhollow in the west is the largest of the towns, holding the League’s only dry dock and most of the shipwrights along the coast.',
+    'Ostmere in the east is the oldest, built around a lighthouse whose keepers still swear an oath to the council before they take up the post.',
+    'Disputes between towns go first to the harbour masters and only then to the council, which has not overruled a harbour master in a century.',
   ].join('  ')
 
   it('unpacks an article hidden in a table cell into real paragraphs', () => {
@@ -207,7 +207,7 @@ describe('layout tables', () => {
     expect(paragraphs.length).toBeGreaterThan(4)
     expect(paragraphs[0]!.text).toBe('Infobox')
     expect(paragraphs[1]!.text).toBe(
-      'The Republic of Andras is an aristocratic republic consisting of three protectorates, each considered the dominion of one of three parties.',
+      'The Lantern League is a confederation of eleven harbour towns that share a fleet, a mint and a council that meets once every winter.',
     )
   })
 
@@ -229,7 +229,7 @@ describe('layout tables', () => {
   it('leaves a real data table alone however long it is', () => {
     // Renic-Timekeeping: 13 rows, no cell over 20 characters.
     const table = [
-      '| Month Number | Imperial Name | Literary Name |',
+      '| No. | Month | Old name |',
       '| :---: | :---: | :---: |',
       ...Array.from({ length: 13 }, (_, i) => `| ${i + 1} | Moon ${i + 1} | Plum Moon |`),
     ].join('\n')
